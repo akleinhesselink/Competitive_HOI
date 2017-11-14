@@ -1,0 +1,318 @@
+library(dplyr)
+library(tidyr)
+library(deSolve)
+library(ggplot2)
+
+rm(list = ls())
+par(mfrow = c(1,1))
+
+source('code/sim_functions.R')
+source('code/figure_pars.R')
+
+# parameterize model --------------------------------------------------------------------------------------------------- 
+tiny <- .Machine$double.eps
+times <- 125             # length of simulation in days 
+soil_m <- 200            # initial soil moisture (mm water in upper 500 mm of soil)
+pulse <- 0               # amount of water supplied per day in mm  
+rainy <- 10             # duration of rainy period 
+r <- c(4.2, 2.9, 2.3) # max uptake rates mm of water per g of plant per day
+K <- c(110, 30, 0.5)      # resource half-saturation constant, soil moisture in mm water per 500 mm soil when plant growth is half max  
+m <- 0.09                # tissue respiration and loss rate g per g per day 
+q <- 0.07                 # photosynthetic water use efficiency g of carbon gain per mm of water
+epsilon <- 0.01         # rate of water evaporation and runoff mm per mm per day
+seedlings <- c(1, 0, 0)      # number of seedlings 
+seedling_mass <- c(0.005) # seed/seedling mass in g 
+conversion <- 0.1        # proportion live biomass converted to seed mass 
+R <- seq(0, 500, length.out = 1000)
+
+parms <- list( r = r, K = K, m =m , p = c(rep(pulse, rainy), rep(0, times - rainy)), epsilon = epsilon, q = q)
+
+plot_transpiration(parms, my_colors)
+plot_growth_rate(parms, my_colors)
+plot_Rstar(parms, my_colors)
+
+State <- c(soil_m, seedlings*seedling_mass)
+out <- ode(y=State, times = seq( 1, times, 0.1), func = grow, parms = parms, events = list(func = event, root = TRUE), rootfun = root )
+plot_timeseries(out, parms, col = my_colors)
+par(mfrow = c(1,1))
+plot(out[,1:2], type = 'l', ylab = 'Soil moisture', xlab = 'day', ylim = c(0, 200))
+plot(out[,c(1,3)], type = 'l', ylab = 'Biomass', xlab = 'day')
+
+seeds <- c(1,1,1)
+State <- c(soil_m, seeds*seedling_mass)
+out <- ode(y=State, times = seq( 1, times, 0.1), func = grow, parms = parms, events = list(func = event, root = TRUE), rootfun = root )
+
+plot(out)
+plot_timeseries(out, parms, col = my_colors)
+
+# -------- simulate annual plant experiments -------------------------- # 
+comp_grad <- c(0:10)  # number of competitors
+experiments <- expand.grid(as.list(rep(list ( comp_grad), 3))) # response surface experiment 
+experiments <- experiments[-1, ]
+
+fecundity <- phenology <- data.frame( matrix( NA, nrow = nrow(experiments), ncol = 3))
+per_capita_use <- use <- out <- list()
+
+pb <- txtProgressBar(min = 1, max = nrow(experiments), style = 3)
+for( i in 1:nrow(experiments)){
+  setTxtProgressBar(pb , i)
+  seedlings <- as.numeric(experiments[i,])
+  State <- c(soil_m, seedlings*seedling_mass)
+  out[[i]] <- ode(y=State, times = seq( 1, times, 0.1), func = grow, parms = parms, events = list(func = event, root = TRUE), rootfun = root )
+  
+  use[[i]] <- matrix(NA, nrow = nrow(out[[i]]), ncol = 3)
+  for( j in 1:3){ 
+    use[[i]][, j] <- out[[i]][,2 + j]*f(out[[i]][, 2], parms$r[j], parms$K[j])
+  }
+  per_capita_use[[i]] <- sweep(use[[i]], 2, as.numeric(experiments[1, ]), '/')
+  phenology[i,] <- apply( out[[i]][, c(3:5)], 2, find_phenology)
+  max_biomass  <- apply( out[[i]][, c(3:5)], 2, max)
+  fecundity[i,] <- (max_biomass*conversion)/seedling_mass
+}
+
+lambda <- diag( as.matrix( fecundity [ apply(experiments, 1, sum) == 1, ]  )) # calculate lambdas 
+y <- fecundity/experiments                                                    # calculate fecundity in all experiments 
+data <- data.frame(experiments, y, phenology/10)
+names(data ) <- c('N1', 'N2', 'N3', 'Y1', 'Y2', 'Y3', paste0('PH', c(1:3)))
+
+gg_intra <- gg_inter <- gg_phenology <- list()
+est_pars <- est_alpha <- est_alpha2 <- est_alpha3 <- est_alphaHOI <- est_alphaHOI2 <- list()
+i = 1
+# fit annual plant model parameters --------------------------------------- # 
+for(i in 1:3){ 
+  # loop through each species and fit annual plant model parameters ------------------------------------------- # 
+  data1 <- data[data[,i] > 1 & rowSums(data[, c(1:3)[-i]]) == 0, ]  # select focal species
+  data2 <- data[data[,i] == 1 & apply( data[, c(1:3)[-i]], 1, function(x) any(x == 0 )), ] # focal with single competitor
+  data3 <- rbind( data1, data2)
+  data3[, i] <- data3[, i] - 1            # remove focal from competive neighborhood 
+  data3$y  <- data3[, i + 3]              # focal per capita seed production
+  data3$data <- as.matrix(data3[,c(1:3)])
+  
+  m1 <- optim(par = c(lambda[i],1,1,1,-1), mod_inter, data = data3, control = list( maxit = 1e9 ) )
+  est_alpha[[i]] <- m1$par
+  
+  m2 <- optim(par = c(lambda[i],1,1,1,1,-1), mod_inter2, focal = i, data = data3, control = list( maxit = 1e9))
+  est_alpha2[[i]] <- m2$par
+  
+  m3 <- optim(par = c(lambda[i],1,1,1,1,1,1,-1), mod_inter3, focal = i, data = data3, control = list( maxit = 1e9))
+  est_alpha3[[i]] <- m3$par
+  
+  data4 <- data[ data[,i] == 1, ]         # select focal species as single individual
+  data4 <- rbind(data1, data4)
+  data4[, i] <- data4[, i] - 1 
+  data4$y <- data4[, i + 3]
+  data4$data <- as.matrix(data4[, c(1:3)])
+
+  data5 <- rbind(data3, data4)
+  
+  m4 <- optim(par = c(lambda[i],1,1,1,1,-1), mod_interHOI, focal = i, data = data5, control = list( maxit = 1e9))
+  est_alphaHOI[[i]] <- m4$par
+  
+  m5 <- optim(par = c(lambda[i],1,1,1,1,1,1,1,-1), mod_interHOI2, focal = i, data = data5, control = list( maxit = 1e9))
+  est_alphaHOI2[[i]] <- m5$par
+  
+  data4$type1 <- mod_inter(pars = m1$par, data = data4, predict = T)
+  data4$type2 <- mod_inter2(pars = m2$par, data = data4, focal = i, predict = T)
+  data4$type3 <- mod_inter3(pars = m3$par, data = data4, focal = i, predict = T)
+  data4$type4 <- mod_interHOI(pars = m4$par, data = data4, focal = i, predict = T)
+  data4$type5 <- mod_interHOI2(pars = m5$par, data = data4, focal = i, predict = T)
+  
+  data4 <- 
+    data4 %>% 
+    select ( -data) %>% 
+    gather( type, val, c(y, type1, type2, type3, type4, type5)) 
+  
+  data4$type <- factor(data4$type, labels = c('pred1', 'pred2', 'pred3', 'HOI', 'HOI2', 'observed'))
+  
+  data_intra <- data4[ rowSums( data4[, c(1:3)[-i]] ) == 0, ]
+  
+  gg_intra[[i]] <- 
+    ggplot( data_intra %>% filter( type != 'observed'), aes_string( x = names(data1)[i], y = names(data1)[i + 3])) + 
+    geom_point( color = my_colors[i]) + 
+    geom_line(aes( y = val), color = my_colors[i], linetype = 2) + 
+    xlab( paste0( 'Number of intraspecific competitors')) +
+    ylab( paste0( 'Per capita seed production')) +
+    ggtitle( paste0('Species ', i)) + 
+    my_theme + facet_wrap(~type)
+  
+  data_inter <- data4[ data4[ , i ] == 0, ] 
+  
+  data_inter$c1 <- data_inter[, c(1:3)[-i][1]]
+  data_inter$c2 <- as.factor(data_inter[, c(1:3)[-i][2]])
+  
+  gg_inter[[i]] <- 
+    ggplot(data_inter %>% filter( type != 'observed'), aes_string( x = 'c1', y = names(data_inter)[4:6][i], color = 'c2')) + 
+    geom_point() + 
+    geom_line(aes(y = val), linetype = 2) + 
+    scale_color_discrete(paste( 'Density of', names(data_inter)[1:3][-i][2])) + 
+    xlab( paste( 'Density of', names(data_inter)[1:3][-i][1])) + 
+    ylab( paste( 'Per capita seed production of', names(data_inter)[i])) + 
+    my_theme + 
+    facet_wrap(~type)
+  
+  pheno_data <- data3
+  sel_ph <- paste0( 'PH', i)
+  sel_self <- paste0( 'N', i)
+  sel_comp <- paste0( 'N', c(1:3)[-i])
+
+  intra_pheno <- pheno_data[ (pheno_data[,i] > 0 | rowSums(pheno_data[, c(1:3)]) == 0 ), ] %>% select_(sel_self, sel_ph) 
+  intra_pheno[, 1 ] <- intra_pheno[, 1] + 1 
+  intra_pheno <- intra_pheno %>% gather( competitor, density, 1)
+  
+  inter_pheno <- pheno_data[ (pheno_data[,i] == 0 & rowSums(pheno_data[, c(1:3)[-i]]) > 0 ), ] %>% select_(sel_comp[1], sel_comp[2], sel_ph) 
+  inter_pheno <- inter_pheno %>% gather( competitor, density , 1:2 ) %>% filter( density > 0 )
+  
+  pheno_data <- rbind( intra_pheno, inter_pheno)  
+  names(pheno_data)[1] <- 'day'
+  
+  gg_phenology[[i]] <- 
+    ggplot(pheno_data, aes( x = density, y = day, color = competitor )) + 
+    geom_point() + 
+    geom_line() + 
+    xlab( 'Density of competitors') + 
+    ylab( paste0( 'Day of flowering of N', i)) + 
+    scale_color_discrete('Competitor Species') + 
+    my_theme 
+
+}
+
+gg_phenology[[1]]
+gg_phenology[[2]]
+gg_phenology[[3]]
+
+gg_intra[[1]]
+gg_intra[[2]]
+gg_intra[[3]]
+
+t1 <- subset(gg_inter[[1]]$data , type == 'observed' & (N3 == 0 | N2 == 0)) %>% select( val, N2, N3) 
+
+plot_frame <- rbind( t1 %>% 
+                       select(val, N2) %>% 
+                       gather( competitor, density, N2) %>% 
+                       filter( row_number() < 10), 
+                     t1 %>% 
+                       select(val, N3) %>% 
+                       gather( competitor, density, N3) %>% 
+                       filter( row_number() %in% c(1, 10:17)))
+
+ggplot( plot_frame, aes(x = density, y = val, color = competitor)) + 
+  geom_point() + 
+  geom_line() + 
+  xlab( 'Density of competitors') + 
+  ylab( paste0( 'Per capita seed production of N1')) + 
+  scale_color_manual(values = my_colors[c(2,3)]) + 
+  my_theme
+
+
+t2 <- subset(gg_inter[[2]]$data , type == 'observed' & (N1 == 0 | N3 == 0)) %>% select( val, N1, N3) 
+plot_frame <- rbind( t2 %>% select(val, N1) %>% gather( competitor, density, N1) %>% filter( row_number() < 10), 
+                     t2 %>% select(val, N3) %>% gather( competitor, density, N3) %>% filter( row_number() %in% c(1, 10:17)) )
+
+ggplot( plot_frame, aes(x = density, y = val, color = competitor)) + 
+  geom_point() + 
+  geom_line() + 
+  xlab( 'Density of competitors') + 
+  ylab( paste0( 'Per capita seed production of N2')) + 
+  scale_color_manual(values = my_colors[c(1,3)]) + 
+  my_theme
+
+
+t3 <- subset(gg_inter[[3]]$data , type == 'observed' & (N1 == 0 | N2 == 0)) %>% select( val, N1, N2) 
+plot_frame <- rbind( t3 %>% select(val, N1) %>% gather( competitor, density, N1) %>% filter( row_number() < 10), 
+                     t3 %>% select(val, N2) %>% gather( competitor, density, N2) %>% filter( row_number() %in% c(1, 10:17)) )
+
+ggplot( plot_frame, aes(x = density, y = val, color = competitor)) + 
+  geom_point() + 
+  geom_line() + 
+  xlab( 'Density of competitors') + 
+  ylab( paste0( 'Per capita seed production of N3')) + 
+  scale_color_manual(values = my_colors[c(1,2)]) + 
+  my_theme
+
+
+# Compare outcomes in 2 and 3 species communities -------------------------------- # 
+gg_inter[[1]]
+gg_inter[[2]]
+gg_inter[[3]]
+
+gg_inter[[1]] %+% subset( gg_inter[[1]]$data, c2 %in% c(0,1,6))
+gg_inter[[2]] %+% subset( gg_inter[[2]]$data, c2 %in% c(0,1,6))
+gg_inter[[3]] %+% subset( gg_inter[[3]]$data, c2 %in% c(0,1,6))
+
+
+# re-fit with fewer 3 to 8 competitors --------------------------- 
+gg_intra <- gg_inter <- gg_phenology <- list()
+est_pars <- est_alpha <- list()
+i = 1
+
+for(i in 1:3){ 
+  data1 <- data[data[,i] > 1 & rowSums(data[, c(1:3)[-i]]) == 0, ]  # select focal species
+  data2 <- data[data[,i] == 1 & apply( data[, c(1:3)[-i]], 1, function(x) any(x == 0 )), ] # focal with single competitor
+  data3 <- rbind( data1, data2)
+  data3[, i] <- data3[, i] - 1            # remove focal from competive neighborhood 
+  data3$y  <- data3[, i + 3]              # focal per capita seed production
+  data3$data <- as.matrix(data3[,c(1:3)])
+  
+  temp <- data3[ apply( data3$data[, c(1:3)[-i]] , 1, function(x) any( x > 3) ), ] 
+  m1 <- optim(par = c(lambda[i],1,1,1,-1), mod_inter, data = temp, control = list( maxit = 1e9 ) )
+  est_alpha[[i]] <- m1$par
+  
+  data4 <- data[ data[,i] == 1, ]         # select focal species as single individual
+  data4 <- rbind(data1, data4)
+  data4[, i] <- data4[, i] - 1 
+  data4$y <- data4[, i + 3]
+  data4$data <- as.matrix(data4[, c(1:3)])
+  
+  data4$predicted <- mod_inter(pars = m1$par, data4, predict = T)
+  
+  data4 <- 
+    data4 %>% 
+    select ( -data) %>% 
+    gather( type, val, c(y, predicted)) 
+  
+  data4$type <- factor(data4$type, labels = c('predicted', 'observed'))
+  
+  data_inter <- data4[ data4[ , i ] == 0, ] 
+  
+  data_inter$c1 <- data_inter[, c(1:3)[-i][1]]
+  data_inter$c2 <- data_inter[, c(1:3)[-i][2]]
+  data_inter$type <- factor(data_inter$type, levels = c('observed', 'predicted'))
+  
+  gg_inter[[i]] <- 
+    ggplot( data_inter, aes(x = c1, y = val, color = factor(c2), linetype = type) ) + 
+    geom_line() + 
+    #geom_point(data = data_inter %>% filter( type == 'observed')) + 
+    scale_color_discrete(paste( 'Density of', names(data_inter)[1:3][-i][2])) + 
+    xlab( paste( 'Density of', names(data_inter)[1:3][-i][1])) + 
+    ylab( paste( 'Per capita seed production of', names(data_inter)[i])) + 
+    my_theme 
+}
+
+gg_inter[[1]] %+% 
+  subset( gg_inter[[1]]$data, (N2 > 3 & N3 %in% c(0, 4, 6, 8))) + xlim(3,8) + ylim( 0, 10)
+
+gg_inter[[2]] %+%
+  subset( gg_inter[[2]]$data, (N1 > 3 & N3 %in% c(0, 4, 6, 8))) + xlim(3,8)
+
+gg_inter[[3]] %+%
+  subset( gg_inter[[3]]$data, (N1 > 3 & N2 %in% c(0, 4, 6, 8))) + xlim(3,8)
+
+# per capita resource use 
+matplot (seq(1,times,by=0.1),per_capita_use[[1]] , type = 'l')
+matplot ( use[[1]], type = 'l')
+
+per_capita_resource_use <- cbind( experiments, as.matrix( do.call( rbind, lapply( use , colSums) ) )/experiments )
+plot( per_capita_resource_use [1:6, 4] , type = 'l')
+
+experiments
+per_capita_resource_use
+
+cov(use[[1]][,1:3])
+
+experiments[ c(1,5,6,25,26, 30,31), ] 
+
+cov(use[[6]][, 1:3])
+cov(use[[26]][, 1:3])
+cov(use[[30]][, 1:3])
+cov(use[[31]][, 1:3])
+
