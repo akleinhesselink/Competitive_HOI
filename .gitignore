@@ -34,3 +34,4 @@ vignettes/*.pdf
 
 # packrat 
 ./packrat/lib/*
+./packrat/lib*
