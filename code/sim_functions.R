@@ -44,62 +44,14 @@ plot_timeseries <- function(x, parms, ... ){
   legend(5, -0.1, legend = paste('species', 1:nspp), col = my_colors[1:nspp], cex = 1, xpd = T, lty = 1, bg = NA, box.col = NA, yjust = 0)
 }
 
-mod_inter <- function(pars, data, predict = FALSE){ 
-  lambda <- pars[1]
-  alpha <-  pars[2:4]
-  tau   <-  pars[5]
-  mu <- lambda*(1 + data$data[,1]*alpha[1] + data$data[,2]*alpha[2] + data$data[,3]*alpha[3] )^tau
-  Error <- (mu - data$y)^2
-  if(predict){ return(mu) }else if(!predict) { return(sum(Error)) }
-}
-
-mod_inter2 <- function(pars, data, focal = 1, predict = FALSE){ 
-  lambda <- pars[1]
-  alpha <-  pars[2:4]
-  beta  <-  pars[5]
-  tau   <-  pars[6]
-  mu <- lambda*(1 + data$data[,1]*alpha[1] + data$data[,2]*alpha[2] + data$data[,3]*alpha[3] + (data$data[,focal]^2)*beta[1])^tau
-  Error <- (mu - data$y)^2
-  if(predict){ return(mu) }else if(!predict) { return(sum(Error)) }
-}
-
-mod_inter3 <- function(pars, data, focal = 1, predict = FALSE){ 
-  cmpttrs <- c(1:3)[-focal]
+mod_inter <- function(pars, data, form, predict = FALSE){ 
   
-  lambda <- pars[1]
-  alpha <-  pars[2:4]
-  beta  <-  pars[5:7]
-  tau   <-  pars[8]
-  mu <- lambda*(1 + data$data[,1]*alpha[1] + data$data[,2]*alpha[2] + data$data[,3]*alpha[3] + (data$data[,focal]^2)*beta[1] + (data$data[,cmpttrs[1]]^2)*beta[2] + (data$data[,cmpttrs[2]]^2)*beta[3])^tau
-  Error <- (mu - data$y)^2
-  if(predict){ return(mu) }else if(!predict) { return(sum(Error)) }
-}
-
-mod_interHOI <- function(pars, data, focal = 1, predict = FALSE){
+  if(length(pars) < 2){ stop('not enough parameters supplied!')}
   
-  cmpttrs <- c(1:3)[-focal]
-
-  lambda <- pars[1]
-  alpha <-  pars[2:4]
-  beta  <-  pars[5]
-  tau   <-  pars[6]
-    
-  mu <- lambda*(1 + data$data[,1]*alpha[1] + data$data[,2]*alpha[2] + data$data[,3]*alpha[3] + (data$data[,cmpttrs[1]]*data$data[,cmpttrs[2]]*beta))^tau
-  Error <- (mu - data$y)^2
-  if(predict){ return(mu) }else if(!predict) { return(sum(Error)) }
-}
-
-
-mod_interHOI2 <- function(pars, data, focal = 1, predict = FALSE){
+  mm <- model.matrix(form, data = data.frame(data$data))
   
-  cmpttrs <- c(1:3)[-focal]
+  mu <- pars[1]*(1 + mm%*%pars[c(2:(length(pars) - 1))])^pars[length(pars)]
   
-  lambda <- pars[1]
-  alpha <-  pars[2:4]
-  beta  <-  pars[5:8]
-  tau   <-  pars[9]
-  
-  mu <- lambda*(1 + data$data[,1]*alpha[1] + data$data[,2]*alpha[2] + data$data[,3]*alpha[3] + (data$data[,focal]^2)*beta[1] + (data$data[,cmpttrs[1]]^2)*beta[2] + (data$data[,cmpttrs[2]]^2)*beta[3] + (data$data[,cmpttrs[1]]*data$data[,cmpttrs[2]])*beta[4])^tau
   Error <- (mu - data$y)^2
   if(predict){ return(mu) }else if(!predict) { return(sum(Error)) }
 }

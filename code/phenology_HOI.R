@@ -2,6 +2,7 @@ library(dplyr)
 library(tidyr)
 library(deSolve)
 library(ggplot2)
+library(stringr)
 
 rm(list = ls())
 par(mfrow = c(1,1))
@@ -75,6 +76,15 @@ y <- fecundity/experiments                                                    # 
 data <- data.frame(experiments, y, phenology/10)
 names(data ) <- c('N1', 'N2', 'N3', 'Y1', 'Y2', 'Y3', paste0('PH', c(1:3)))
 
+nms <- c('focal', 'C1', 'C2')
+
+form1 <- paste('~ -1 + focal + C1 + C2')
+form2 <- paste(form1, '+ I(focal^2)')
+form3 <- paste(form2, '+ I(C1^2) + I(C2^2)')
+form4 <- paste(form1, '+ I(C1*C2)')
+form5 <- paste(form2, '+ I(C1*C2)')
+all_forms <- c(form1, form2, form3, form4, form5)
+
 gg_intra <- gg_inter <- gg_phenology <- list()
 est_pars <- est_alpha <- est_alpha2 <- est_alpha3 <- est_alphaHOI <- est_alphaHOI2 <- list()
 i = 1
@@ -88,35 +98,37 @@ for(i in 1:3){
   data3$y  <- data3[, i + 3]              # focal per capita seed production
   data3$data <- as.matrix(data3[,c(1:3)])
   
-  m1 <- optim(par = c(lambda[i],1,1,1,-1), mod_inter, data = data3, control = list( maxit = 1e9 ) )
-  est_alpha[[i]] <- m1$par
+  cmpttrs <- c('N1', 'N2', 'N3')
+  names(cmpttrs)[i] <- nms[1]
+  names(cmpttrs)[-i] <- nms[2:3]
   
-  m2 <- optim(par = c(lambda[i],1,1,1,1,-1), mod_inter2, focal = i, data = data3, control = list( maxit = 1e9))
-  est_alpha2[[i]] <- m2$par
+  forms <- str_replace_all(c(form1, form2, form3, form4, form5), cmpttrs)
+  forms <- lapply(forms, as.formula)
   
-  m3 <- optim(par = c(lambda[i],1,1,1,1,1,1,-1), mod_inter3, focal = i, data = data3, control = list( maxit = 1e9))
-  est_alpha3[[i]] <- m3$par
+  pars <- list(
+    c(lambda[i], rep(1, 3), -1),
+    c(lambda[i], rep(1, 4), -1), 
+    c(lambda[i], rep(1, 6), -1), 
+    c(lambda[i], rep(1, 4), -1), 
+    c(lambda[i], rep(1, 5), -1))
   
   data4 <- data[ data[,i] == 1, ]         # select focal species as single individual
   data4 <- rbind(data1, data4)
   data4[, i] <- data4[, i] - 1 
   data4$y <- data4[, i + 3]
   data4$data <- as.matrix(data4[, c(1:3)])
-
+  
   data5 <- rbind(data3, data4)
+  data_all <- list( data3, data3, data3, data5, data5 ) 
   
-  m4 <- optim(par = c(lambda[i],1,1,1,1,-1), mod_interHOI, focal = i, data = data5, control = list( maxit = 1e9))
-  est_alphaHOI[[i]] <- m4$par
+  out <- mapply(par = pars, form = forms, data = data_all, FUN = optim, MoreArgs = list(fn = mod_inter, control = list( maxit = 1e9 )), SIMPLIFY = F)
   
-  m5 <- optim(par = c(lambda[i],1,1,1,1,1,1,1,-1), mod_interHOI2, focal = i, data = data5, control = list( maxit = 1e9))
-  est_alphaHOI2[[i]] <- m5$par
-  
-  data4$type1 <- mod_inter(pars = m1$par, data = data4, predict = T)
-  data4$type2 <- mod_inter2(pars = m2$par, data = data4, focal = i, predict = T)
-  data4$type3 <- mod_inter3(pars = m3$par, data = data4, focal = i, predict = T)
-  data4$type4 <- mod_interHOI(pars = m4$par, data = data4, focal = i, predict = T)
-  data4$type5 <- mod_interHOI2(pars = m5$par, data = data4, focal = i, predict = T)
-  
+  pars <- lapply( out , function(x) x$par)
+  predictions <- mapply(par = pars, form = forms, FUN = mod_inter, MoreArgs = list(data = data4, predict = T))
+  predictions <- data.frame(predictions)  
+  names(predictions) <- paste0('type', 1:5)
+  data4 <- cbind(data4, predictions)
+
   data4 <- 
     data4 %>% 
     select ( -data) %>% 
@@ -175,6 +187,8 @@ for(i in 1:3){
     my_theme 
 
 }
+
+data4 %>% mutate( error = (Y3 - val)^2 ) %>% group_by(type) %>% summarise(MSE = mean(error, na.rm = T))
 
 gg_phenology[[1]]
 gg_phenology[[2]]
