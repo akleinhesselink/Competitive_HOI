@@ -128,7 +128,7 @@ for(i in 1:3){
   results[[i]] <- out 
   
   pars <- lapply( out , function(x) x$par)
-  predictions <- mapply(par = pars, form = forms, FUN = mod_inter, MoreArgs = list(data = data1, predict = T))
+  predictions <- mapply(par = pars, form = forms, FUN = mod_bh, MoreArgs = list(data = data1, predict = T))
   predictions <- data.frame(predictions)  
   names(predictions) <- paste0('type', 1:length(forms))
   data1 <- cbind(data1, predictions)
@@ -231,46 +231,36 @@ fit_plot
 
 ggsave('figures/fit_plot.png', fit_plot, width = 5, height = 3.7)
 
-lapply( results, function(x) lapply(x, function(x) x$par ))
-alphas
 
-lambda <- lapply( lapply( results[[1]], function(x) x$par), head, 1)
-alphas <- lapply( lapply( results[[1]], function(x) x$par), function(x) x[2:4])
-tau <- lapply( lapply( results[[1]], function(x) x$par), tail, 1)
+test <- results
+names(test) <-  c('N1', 'N2', 'N3')
+test <- lapply( test, function( x) {names(x) <- c('m1', 'm2'); x} )
+result_dat <- data.frame( value = unlist( test), label = names(unlist(test)))
 
-results
-
-test <- unlist( results, recursive = F)
-
-
-
-names (test ) <- sort( paste( c('N1', 'N2', 'N3'), rep(c('m1', 'm2'), 3), sep = '-'))
-type <- rep( names(test), lapply(test, function(x) length(x$par)))
-test <- data.frame( par = unlist( lapply( test, function(x) x$par) ))
-test$label <- row.names( test) 
-
-test %>% 
-  separate(label, sep = '-', c('species', 'model')) %>% 
-  mutate(model = str_sub( model, 1,2)) 
-
-data.frame( type = type, )
+test <- 
+  result_dat %>% 
+  separate( label, c('species', 'model', 'par'), sep = '\\.', extra = 'warn', fill = 'left', convert = T) %>% 
+  filter( par != 'counts') %>% 
+  group_by(species, model) %>% 
+  mutate( type = str_extract( par , '[a-z]+')) %>% 
+  mutate( par = ifelse( type == 'par' & par == 'par', 'lambda', par)) %>%
+  group_by( species, model, type ) %>% 
+  arrange(par) %>% 
+  mutate(par = ifelse( type == 'par'  & row_number() == max(row_number()), 'tau', par)) %>% 
+  mutate( par = str_replace(par, 'par', 'alpha')) %>% 
+  arrange( species, model, par)
 
 
+ggplot ( data = test %>% filter( type == 'par' & par %in% c('alpha2', 'alpha3', 'alpha4')) , 
+         aes( x = par, y = value , fill = model ) ) + 
+  geom_bar( stat = 'identity', position = 'dodge') + 
+  facet_wrap( ~ species, scales = 'free' )
 
-rapply( results, function(x) x$par)
+ggplot ( data = test %>% filter( type == 'par' & par %in% c('alpha5', 'alpha6', 'alpha7')) , 
+         aes( x = par, y = value , fill = model ) ) + 
+  geom_bar( stat = 'identity', position = 'dodge') + 
+  facet_wrap( ~ species, scales = 'free' )
 
-HOI <- lapply( lapply( results[[1]][4:6], function(x) x$par), function(x) tail(x, 2)[1])
-
-quads <- lapply( lapply( results[[1]][c(2:3, 5:6)], function(x) x$par), function(x) head())
-
-# ------------------------------------------------------------------------------ # 
-gg_phenology[[1]]
-gg_phenology[[2]]
-gg_phenology[[3]]
-
-# plot interaction terms 
-forms
-data.frame(type = c(1,2,3), forms = c('N1 + N2 + N3', 'N1 + N2 + N3 + N2*N3', 'N1 + N2 + N3' )
 # Calculate with four competitors ------------------------------------------------------- # 
 
 # parameterize model --------------------------------------------------------------------------------------------------- 

@@ -44,7 +44,7 @@ plot_timeseries <- function(x, parms, ... ){
   legend(5, -0.1, legend = paste('species', 1:nspp), col = my_colors[1:nspp], cex = 1, xpd = T, lty = 1, bg = NA, box.col = NA, yjust = 0)
 }
 
-mod_inter <- function(pars, data, form, predict = FALSE, log = F){ 
+mod_bh <- function(pars, data, form, predict = FALSE, log = F){ 
   
   if(length(pars) < 2){ stop('not enough parameters supplied!')}
   
