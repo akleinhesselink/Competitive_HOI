@@ -3,7 +3,7 @@ library(tidyr)
 library(deSolve)
 library(ggplot2)
 library(stringr)
-
+library(parallel)
 rm(list = ls())
 par(mfrow = c(1,1))
 
@@ -80,51 +80,15 @@ use <- lapply( out, function(x) t(apply( x, 1, get_resource_use, f, parms)))
 experiments <- split(experiments,1:nrow(experiments))
 get_per_capita_use <- function(x, y) sweep( x, 2, as.numeric(y), '/')
 per_capita_use <- mapply(use, experiments, FUN = get_per_capita_use, SIMPLIFY = F)
-
 phenology <- lapply( out, function( x ) apply(x[, c(3:5)], 2, find_phenology))
 
 ##
-max_biomass  <- apply( out[[i]][, c(3:5)], 2, max)
-fecundity[i,] <- (max_biomass*conversion)/seedling_mass
 
+experiments <- do.call(rbind, experiments)
+max_biomass <- do.call( rbind, lapply( out, function( x ) apply( x[, c(3:5)], 2, max)))
+fecundity <- (max_biomass*conversion)/seedling_mass
+phenology <- do.call(rbind, phenology )
 
-pb <- txtProgressBar(min = 1, max = nrow(experiments), style = 3)
-
-start2 <- proc.time()
-for( i in 1:nrow(experiments)){
-  setTxtProgressBar(pb , i)
-  seedlings <- as.numeric(experiments[i,])
-  State <- c(soil_m, seedlings*seedling_mass)
-  out[[i]] <- ode(y=State, times = seq( 1, times, 0.1), func = grow, parms = parms, events = list(func = event, root = TRUE), rootfun = root )
-  
-  use[[i]] <- matrix(NA, nrow = nrow(out[[i]]), ncol = 3)
-  for( j in 1:3){ 
-    use[[i]][, j] <- out[[i]][,2 + j]*f(out[[i]][, 2], parms$r[j], parms$K[j])
-  }
-  
-  per_capita_use[[i]] <- sweep(use[[i]], 2, as.numeric(experiments[i, ]), '/')
-  phenology[i,] <- apply( out[[i]][, c(3:5)], 2, find_phenology)
-  max_biomass  <- apply( out[[i]][, c(3:5)], 2, max)
-  fecundity[i,] <- (max_biomass*conversion)/seedling_mass
-  
-}
-t2 <- proc.time() - start1
-t1
-t2
-
-par(mfrow = c(1,1))
-plot(per_capita_use[[1]][, 1])
-points(per_capita_use[[2]][, 1])
-
-total_use <- do.call(rbind, lapply( use, colSums))
-fecundity/total_use
-
-experiments[1:3, ]
-
-sweep( use[[1]], 2, as.numeric(experiments[1, ]), '/' )
-
-head( per_capita_use[[1]] ) 
-nrow(experiments)
 
 lambda <- diag( as.matrix( fecundity [ apply(experiments, 1, sum) == 1, ]  )) # calculate lambdas 
 y <- fecundity/experiments                                                    # calculate fecundity in all experiments 
@@ -247,6 +211,7 @@ for(i in 1:3){
     my_theme 
 
 }
+gg_intra
 
 ggsave('figures/intra1.png', gg_intra[[1]] %+% subset( gg_intra[[1]]$data, type %in% c('pred1', 'pred2')), width = 5, height = 3.3 ) 
 ggsave('figures/intra2.png', gg_intra[[2]] %+% subset( gg_intra[[2]]$data, type %in% c('pred1', 'pred2')), width = 5, height = 3.3 ) 
