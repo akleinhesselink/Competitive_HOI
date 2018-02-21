@@ -98,13 +98,9 @@ names(data ) <- c('N1', 'N2', 'N3', 'Y1', 'Y2', 'Y3', paste0('PH', c(1:3)))
 nms <- c('focal', 'C1', 'C2')
 
 form1 <- paste('~ -1 + focal + C1 + C2')
-form2 <- paste(form1, '+ I(focal^2)')
-form3 <- paste(form2, '+ I(C1^2) + I(C2^2)')
-form4 <- paste(form1, '+ I(C1*C2)')
-form5 <- paste(form2, '+ I(C1*C2)')
-form6 <- paste(form3, '+ I(C1*C2)')
+form2 <- paste(form1, '+ I(focal*C1) + I(focal*C2) + I(C1*C2)')
 
-all_forms <- c(form1, form2, form3, form4, form5, form6)
+all_forms <- c(form1, form2)
 
 gg_intra <- gg_inter <- gg_phenology <- list()
 results <- est_pars <- est_alpha <- est_alpha2 <- est_alpha3 <- est_alphaHOI <- est_alphaHOI2 <- list()
@@ -113,13 +109,11 @@ i = 1
 # fit annual plant model parameters --------------------------------------- # 
 for(i in 1:3){ 
   # loop through each species and fit annual plant model parameters ------------------------------------------- # 
-  data1 <- data[data[,i] > 1 & rowSums(data[, c(1:3)[-i]]) == 0, ]  # select focal species
-  data2 <- data[data[,i] == 1 & apply( data[, c(1:3)[-i]], 1, function(x) any(x == 0 )), ] # focal with single competitor
-  data3 <- rbind( data1, data2)
-  data3[, i] <- data3[, i] - 1            # remove focal from competive neighborhood 
-  data3$y  <- data3[, i + 3]              # focal per capita seed production
-  data3$data <- as.matrix(data3[,c(1:3)])
-  
+  data1 <- data[data[,i] > 0, ]  # select focal species
+  data1[, i] <- data1[, i] - 1            # remove focal from competive neighborhood 
+  data1$y  <- data1[, i + 3]              # focal per capita seed production
+  data1$data <- as.matrix(data1[,c(1:3)])
+    
   cmpttrs <- c('N1', 'N2', 'N3')
   names(cmpttrs)[i] <- nms[1]
   names(cmpttrs)[-i] <- nms[2:3]
@@ -128,39 +122,25 @@ for(i in 1:3){
   terms <- lapply( forms, function(x) length(str_split(x, pattern = '\\+')[[1]] ))
   forms <- lapply(forms, as.formula)
 
-  pars <- lapply( terms, function(x, ...) {c( ..., rep(1, x - 1), -1 )} , Z = lambda[i] )  
+  pars <- lapply( terms, function(x, ...) {c( ..., rep(0, x - 1), -1 )} , Z = lambda[i] )  
+  out <- mapply(par = pars, form = forms, FUN = optim, MoreArgs = list(data = data1, fn = mod_inter, method = 'BFGS', control = list( maxit = 1e9)), SIMPLIFY = F)
   
-  data4 <- data[ data[,i] == 1, ]         # select focal species as single individual
-  data4 <- rbind(data1, data4)
-  data4[, i] <- data4[, i] - 1 
-  data4$y <- data4[, i + 3]
-  data4$data <- as.matrix(data4[, c(1:3)])
-  
-  data5 <- rbind(data3, data4)
-  
-  data5 <- data5 %>% distinct()
-  
-  colnames(data5$data) <- colnames(data3$data)
-
-  data_all <- list(data5, data5, data5, data5, data5, data5) 
-  
-  out <- mapply(par = pars, form = forms, data = data_all, FUN = optim, MoreArgs = list(fn = mod_inter, control = list( maxit = 1e9 )), SIMPLIFY = F)
   results[[i]] <- out 
   
   pars <- lapply( out , function(x) x$par)
-  predictions <- mapply(par = pars, form = forms, FUN = mod_inter, MoreArgs = list(data = data4, predict = T))
+  predictions <- mapply(par = pars, form = forms, FUN = mod_inter, MoreArgs = list(data = data1, predict = T))
   predictions <- data.frame(predictions)  
   names(predictions) <- paste0('type', 1:length(forms))
-  data4 <- cbind(data4, predictions)
+  data1 <- cbind(data1, predictions)
 
-  data4 <- 
-    data4 %>% 
+  data1 <- 
+    data1 %>% 
     select ( -data) %>% 
     gather( type, val, c(y, starts_with('type'))) 
   
-  data4$type <- factor(data4$type, labels = c('pred1', 'pred2', 'pred3', 'HOI', 'HOI2', 'HOI3', 'observed'))
-  data4$type_form <- factor(data4$type, labels = c('inter + intra', '...+intra^2', '...+intra^2+inter^2', '...+HOI', '...+intra^2+HOI', '...+intra^2+inter^2+HOI', 'observed'))
-  data_intra <- data4[ rowSums( data4[, c(1:3)[-i]] ) == 0, ]
+  data1$type <- factor(data1$type, labels = c('pred1', 'HOI', 'observed'))
+  data1$type_form <- factor(data1$type, labels = c('inter + intra', '...+HOI', 'observed'))
+  data_intra <- data1[ rowSums( data1[, c(1:3)[-i]] ) == 0, ]
   
   gg_intra[[i]] <- 
     ggplot( data_intra %>% filter( type != 'observed'), aes_string( x = names(data1)[i], y = names(data1)[i + 3])) + 
@@ -171,7 +151,7 @@ for(i in 1:3){
     ggtitle( paste0('Species ', i)) + 
     my_theme + facet_wrap(~type_form)
   
-  data_inter <- data4[ data4[ , i ] == 0, ] 
+  data_inter <- data1[ data1[ , i ] == 1, ] 
   
   data_inter$c1 <- data_inter[, c(1:3)[-i][1]]
   data_inter$c2 <- as.factor(data_inter[, c(1:3)[-i][2]])
@@ -186,7 +166,7 @@ for(i in 1:3){
     my_theme + 
     facet_wrap(~type_form)
   
-  pheno_data <- data3
+  pheno_data <- data1
   sel_ph <- paste0( 'PH', i)
   sel_self <- paste0( 'N', i)
   sel_comp <- paste0( 'N', c(1:3)[-i])
@@ -211,48 +191,76 @@ for(i in 1:3){
     my_theme 
 
 }
-gg_intra
+
+gg_intra[[1]] %+% subset( gg_intra[[1]]$data, type %in% c('pred1', 'HOI'))
+gg_intra[[2]] %+% subset( gg_intra[[2]]$data, type %in% c('pred1', 'HOI'))
+gg_intra[[3]] %+% subset( gg_intra[[3]]$data, type %in% c('pred1', 'HOI')) 
 
 ggsave('figures/intra1.png', gg_intra[[1]] %+% subset( gg_intra[[1]]$data, type %in% c('pred1', 'pred2')), width = 5, height = 3.3 ) 
 ggsave('figures/intra2.png', gg_intra[[2]] %+% subset( gg_intra[[2]]$data, type %in% c('pred1', 'pred2')), width = 5, height = 3.3 ) 
 ggsave('figures/intra3.png', gg_intra[[3]] %+% subset( gg_intra[[3]]$data, type %in% c('pred1', 'pred2')), width = 5, height = 3.3 ) 
 
-gg_intra[[1]] %+% subset( gg_intra[[1]]$data, type %in% c('pred1', 'pred2'))
-gg_intra[[2]] %+% subset( gg_intra[[2]]$data, type %in% c('pred1', 'pred2'))
-gg_intra[[3]] %+% subset( gg_intra[[3]]$data, type %in% c('pred1', 'pred2'))
-
 # Compare outcomes in 2 and 3 species communities -------------------------------- # 
+gg_inter[[1]] %+% subset( gg_inter[[1]]$data, c2 %in% c(0,1,6))
+gg_inter[[2]] %+% subset( gg_inter[[2]]$data, c2 %in% c(0,1,6))
+gg_inter[[3]] %+% subset( gg_inter[[3]]$data, c2 %in% c(0,1,6))
+
+
 ggsave( 'figures/inter1.png', gg_inter[[1]] %+% subset( gg_inter[[1]]$data, c2 %in% c(0,1,6)), width = 5.9, height = 3.3)
 ggsave( 'figures/inter2.png', gg_inter[[2]] %+% subset( gg_inter[[2]]$data, c2 %in% c(0,1,6)), width = 5.9, height = 3.3)
 ggsave( 'figures/inter3.png', gg_inter[[3]] %+% subset( gg_inter[[3]]$data, c2 %in% c(0,1,6)), width = 5.9, height = 3.3)
 
-gg_inter[[2]] %+% subset( gg_inter[[2]]$data, c2 %in% c(0,1,6))
-gg_inter[[3]] %+% subset( gg_inter[[3]]$data, c2 %in% c(0,1,6))
-
-plot( unlist(lapply(results[[1]], function(x) x$value)  ))
 
 fits <- data.frame( do.call( rbind, ( lapply( results, function(x) unlist(lapply(x, function(x) x$value))))))
 fits$species <- paste('species', 1:3)
-fits
-fits <- fits %>% gather( model, 'MSE', X1:X6, -species)
-fits$model_label <- factor(fits$model, labels = levels( gg_inter[[1]]$data$type_form)[1:6])
+fits <- fits %>% gather( model, 'MSE', X1:X2, -species)
+fits$model_label <- factor(fits$model, labels = levels( gg_inter[[1]]$data$type_form)[1:2])
+fits$model
 fits$model_label
+fits <- fits %>% group_by( species ) %>% mutate( MSE_rel = MSE/max(MSE))
+
+ggplot( fits %>% filter( model == 'X2' ), aes( x = species, y = MSE_rel)) + 
+  geom_bar(stat = 'identity')
 
 fit_plot <- ggplot( fits, aes( x = model_label, y = MSE) ) + 
   geom_bar(stat= 'identity') + 
   facet_grid(species ~. , scales = 'free') + 
   theme(axis.text.x = element_text(angle = 45, vjust = 0.5 ), axis.title.x = element_blank()) 
 
+fit_plot
+
 ggsave('figures/fit_plot.png', fit_plot, width = 5, height = 3.7)
 
 lapply( results, function(x) lapply(x, function(x) x$par ))
-
-
+alphas
 
 lambda <- lapply( lapply( results[[1]], function(x) x$par), head, 1)
 alphas <- lapply( lapply( results[[1]], function(x) x$par), function(x) x[2:4])
 tau <- lapply( lapply( results[[1]], function(x) x$par), tail, 1)
+
+results
+
+test <- unlist( results, recursive = F)
+
+
+
+names (test ) <- sort( paste( c('N1', 'N2', 'N3'), rep(c('m1', 'm2'), 3), sep = '-'))
+type <- rep( names(test), lapply(test, function(x) length(x$par)))
+test <- data.frame( par = unlist( lapply( test, function(x) x$par) ))
+test$label <- row.names( test) 
+
+test %>% 
+  separate(label, sep = '-', c('species', 'model')) %>% 
+  mutate(model = str_sub( model, 1,2)) 
+
+data.frame( type = type, )
+
+
+
+rapply( results, function(x) x$par)
+
 HOI <- lapply( lapply( results[[1]][4:6], function(x) x$par), function(x) tail(x, 2)[1])
+
 quads <- lapply( lapply( results[[1]][c(2:3, 5:6)], function(x) x$par), function(x) head())
 
 # ------------------------------------------------------------------------------ # 
