@@ -2,6 +2,7 @@ library(dplyr)
 library(tidyr)
 library(deSolve)
 library(ggplot2)
+library(parallel)
 
 rm(list = ls())
 par(mfrow = c(1,1))
@@ -14,8 +15,8 @@ times <- 125             # length of simulation in days
 soil_m <- 200            # initial soil moisture (mm water in upper 500 mm of soil)
 pulse <- 0               # amount of water supplied per day in mm  
 rainy <- 10             # duration of rainy period 
-r <- c(4.3, 2.9, 2.1) # max uptake rates mm of water per g of plant per day
-K <- c(110, 35, 0.5)      # resource half-saturation constant, soil moisture in mm water per 500 mm soil when plant growth is half max  
+r <- c(4.2, 2.9, 2.1) # max uptake rates mm of water per g of plant per day
+K <- c(98, 30, 0.5)      # resource half-saturation constant, soil moisture in mm water per 500 mm soil when plant growth is half max  
 m <- 0.09                # tissue respiration and loss rate g per g per day 
 q <- 0.07                 # photosynthetic water use efficiency g of carbon gain per mm of water
 epsilon <- 0.01         # rate of water evaporation and runoff mm per mm per day
@@ -41,34 +42,27 @@ out <- ode(y=State, times = seq( 1, times, 0.1), func = grow, parms = parms, eve
 plot_timeseries(out, parms, col = my_colors)
 
 # -------- simulate multiple years -------------------------- # 
-t = 100 # number of years 
-comp_grad <- c(0:1)  # number of competitors
-experiments <- expand.grid(as.list(rep(list ( comp_grad), 3))) # response surface experiment 
-experiments <- experiments[-1, ]
-experiments <- experiments[order(rowSums(experiments)), ]
+t = 200 # number of years 
+seedlings <- c(0.5,0.5,0.5)
+State <- c(soil_m, seedlings*seedling_mass)
+use <- out <- list(NA)
+fecundity <- data.frame(N1 = rep(NA, t), N2 = rep(NA, t), N3 = rep(NA, t))
 
-fecundity <- phenology <- data.frame( matrix( NA, nrow = t, ncol = 3))
-per_capita_use <- use <- out <- list()
-pb <- txtProgressBar(min = 1, nrow(experiments)*t -1, style = 3)
-
-counter <- 1
-for(j in 1:nrow(experiments)){ 
-  seedlings <- as.numeric(experiments[j, ])
-  for( i in 2:t){ 
-    setTxtProgressBar(pb , counter)
-    State <- c(soil_m, seedlings*seedling_mass)
-    out[[i-1]] <- ode(y=State, times = seq(1, times, 0.1), func = grow, parms = parms, events = list(func = event, root = TRUE), rootfun = root )
-    use[[i-1]] <- matrix(NA, nrow = nrow(out[[i-1]]), ncol = 3)
-    for( j in 1:3){ 
-      use[[i-1]][, j] <- out[[i-1]][,2 + j]*f(out[[i-1]][, 2], parms$r[j], parms$k[j])
-    }
-    phenology[i-1,] <- apply( out[[i-1]][, c(3:5)], 2, find_phenology)
-    max_biomass  <- apply( out[[i-1]][, c(3:5)], 2, max)
-    seedlings <- fecundity[i-1,] <- (max_biomass*conversion)/seedling_mass
-    counter = 1 + counter
+for( i in 2:t){ 
+  out[[i-1]] <- ode(y=State, times = seq(1, times, 0.1), func = grow, parms = parms, events = list(func = event, root = TRUE), rootfun = root )
+  use[[i-1]] <- matrix(NA, nrow = nrow(out[[i-1]]), ncol = 3)
+  for( k in 1:3){ 
+    use[[i-1]][, k] <- out[[i-1]][,2 + k]*f(out[[i-1]][, 2], parms$r[k], parms$K[k])
   }
-  matplot(fecundity, type = 'l')
+  max_biomass  <- apply( out[[i-1]][, c(3:5)], 2, max)
+  fecundity[i-1,] <- (max_biomass*conversion)/seedling_mass
+  State <- as.numeric(c(soil_m, fecundity[i-1, ]*seedling_mass))
 }
+
+par(mfrow = c(1,1))
+matplot(fecundity, type = 'l', col = my_colors)
+
+# fit parameters: 
 
 
 
