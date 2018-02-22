@@ -63,7 +63,7 @@ mod_bh2 <- function( pars, data, form, predict = F, log = F){
   
   mm <- model.matrix(form, data = data.frame(data$data))
   
-  mu <- pars[1]*(1 + sweep(mm, 2, pars[2:length(pars)], '^'))
+  mu <- pars[1]/(1 + sweep(mm, 2, pars[2:length(pars)], '^'))
   
   Error <- sum( (mu - data$y)^2 )
   

@@ -36,37 +36,42 @@ out <- ode(y=State, times = seq( 1, times, 0.1), func = grow, parms = parms, eve
 
 plot_timeseries(out, parms, col = my_colors)
 
-seeds <- c(1,1,1)
+seeds <- c(30,1,30)
 State <- c(soil_m, seeds*seedling_mass)
 out <- ode(y=State, times = seq( 1, times, 0.1), func = grow, parms = parms, events = list(func = event, root = TRUE), rootfun = root )
 plot_timeseries(out, parms, col = my_colors)
 
 # -------- simulate multiple years -------------------------- # 
 t = 200 # number of years 
-seedlings <- c(0.5,0.5,0.5)
+seedlings <- c(1,30,60)
 State <- c(soil_m, seedlings*seedling_mass)
 use <- out <- list(NA)
 fecundity <- data.frame(N1 = rep(NA, t), N2 = rep(NA, t), N3 = rep(NA, t))
 
 for( i in 2:t){ 
-  out[[i-1]] <- ode(y=State, times = seq(1, times, 0.1), func = grow, parms = parms, events = list(func = event, root = TRUE), rootfun = root )
-  use[[i-1]] <- matrix(NA, nrow = nrow(out[[i-1]]), ncol = 3)
+  out[[i]] <- ode(y=State, times = seq(1, times, 0.1), func = grow, parms = parms, events = list(func = event, root = TRUE), rootfun = root )
+  use[[i]] <- matrix(NA, nrow = nrow(out[[i]]), ncol = 3)
   for( k in 1:3){ 
-    use[[i-1]][, k] <- out[[i-1]][,2 + k]*f(out[[i-1]][, 2], parms$r[k], parms$K[k])
+    use[[i]][, k] <- out[[i]][,2 + k]*f(out[[i]][, 2], parms$r[k], parms$K[k])
   }
-  max_biomass  <- apply( out[[i-1]][, c(3:5)], 2, max)
-  fecundity[i-1,] <- (max_biomass*conversion)/seedling_mass
-  State <- as.numeric(c(soil_m, fecundity[i-1, ]*seedling_mass))
+  max_biomass  <- apply( out[[i]][, c(3:5)], 2, max)
+  fecundity[i,] <- (max_biomass*conversion)/seedling_mass
+  State <- as.numeric(c(soil_m, fecundity[i, ]*seedling_mass))
 }
 
 par(mfrow = c(1,1))
 matplot(fecundity, type = 'l', col = my_colors)
 
 
+State[2:4]/seedling_mass
+
 test <- ode(y=State, times = seq(1, times, 0.1), func = grow, parms = parms, events = list(func = event, root = TRUE), rootfun = root )
 
 matplot( test[, 3:5], type = 'l', col = my_colors) 
 
+
+mech_eq <- fecundity[ nrow(fecundity) - 1, ]
+save(mech_eq, file = 'data/mech_eq.rda')
 # fit parameters: 
 
 
