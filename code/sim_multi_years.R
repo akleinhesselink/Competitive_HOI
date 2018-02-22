@@ -62,6 +62,11 @@ for( i in 2:t){
 par(mfrow = c(1,1))
 matplot(fecundity, type = 'l', col = my_colors)
 
+
+test <- ode(y=State, times = seq(1, times, 0.1), func = grow, parms = parms, events = list(func = event, root = TRUE), rootfun = root )
+
+matplot( test[, 3:5], type = 'l', col = my_colors) 
+
 # fit parameters: 
 
 

@@ -44,7 +44,7 @@ plot_timeseries <- function(x, parms, ... ){
   legend(5, -0.1, legend = paste('species', 1:nspp), col = my_colors[1:nspp], cex = 1, xpd = T, lty = 1, bg = NA, box.col = NA, yjust = 0)
 }
 
-mod_bh <- function(pars, data, form, predict = FALSE, log = F){ 
+mod_bh <- function(pars, data, form, predict = FALSE){ 
   
   if(length(pars) < 2){ stop('not enough parameters supplied!')}
   
@@ -52,14 +52,28 @@ mod_bh <- function(pars, data, form, predict = FALSE, log = F){
   
   mu <- pars[1]*(1 + mm%*%pars[c(2:(length(pars) - 1))])^pars[length(pars)]
   
+  Error <- sum( (mu - data$y)^2 )
+  
+  if(predict){ return(mu) }else if(!predict) { return(Error) }
+}
+
+mod_bh2 <- function( pars, data, form, predict = F, log = F){ 
+  
+  if(length(pars) < 2){ stop('not enough parameters supplied!')}
+  
+  mm <- model.matrix(form, data = data.frame(data$data))
+  
+  mu <- pars[1]*(1 + sweep(mm, 2, pars[2:length(pars)], '^'))
+  
+  Error <- sum( (mu - data$y)^2 )
+  
   if(log){ 
-    Error <- (log(mu) - log(data$y))^2 
-  }else{ 
-    Error <- (mu - data$y)^2
+    Error <- log(Error)
   }
   
-  if(predict){ return(mu) }else if(!predict) { return(sum(Error)) }
+  if(predict){ return(mu) }else if(!predict) { return( Error ) }
 }
+
 
 plot_transpiration <- function(parms, my_colors ){
   # plot transpiration rate curve 
@@ -116,5 +130,14 @@ find_N_hat <- function(my_range = c(1e-7, 100), fun, ... ){
 
 find_N_hat2 <- function(my_range = c(1e-7, 100), fun, ... ){ 
   uniroot(fitness, interval = my_range, fun = fun, ... )
+}
+
+ann_plant_mod <- function(x, pars) { 
+  lambda <- pars[1]   
+  alphas <- pars[2:(length(pars)-1)]
+  tau <- pars[length(pars)]
+  y <- lambda*(1 + x%*%alphas)^(tau)    
+  
+  return(x*y)
 }
 
