@@ -32,6 +32,26 @@ event <- function(u, State, parms) {
   })
 }
 
+run_multi_gen <- function(seedlings, t, parms, tol){ 
+  
+  out <- list(NA)
+  population <- data.frame(N1 = rep(NA, t), N2 = rep(NA, t), N3 = rep(NA, t))
+  population[1, ] <- seedlings
+  
+  i <- 1
+  pop_diff <- c(1, 1, 1)
+  while( i < t & any(pop_diff > tol)){
+    State <- as.numeric(c(parms$soil_m, population[i, ]*parms$seedling_mass))
+    out[[i]] <- ode(y=State, times = seq(1, parms$times, 0.1), func = grow, parms = parms, events = list(func = event, root = TRUE), rootfun = root )
+    max_biomass  <- apply( out[[i]][, c(3:5)], 2, max)
+    population[i+1,] <- (max_biomass*parms$conversion)/parms$seedling_mass
+    pop_diff <- abs( population[i+1,] - population[i, ])
+    i <- i + 1 
+  }
+  
+  return( population) 
+}
+
 plot_timeseries <- function(x, parms, ... ){ 
   par(mfrow = c(2,1))
   nspp <- ncol(x) - 2
