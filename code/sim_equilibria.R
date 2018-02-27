@@ -37,6 +37,8 @@ t <- 500 # number of years
 experiments <- expand.grid( c(0, 10), c(0, 10), c(0, 10))
 experiments <- split(experiments, 1:nrow(experiments))
 experiments <- lapply( experiments, as.numeric)
+experiments <- experiments[-1]
+
 results <- lapply( experiments, run_multi_gen, t = t, parms = parms, tol = 1e-5)
 
 eqs <- do.call( rbind, lapply( results, function(x) { cc <- x[complete.cases(x), ]; cc[nrow(cc), ] } ) )
