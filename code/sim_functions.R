@@ -3,6 +3,7 @@ f <- function(R, r, K){ r*R/(K + R) }              # resource (water) uptake rat
 dBdu <- function(u, B, R, r, K, q, m) { B*(q*f(R, r, K) - m)}  # growth as a function of biomass and resource uptake
 dRdu <- function(u, B, R, r, K, p, epsilon) { p[u] - epsilon*R - sum(B*f(R,r, K)) } # resource (water)
 
+
 TO_fun <- function(r, TO_pars) {
   # trade-off between uptake at low resource availability and uptake during high resource availability
   with(TO_pars, { 
@@ -30,6 +31,15 @@ event <- function(u, State, parms) {
     State[2:length(State)][ terminate ] <- 0
     return(State)
   })
+}
+
+run_experiment <- function(seedlings, parms) { 
+  seedlings <- as.numeric(seedlings)
+  State <- c(parms$soil_m, seedlings*parms$seedling_mass)
+  out <- ode(y=State, times = seq( 1, parms$times, 0.1), func = grow, parms = parms, events = list(func = event, root = TRUE), rootfun = root)
+  max_biomass <- apply( out[, 3:5 ], 2,  max )
+  
+  ( max_biomass*parms$conversion )/parms$seedling_mass
 }
 
 run_multi_gen <- function(seedlings, t, parms, tol){ 
@@ -68,30 +78,45 @@ mod_bh <- function(pars, data, form, predict = FALSE){
   
   if(length(pars) < 2){ stop('not enough parameters supplied!')}
   
-  mm <- model.matrix(form, data = data.frame(data$data))
+  mm <- model.matrix(form, data)
   
   mu <- pars[1]*(1 + mm%*%pars[c(2:(length(pars) - 1))])^pars[length(pars)]
   
   Error <- sum( (mu - data$y)^2 )
-  
-  if(predict){ return(mu) }else if(!predict) { return(Error) }
+
+  if(predict){ 
+    return(mu)
+  }else if(!predict){ 
+    return(Error) 
+  }
 }
 
-mod_bh2 <- function( pars, data, form, predict = F, log = F){ 
+
+
+
+mod_bh2 <- function( pars, data, form, predict = F, lg = F){ 
   
   if(length(pars) < 2){ stop('not enough parameters supplied!')}
   
-  mm <- model.matrix(form, data = data.frame(data$data))
+  mm <- model.matrix(form, data)
+  lambda <- pars[1]
+  pars <- pars[-1]
   
-  mu <- pars[1]/(1 + sweep(mm, 2, pars[2:length(pars)], '^'))
-  
-  Error <- sum( (mu - data$y)^2 )
-  
-  if(log){ 
-    Error <- log(Error)
+  betas <- pars[ 1:ncol(mm) ]
+  taus <- pars[ (ncol(mm) + 1):(ncol(mm)*2) ]
+  mu <- NA
+  for( i in 1:nrow(mm)){ 
+    mu[i] <- lambda/( 1 + sum( betas*( mm[i, ]^taus ) ) )
   }
   
-  if(predict){ return(mu) }else if(!predict) { return( Error ) }
+  Error <- sum( ( (mu - data$y )/data$y)^2 ) 
+
+  if(predict){ 
+    return(mu)
+  }else if(!predict){ 
+    return(Error) 
+  }
+  
 }
 
 

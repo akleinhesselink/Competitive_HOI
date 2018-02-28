@@ -10,149 +10,132 @@ par(mfrow = c(1,1))
 source('code/sim_functions.R')
 source('code/figure_pars.R')
 
-load('data/experiments.rda')
-load('data/out.rda')
+load('data/rs.rda')
+load('data/rs_results.rda')
 load('data/parms.rda')
-load('data/seedling_mass.rda')
-load('data/conversion.rda')
+load('data/eqs.rda')
 
-fecundity <- phenology <- data.frame( matrix( NA, nrow = nrow(experiments), ncol = 3))
+nspp <- length(parms$r)
 
-get_resource_use <- function(State, f, parms){ 
-  State[3:5]*f(State[2], parms$r, parms$K)
-}
+seeds <- do.call(rbind, rs_results)
+rs <- do.call(rbind, rs)
 
-use <- lapply( out, function(x) t(apply( x, 1, get_resource_use, f, parms)))
-experiments <- split(experiments,1:nrow(experiments))
-get_per_capita_use <- function(x, y) sweep( x, 2, as.numeric(y), '/')
-per_capita_use <- mapply(use, experiments, FUN = get_per_capita_use, SIMPLIFY = F)
-phenology <- lapply( out, function( x ) apply(x[, c(3:5)], 2, find_phenology))
+lambda <- apply( seeds[ apply(rs, 1, sum) == 1 , ], 2, max)
 
-##
-
-experiments <- do.call(rbind, experiments)
-max_biomass <- do.call( rbind, lapply( out, function( x ) apply( x[, c(3:5)], 2, max)))
-fecundity <- (max_biomass*conversion)/seedling_mass
-phenology <- do.call(rbind, phenology )
-
-rm(out)
-
-lambda <- diag( as.matrix( fecundity [ apply(experiments, 1, sum) == 1, ]  )) # calculate lambdas 
-y <- fecundity/experiments                                                    # calculate fecundity in all experiments 
-data <- data.frame(experiments, y, phenology/10)
-names(data ) <- c('N1', 'N2', 'N3', 'Y1', 'Y2', 'Y3', paste0('PH', c(1:3)))
+y <- seeds/rs                 # calculate fecundity in all rs 
+data <- data.frame(rs, y)
+names(data) <- c(paste0('N', 1:nspp), paste0('Y', 1:nspp))
 
 form1 <- paste('~ -1 + N1 + N2 + N3')
 form2 <- paste(form1, '+ I(N1*N2) + I(N1*N3) + I(N2*N3)')
 
-all_forms <- c(form1, form2)
+all_forms <- lapply( ls() [ ls() %>% str_detect('form') ] , function(x) eval(parse( text = x) ) )
 
-gg_intra <- gg_inter <- gg_phenology <- list()
-results2 <- results <-  list()
-i = 1
-
-# fit annual plant model parameters --------------------------------------- # 
-for(i in 1:3){ 
-  # loop through each species and fit annual plant model parameters ------------------------------------------- # 
-  data1 <- data
-  data1[, i] <- data1[, i] - 1            # remove focal from competive neighborhood 
-  data1$y  <- data1[, i + 3]              # focal per capita seed production
-  data1$data <- as.matrix(data1[,c(1:3)])
-  data2 <- data1[is.finite(data1$y),]  
-  
-  data2 <- data2[ (data2[, i] == 0 & (data2[, c(1:3)[-i][1]] == 0 & data2[, c(1:3)[-i][2]] == 0 )) | (data2[,i] > 0 & sum(data2[,c(1:3)[-i]]) > 1), ]
-  
-  terms <- lapply( all_forms, function(x) length(str_split(x, pattern = '\\+')[[1]] ))
-  forms <- lapply(all_forms, as.formula)
-  
-  pars <- lapply( terms, function(x, ...) {c( ..., rep(1, x - 1), -1 )} , Z = lambda[i] )  
-  
-  out <- mapply(par = pars, form = forms, FUN = optim, MoreArgs = list(data = data2, fn = mod_bh, method = 'BFGS', control = list( maxit = 1e9, reltol = 1e-15)), SIMPLIFY = F)
-  results[[i]] <- out 
-  
-  pars <- lapply(out, function(x) x$par)
-  predictions <- mapply(par = pars, form = forms, FUN = mod_bh, MoreArgs = list(data = data1, predict = T))
-  predictions <- data.frame(predictions)  
-  names(predictions) <- paste0(paste0('pY', i , '.model'), 1:length(forms))
-  data <- cbind(data, predictions)
-  
-} 
-
-
-data <- 
-  data %>% 
-  gather(prediction, value,  starts_with('p', ignore.case = F)) %>% 
-  gather( species, observed, Y1:Y3) %>% 
-  separate( prediction, c('pred_species', 'model'), sep = '\\.') %>% 
-  filter(str_extract(pred_species, 'Y\\d+') == str_extract(species, 'Y\\d+')) %>% 
-  select( - pred_species) %>% 
-  spread( model, value ) %>% 
-  filter( is.finite(observed)) %>% 
-  mutate( diff1 = (model1 - observed)/observed, diff2 = (model2 - observed)/observed) %>% 
-  gather( model, deviation, diff1, diff2)
-
-
-ggplot( data %>% filter( N1 == 20, N2 > 15, N3 > 15), aes( x = N2, y = N3, fill = deviation )) + 
-  geom_tile() + 
-  scale_fill_gradient2() + 
-  facet_wrap(~ model)
-
-ggplot( data %>% filter( N2 == 25, N1 > 15, N3 > 15), aes( x = N1, y = N3, fill = deviation )) + 
-  geom_tile() + 
-  scale_fill_gradient2() + 
-  facet_wrap(~ model)
-
-ggplot( data %>% filter( N3 == 30, N1 > 15, N2 > 15), aes( x = N1, y = N2, fill = deviation )) + 
-  geom_tile() + 
-  scale_fill_gradient2() + 
-  facet_wrap(~ model)
-
-
-basic_plot <- function(data, focal, hold_at = 4, c1range, c2range) { 
-  N_focal <- paste0('N', focal)
-  Y_focal <- paste0('Y', focal)
-  comp <- paste0('N', c(1:3)[-focal])
-  
-  data <- 
-    data %>% 
-    filter( species == Y_focal) %>% 
-    filter_(.dots = paste0(N_focal, ' == ', hold_at)) %>% 
-    filter_(.dots = paste0(comp[1], ' %in% ', c1range )) %>% 
-    filter_(.dots = paste0(comp[2], ' %in% ', c2range )) %>% 
-    select( N1:N3, species, observed, model1, model2) %>% 
-    gather(type, predicted, model1:model2)
-  
-  data[, comp[2]] <- as.factor(data[, comp[2]])
-  
-  ymx <- max( c(data$observed, data$predicted))
-  
-  data %>% 
-    ggplot(aes_string( x = comp[1], y = 'observed', color = comp[2])) +
-    geom_point() +
-    geom_line( aes(y = predicted, linetype = type)) + 
-    facet_wrap( ~ type ) 
+# loop through species 
+# prepare data for each species
+# loop through models 
+get_data <- function(x, spp){ 
+  out <- x %>% select(starts_with('Y'))
+  y <- out[, spp]
+  dat <- as.matrix(x %>% select(starts_with('N')))
+  dat[ , spp ] <- dat[ , spp] - 1
+  out <- data.frame(y = y, dat)
+  return(out[ complete.cases(out), ])
 }
 
-data %>% basic_plot(focal = 1, hold_at = 20, c1range = '25:35', c2range = '30:40' )
-data %>% basic_plot(focal = 2, hold_at = 30, c1range = '15:25', c2range = '30:40' )
-data %>% basic_plot(focal = 3, hold_at = 35, c1range = '15:25', c2range = '25:35' )
+dat <- lapply( 1:nspp, get_data, x = data )
+names( dat ) <- 1:nspp
 
-# compare error of fits 
-fits <- data.frame( do.call( rbind, ( lapply( results, function(x) unlist(lapply(x, function(x) x$value))))))
-fits$species <- paste('species', 1:3)
-fits <- fits %>% gather( model, 'MSE', X1:X2, -species)
-fits$model_label <- factor(fits$model, labels = c('m1', 'm2'))
-fits <- fits %>% group_by( species ) %>% mutate( MSE_rel = MSE/max(MSE))
+dat <- do.call(rbind, dat)
 
-ggplot( fits %>% filter( model == 'X2' ), aes( x = species, y = MSE_rel)) + 
-  geom_bar(stat = 'identity')
+dat <- dat %>% 
+  tibble::rownames_to_column('id') %>% 
+  separate( id, c('species', 'row'), sep = '\\.')
 
-fit_plot <- ggplot( fits, aes( x = model_label, y = MSE) ) + 
-  geom_bar(stat= 'identity') + 
-  facet_grid(species ~. , scales = 'free') + 
-  theme(axis.text.x = element_text(angle = 45, vjust = 0.5 ), axis.title.x = element_blank()) 
+dat %>% filter(N3 == 0, N2 == 0 ) %>% ggplot( aes( x = N1, y = y)) + geom_point() + facet_wrap( ~ species)
+dat %>% filter(N3 == 0, N1 == 0 ) %>% ggplot(aes(x = N2, y = y)) + geom_point() + facet_wrap( ~ species)
+dat %>% filter(N2 == 0, N1 == 0 ) %>% ggplot( aes( x = N3, y = y)) + geom_point() + facet_wrap( ~ species)
 
-fit_plot
+fit_model <- function( dat, inits, model, frm, ...) { 
+  
+  fit <- optim( par = inits, fn = model, data = dat, form = frm, ...)
+  pred <- model(fit$par, data = dat, form = frm, predict = T)
+  return( list (fit = fit, data = data.frame( dat, pred = pred) ))
+}
+
+forms <- lapply( all_forms, as.formula)
+
+dat <- 
+  dat %>% mutate( num_sp = (N1 != 0) + (N2 != 0) + (N3 != 0) ) %>% 
+  mutate( one_species = num_sp %in% c(0, 1)) %>%
+  mutate( two_species = num_sp %in% c(0, 1, 2)) %>%
+  mutate( three_species = num_sp %in% c(0:3)) 
+
+n  <- 3
+test <- dat %>% 
+  filter( one_species) %>% 
+  filter_( paste0( 'species == ', n ))
+
+out <- fit_model(test , c(lambda[3], 0,0,0, -1), model = mod_bh, frm = forms[[1]], method = 'BFGS')
+out$fit
+
+out <- fit_model(test , c(lambda[3], 1,1,1, 1,1,1), model = mod_bh2, frm = forms[[1]], method = 'BFGS')
+out$fit
+
+out$data %>% 
+  gather( comp, num , N1:N3 ) %>% 
+  filter( num_sp == 0 | num > 0) %>% 
+  ggplot( aes( x = num, y = y, color = comp)) + 
+  geom_point() + 
+  geom_line(aes( y = pred), linetype = 2)
+
+# todo make this a function! 
+
+sp <- 1
+test <- dat %>% 
+  filter( type ) %>% 
+  filter_( paste0( 'species == ', sp ))
+
+init <- seq(0, 1, by = 0.5)
+  
+inits <- expand.grid( c(1,1,1, rep( list(init), 3) )) 
+inits <- inits %>% unique()
+  
+out1 <- fit_model(test , c(lambda[n], 1,1,1, -1), model = mod_bh, frm = forms[[1]], method = 'BFGS')
+out1$fit
+
+init <- seq(0, 1, by = 0.5)
+inits <- expand.grid( c(1,1,1, rep( list(init), 3) )) 
+inits <- inits %>% unique()
+
+out2 <- fit_model(test , c(lambda[n], 1,1,1, 1,1,1), model = mod_bh2, frm = forms[[1]], method = 'BFGS')
+out2$fit
+
+
+init <- seq(0, 1, by = 0.5)
+inits <- expand.grid( c(1,1,1,1,1,1,1,1,1, rep( list(init), 3) )) 
+inits <- inits %>% unique()
+
+tryfits <- list(NA)
+
+for( i in 1:nrow(inits)) { 
+  print(paste0('working on #', i))
+  tryfits[[i]] <- try( fit_model(test , c(lambda[n], inits[i, ]), model = mod_bh2, frm = forms[[2]], method = 'BFGS', control = list( reltol = 1e-10)), silent = T)
+  
+  if(class(tryfits[[i]]) == 'try-error'){ 
+    tryfits[[i]] <- NULL
+  }
+}
+
+tryfits[[8]]$data
+
+which.min( unlist( lapply ( tryfits, function(x) x$fit$value) ))
+
+tryfits[[1]]$fit
+
+out1$data %>% ggplot( aes( x = y, y = pred)) + geom_point()
+out3$data %>% ggplot( aes( x = y, y = pred)) + geom_point()
+
 
 #
 test <- results
