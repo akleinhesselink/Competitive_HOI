@@ -31,9 +31,6 @@ form2 <- paste(form1, '+ I(N1*N2) + I(N1*N3) + I(N2*N3)')
 
 all_forms <- lapply( ls() [ ls() %>% str_detect('form') ] , function(x) eval(parse( text = x) ) )
 
-# loop through species 
-# prepare data for each species
-# loop through models 
 get_data <- function(x, spp){ 
   out <- x %>% select(starts_with('Y'))
   y <- out[, spp]
@@ -71,70 +68,72 @@ dat <-
   mutate( two_species = num_sp %in% c(0, 1, 2)) %>%
   mutate( three_species = num_sp %in% c(0:3)) 
 
-n  <- 3
-test <- dat %>% 
-  filter( one_species) %>% 
-  filter_( paste0( 'species == ', n ))
 
-out <- fit_model(test , c(lambda[3], 0,0,0, -1), model = mod_bh, frm = forms[[1]], method = 'BFGS')
-out$fit
+fill_in_inits <- function(x) {  
+  if( length(x) > 1) { 
+    seq(x[1], x[2], x[3]) 
+  }else if( length(x) == 1) { 
+    x
+  }
+}
 
-out <- fit_model(test , c(lambda[3], 1,1,1, 1,1,1), model = mod_bh2, frm = forms[[1]], method = 'BFGS')
-out$fit
+
+fit_inits <- function(inits, model, dat, frm, ... ){ 
+
+  inits <- expand.grid( inits ) 
+  j <- nrow(inits)
+  fits <- list(NA)
+  for( i in 1:nrow(inits)) { 
+    print(paste0('working on init set #', i, ' of ', j))
+    fits[[i]] <- try( fit_model(dat , inits[i, ], model = model, frm = frm, method = 'BFGS'), silent = T)
+    
+    if(class(fits[[i]]) == 'try-error'){ 
+      fits[[i]] <- NULL
+    }
+  }
+  
+  fits <- fits[ !unlist(lapply( fits, is.null) ) ]  
+
+  unlist( fits[ which.min( lapply( fits, function(x) x$fit$value) ) ], recursive = F)
+   
+}
+
+out <- list(NA)
+
+for( n in 1:nspp) { 
+  
+  temp_dat <- dat %>% 
+    filter(three_species) %>% 
+    filter_( paste0( 'species == ', n ))
+
+  inits <- list(lambda[n], 1, 1, 1, c(-1,0,0.5))
+  res1 <- fit_inits(lapply( inits, fill_in_inits), mod_bh, temp_dat, forms[[1]])
+
+  inits <- list(lambda[n], 1,1,1, 1, 1, 1, c(-1,0,0.5))
+  res2 <- fit_inits(lapply( inits, fill_in_inits), mod_bh, temp_dat, forms[[2]])
+
+  inits <- list(lambda[n], 1,1,1, c(0,1,0.5), c(0,1,0.5), c(0,1,0.5))
+  res3 <- fit_inits(lapply( inits, fill_in_inits), mod_bh2, temp_dat, forms[[1]])
+
+  inits <- list(lambda[n], 1, 1, 1, 1, 1, 1, 1, 1, 1, c(0,1,0.5), c(0,1,0.5), c(0,1,0.5))
+  res4 <- fit_inits(lapply( inits, fill_in_inits), mod_bh2, temp_dat, forms[[2]])
+
+  out[[n]] <- list(res1 = res1, res2 = res2, res3 = res3, res4 = res4)
+}
+
+names(out) <- paste0('species_', c(1:nspp))
+
 
 out$data %>% 
+  filter( one_species) %>%
   gather( comp, num , N1:N3 ) %>% 
   filter( num_sp == 0 | num > 0) %>% 
   ggplot( aes( x = num, y = y, color = comp)) + 
   geom_point() + 
   geom_line(aes( y = pred), linetype = 2)
 
-# todo make this a function! 
-
-sp <- 1
-test <- dat %>% 
-  filter( type ) %>% 
-  filter_( paste0( 'species == ', sp ))
-
-init <- seq(0, 1, by = 0.5)
-  
-inits <- expand.grid( c(1,1,1, rep( list(init), 3) )) 
-inits <- inits %>% unique()
-  
-out1 <- fit_model(test , c(lambda[n], 1,1,1, -1), model = mod_bh, frm = forms[[1]], method = 'BFGS')
-out1$fit
-
-init <- seq(0, 1, by = 0.5)
-inits <- expand.grid( c(1,1,1, rep( list(init), 3) )) 
-inits <- inits %>% unique()
-
-out2 <- fit_model(test , c(lambda[n], 1,1,1, 1,1,1), model = mod_bh2, frm = forms[[1]], method = 'BFGS')
-out2$fit
 
 
-init <- seq(0, 1, by = 0.5)
-inits <- expand.grid( c(1,1,1,1,1,1,1,1,1, rep( list(init), 3) )) 
-inits <- inits %>% unique()
-
-tryfits <- list(NA)
-
-for( i in 1:nrow(inits)) { 
-  print(paste0('working on #', i))
-  tryfits[[i]] <- try( fit_model(test , c(lambda[n], inits[i, ]), model = mod_bh2, frm = forms[[2]], method = 'BFGS', control = list( reltol = 1e-10)), silent = T)
-  
-  if(class(tryfits[[i]]) == 'try-error'){ 
-    tryfits[[i]] <- NULL
-  }
-}
-
-tryfits[[8]]$data
-
-which.min( unlist( lapply ( tryfits, function(x) x$fit$value) ))
-
-tryfits[[1]]$fit
-
-out1$data %>% ggplot( aes( x = y, y = pred)) + geom_point()
-out3$data %>% ggplot( aes( x = y, y = pred)) + geom_point()
 
 
 #
