@@ -79,28 +79,32 @@ fill_in_inits <- function(x) {
 }
 
 
-fit_inits <- function(inits, model, dat, frm, k, ... ){ 
+fit_inits <- function(inits, model, dat, frm, ... ){ 
 
   inits <- expand.grid( inits ) 
   j <- nrow(inits)
   fits <- list(NA)
-  for( i in 1:nrow(inits)) { 
-    print(paste0('working on init set #', i, ' of ', j, '; species ', k))
-    fits[[i]] <- try( fit_model(dat , inits[i, ], model = model, frm = frm, method = 'BFGS'), silent = T)
-    
-    if(class(fits[[i]]) == 'try-error'){ 
-      fits[[i]] <- NULL
+  
+  inits <- split( inits, 1:nrow(inits))
+  
+  fits <- mclapply( inits,  function(x){ 
+    out <- try( fit_model(dat , x, model = model, frm = frm, method = 'BFGS'), silent = T)
+    if(class(out) == 'try-error'){ 
+      out <- NULL
     }
-  }
+    return(out)
+  }, ... )
   
   fits <- fits[ !unlist(lapply( fits, is.null) ) ]  
-
-  unlist( fits[ which.min( lapply( fits, function(x) x$fit$value) ) ], recursive = F)
-   
+  
+  fits <- unlist( fits[ which.min( lapply( fits, function(x) x$fit$value) ) ], recursive = F)
+  names(fits) <- c('fit', 'data')
+  
+  return( fits )
 }
 
 model_fits <- list(NA)
-i = 1
+n = 3
 for( n in 1:nspp) { 
   
   temp_dat <- dat %>% 
@@ -108,16 +112,16 @@ for( n in 1:nspp) {
     filter_( paste0( 'species == ', n ))
 
   inits <- list(lambda[n], 1, 1, 1, c(-1.1,-0.1,0.5))
-  res1 <- fit_inits(lapply( inits, fill_in_inits), mod_bh, temp_dat, forms[[1]], k = n)
+  res1 <- fit_inits(lapply( inits, fill_in_inits), mod_bh, temp_dat, forms[[1]], mc.cores = 4)
 
-  inits <- list(lambda[n], 1, 1, 1, 1, 1, 1, c(-1.1, -0.1, 0.5))
-  res2 <- fit_inits(lapply( inits, fill_in_inits), mod_bh, temp_dat, forms[[2]], k = n)
+  inits <- list(lambda[n], c(0.01, 1.01, 0.5), c(0.01, 1.01, 0.5), c(0.01, 1.01, 0.5),  c(0.01, 1.01, 0.5), c(0.01, 1.01, 0.5), c(0.01, 1.01, 0.5), c(-1.1, -0.1, 0.25))
+  res2 <- fit_inits(lapply( inits, fill_in_inits), mod_bh, temp_dat, forms[[2]], mc.cores = 4)
+  
+  inits <- list(lambda[n], 1, 1, 1,  c(0, 1, 0.5), c(0, 1, 0.5), c(0, 1, 0.5))
+  res3 <- fit_inits(lapply( inits, fill_in_inits), mod_bh2, temp_dat, forms[[1]], mc.cores = 4)
 
-  inits <- list(lambda[n], 1, 1, 1,  c(0.1,1.1,0.5), c(0.1,1.1,0.5), c(0.1,1.1,0.5))
-  res3 <- fit_inits(lapply( inits, fill_in_inits), mod_bh2, temp_dat, forms[[1]], k = n )
-
-  inits <- list(lambda[n], 1, 1, 1, 1, 1, 1, c(0.1,1.1,0.5), c(0.1,1.1,0.5), c(0.1,1.1,0.5), c(0.1,1.1,0.5), c(0.1,1.1,0.5), c(0.1,1.1,0.5))
-  res4 <- fit_inits(lapply( inits, fill_in_inits), mod_bh2, temp_dat, forms[[2]], k = n)
+  inits <- list(lambda[n], 1, 1, 1, 1, 1, 1, c(0, 1, 0.5), c(0, 1, 0.5), c(0, 1, 0.5), c(0, 1, 0.5), c(0, 1, 0.5), c(0, 1, 0.5))
+  res4 <- fit_inits(lapply( inits, fill_in_inits), mod_bh2, temp_dat, forms[[2]], mc.cores = 4)
 
   model_fits[[n]] <- list(m1 = res1, m1HOI = res2, m2 = res3, m2HOI = res4)
 
