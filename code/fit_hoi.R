@@ -31,9 +31,6 @@ form2 <- paste(form1, '+ I(N1*N2) + I(N1*N3) + I(N2*N3)')
 
 all_forms <- lapply( ls() [ ls() %>% str_detect('form') ] , function(x) eval(parse( text = x) ) )
 
-# loop through species 
-# prepare data for each species
-# loop through models 
 get_data <- function(x, spp){ 
   out <- x %>% select(starts_with('Y'))
   y <- out[, spp]
@@ -51,6 +48,7 @@ dat <- do.call(rbind, dat)
 dat <- dat %>% 
   tibble::rownames_to_column('id') %>% 
   separate( id, c('species', 'row'), sep = '\\.')
+
 
 dat %>% filter(N3 == 0, N2 == 0 ) %>% ggplot( aes( x = N1, y = y)) + geom_point() + facet_wrap( ~ species)
 dat %>% filter(N3 == 0, N1 == 0 ) %>% ggplot(aes(x = N2, y = y)) + geom_point() + facet_wrap( ~ species)
@@ -71,90 +69,64 @@ dat <-
   mutate( two_species = num_sp %in% c(0, 1, 2)) %>%
   mutate( three_species = num_sp %in% c(0:3)) 
 
-n  <- 3
-test <- dat %>% 
-  filter( one_species) %>% 
-  filter_( paste0( 'species == ', n ))
 
-out <- fit_model(test , c(lambda[3], 0,0,0, -1), model = mod_bh, frm = forms[[1]], method = 'BFGS')
-out$fit
-
-out <- fit_model(test , c(lambda[3], 1,1,1, 1,1,1), model = mod_bh2, frm = forms[[1]], method = 'BFGS')
-out$fit
-
-out$data %>% 
-  gather( comp, num , N1:N3 ) %>% 
-  filter( num_sp == 0 | num > 0) %>% 
-  ggplot( aes( x = num, y = y, color = comp)) + 
-  geom_point() + 
-  geom_line(aes( y = pred), linetype = 2)
-
-# todo make this a function! 
-
-sp <- 1
-test <- dat %>% 
-  filter( type ) %>% 
-  filter_( paste0( 'species == ', sp ))
-
-init <- seq(0, 1, by = 0.5)
-  
-inits <- expand.grid( c(1,1,1, rep( list(init), 3) )) 
-inits <- inits %>% unique()
-  
-out1 <- fit_model(test , c(lambda[n], 1,1,1, -1), model = mod_bh, frm = forms[[1]], method = 'BFGS')
-out1$fit
-
-init <- seq(0, 1, by = 0.5)
-inits <- expand.grid( c(1,1,1, rep( list(init), 3) )) 
-inits <- inits %>% unique()
-
-out2 <- fit_model(test , c(lambda[n], 1,1,1, 1,1,1), model = mod_bh2, frm = forms[[1]], method = 'BFGS')
-out2$fit
-
-
-init <- seq(0, 1, by = 0.5)
-inits <- expand.grid( c(1,1,1,1,1,1,1,1,1, rep( list(init), 3) )) 
-inits <- inits %>% unique()
-
-tryfits <- list(NA)
-
-for( i in 1:nrow(inits)) { 
-  print(paste0('working on #', i))
-  tryfits[[i]] <- try( fit_model(test , c(lambda[n], inits[i, ]), model = mod_bh2, frm = forms[[2]], method = 'BFGS', control = list( reltol = 1e-10)), silent = T)
-  
-  if(class(tryfits[[i]]) == 'try-error'){ 
-    tryfits[[i]] <- NULL
+fill_in_inits <- function(x) {  
+  if( length(x) > 1) { 
+    seq(x[1], x[2], x[3]) 
+  }else if( length(x) == 1) { 
+    x
   }
 }
 
-tryfits[[8]]$data
 
-which.min( unlist( lapply ( tryfits, function(x) x$fit$value) ))
+fit_inits <- function(inits, model, dat, frm, k, ... ){ 
 
-tryfits[[1]]$fit
+  inits <- expand.grid( inits ) 
+  j <- nrow(inits)
+  fits <- list(NA)
+  for( i in 1:nrow(inits)) { 
+    print(paste0('working on init set #', i, ' of ', j, '; species ', k))
+    fits[[i]] <- try( fit_model(dat , inits[i, ], model = model, frm = frm, method = 'BFGS'), silent = T)
+    
+    if(class(fits[[i]]) == 'try-error'){ 
+      fits[[i]] <- NULL
+    }
+  }
+  
+  fits <- fits[ !unlist(lapply( fits, is.null) ) ]  
 
-out1$data %>% ggplot( aes( x = y, y = pred)) + geom_point()
-out3$data %>% ggplot( aes( x = y, y = pred)) + geom_point()
+  unlist( fits[ which.min( lapply( fits, function(x) x$fit$value) ) ], recursive = F)
+   
+}
+
+model_fits <- list(NA)
+i = 1
+for( n in 1:nspp) { 
+  
+  temp_dat <- dat %>% 
+    filter(three_species) %>% 
+    filter_( paste0( 'species == ', n ))
+
+  inits <- list(lambda[n], 1, 1, 1, c(-1.1,-0.1,0.5))
+  res1 <- fit_inits(lapply( inits, fill_in_inits), mod_bh, temp_dat, forms[[1]], k = n)
+
+  inits <- list(lambda[n], 1, 1, 1, 1, 1, 1, c(-1.1, -0.1, 0.5))
+  res2 <- fit_inits(lapply( inits, fill_in_inits), mod_bh, temp_dat, forms[[2]], k = n)
+
+  inits <- list(lambda[n], 1, 1, 1,  c(0.1,1.1,0.5), c(0.1,1.1,0.5), c(0.1,1.1,0.5))
+  res3 <- fit_inits(lapply( inits, fill_in_inits), mod_bh2, temp_dat, forms[[1]], k = n )
+
+  inits <- list(lambda[n], 1, 1, 1, 1, 1, 1, c(0.1,1.1,0.5), c(0.1,1.1,0.5), c(0.1,1.1,0.5), c(0.1,1.1,0.5), c(0.1,1.1,0.5), c(0.1,1.1,0.5))
+  res4 <- fit_inits(lapply( inits, fill_in_inits), mod_bh2, temp_dat, forms[[2]], k = n)
+
+  model_fits[[n]] <- list(m1 = res1, m1HOI = res2, m2 = res3, m2HOI = res4)
+
+}
 
 
-#
-test <- results
-names(test) <-  c('N1', 'N2', 'N3')
-test <- lapply( test, function( x) {names(x) <- c('m1', 'm2'); x} )
-result_dat <- data.frame( value = unlist( test), label = names(unlist(test)))
+names(model_fits) <- paste0('N', c(1:nspp))
 
-result_dat <- 
-  result_dat %>% 
-  separate( label, c('species', 'model', 'par'), sep = '\\.', extra = 'warn', fill = 'left', convert = T) %>% 
-  filter( par != 'counts') %>% 
-  group_by(species, model) %>% 
-  mutate( type = str_extract( par , '[a-z]+')) %>% 
-  mutate( par = ifelse( type == 'par' & par == 'par', 'lambda', par)) %>%
-  group_by( species, model, type ) %>% 
-  arrange(par) %>% 
-  mutate(par = ifelse( type == 'par'  & row_number() == max(row_number()), 'tau', par)) %>% 
-  mutate( par = str_replace(par, 'par', 'alpha')) %>% 
-  arrange( species, model, par)
 
-save(results, file = 'data/result_fit.rda')
-save(result_dat, file = 'data/results_df.rda')
+save(model_fits, file = 'data/model_fits.rda')
+
+

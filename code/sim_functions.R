@@ -109,7 +109,7 @@ mod_bh2 <- function( pars, data, form, predict = F, lg = F){
     mu[i] <- lambda/( 1 + sum( betas*( mm[i, ]^taus ) ) )
   }
   
-  Error <- sum( ( (mu - data$y )/data$y)^2 ) 
+  Error <- sum( (mu - data$y)^2 ) 
 
   if(predict){ 
     return(mu)
