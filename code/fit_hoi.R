@@ -69,6 +69,7 @@ dat <-
   mutate( two_species = num_sp %in% c(0, 1, 2)) %>%
   mutate( three_species = num_sp %in% c(0:3)) 
 
+<<<<<<< HEAD
 
 fill_in_inits <- function(x) {  
   if( length(x) > 1) { 
