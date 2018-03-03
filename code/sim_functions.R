@@ -49,7 +49,7 @@ run_multi_gen <- function(seedlings, t, parms, tol){
   population[1, ] <- seedlings
   
   i <- 1
-  pop_diff <- c(1, 1, 1)
+  pop_diff <- rep(1, 3)
   while( i < t & any(pop_diff > tol)){
     State <- as.numeric(c(parms$soil_m, population[i, ]*parms$seedling_mass))
     out[[i]] <- ode(y=State, times = seq(1, parms$times, 0.1), func = grow, parms = parms, events = list(func = event, root = TRUE), rootfun = root )
@@ -82,7 +82,7 @@ mod_bh <- function(pars, data, form, predict = FALSE){
   
   mu <- pars[1]*(1 + mm%*%pars[c(2:(length(pars) - 1))])^pars[length(pars)]
   
-  Error <- sum( (mu - data$y)^2 )
+  Error <- sum( (log(mu) - log(data$y))^2 )
 
   if(predict){ 
     return(mu)
@@ -102,14 +102,14 @@ mod_bh2 <- function( pars, data, form, predict = F, lg = F){
   lambda <- pars[1]
   pars <- pars[-1]
   
-  betas <- pars[ 1:ncol(mm) ]
-  taus <- pars[ (ncol(mm) + 1):(ncol(mm)*2) ]
+  taus <- pars[ 1:ncol(mm) ]
+
   mu <- NA
   for( i in 1:nrow(mm)){ 
-    mu[i] <- lambda/( 1 + sum( betas*( mm[i, ]^taus ) ) )
+    mu[i] <- lambda/( 1 + sum(  mm[i, ]^taus  ) )
   }
   
-  Error <- sum( (mu - data$y)^2 ) 
+  Error <- sum( (log(mu) - log(data$y))^2 ) 
 
   if(predict){ 
     return(mu)

@@ -27,7 +27,7 @@ rs <- rs[-1, ]
 rs <- rs %>% distinct()
 
 rs <- split( rs, 1:nrow(rs))
-rs_results <- lapply( rs, run_experiment, parms )
+rs_results <- mclapply( rs, run_experiment, parms, mc.cores = 4)
 
 save(rs_results, file = 'data/rs_results.rda')
 save(rs, file = 'data/rs.rda')
