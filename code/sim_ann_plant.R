@@ -10,129 +10,50 @@ par(mfrow = c(1,1))
 source('code/sim_functions.R')
 source('code/figure_pars.R')
 
-load('data/experiments.rda')
-load('data/out.rda')
-load('data/parms.rda')
-load('data/seedling_mass.rda')
-load('data/conversion.rda')
+# set parameters ------------------------------------- 
+alphas <- matrix( c(1, 0.9, 0.2, 0.3, 1, 0.1, 0.2, 0.9, 1), 3, 3, byrow = T)
+lambdas <- c(1, 2, 3)
+taus <- c(-1, -1, -1)
+pars <- list( lambdas = lambdas, alphas = alphas , taus = taus) 
 
-load('data/result_fit.rda')
-load('data/experiments.rda')
-load('data/mech_eq.rda')
+# ------------------------------------------------ 
 
-ann_plant_mod <- function(x, form, pars) { 
-  lambda <- pars[1]   
-  alphas <- pars[2:(length(pars)-1)]
-  tau <- pars[length(pars)]
-  mm <- model.matrix(as.formula( form ), x )
-  y <- lambda*(1 + mm%*%alphas)^(tau)    
-  return(y)
+experiments <- expand.grid( N1 = c(0, 2^seq(0, 8, 1)), N2 = c(0, 2^seq(0, 8, 1)), N3 = c(0, 2^seq(0, 8, 1)) )
+form <- as.formula('~ -1 + N1 + N2 + N3')
+
+out <- experiments
+for( i in 1:nrow(experiments)){ 
+  seeds <- experiments[i, ]
+  out[i, ] <- ann_plant_mod(seeds, form, unlist(pars))
 }
 
-results[[1]][[2]]
-results[[2]][[2]]
-results[[3]][[2]]
+experiments <- data.frame(experiments, out)
+names(experiments) <- c(paste0('N', 1:3), paste0('F', 1:3))
 
-State <- c(1,0,1)
-#as.matrix( apply( experiments, 2, median))
-State <- data.frame( t(State) ) 
-names( State) <- c('N1', 'N2', 'N3')
+experiments <- 
+  experiments %>% 
+  filter( (N1 == 0 & N2 == 0) | (N3 == 0 & N2 == 0 ) | (N1 == 0 & N3 == 0 ) ) %>% 
+  mutate( lambda =  ifelse(N1 == 0 & N2 == 0 & N3 == 0 , T, F)) %>% 
+  gather( competitor, density, N1:N3) %>% 
+  filter( lambda | density > 0 ) %>% 
+  gather( focal, fecundity, F1:F3)  
 
-form1 <- paste('~ -1 + N1 + N2 + N3')
-form2 <- paste(form1, '+ I(N1*N2) + I(N1*N3) + I(N2*N3)')
-all_forms <- c(form1, form2)
+experiments %>% 
+  ggplot(aes( x = density, y = fecundity, color = competitor) ) + 
+  geom_point(alpha = 1) + 
+  geom_line(alpha = 0.5) + 
+  facet_grid(focal ~ competitor )
 
-nspp <- length(State)
-time <- 100
 
-out1 <- out2 <- data.frame( matrix(NA, ncol = nspp, nrow = time))
-out1[1, ] <- out2[1, ] <- as.numeric( State)
-names(out1) <- names(out2) <- c('N1', 'N2', 'N3')
+fit1 <- fit_ann_plant(experiments, focal = 1)
+fit2 <- fit_ann_plant(experiments, focal = 2)
+fit3 <- fit_ann_plant(experiments, focal = 3)
 
-pars1 <- lapply( results, function(x) x[[1]]$par )
-pars2 <- lapply( results, function(x) x[[2]]$par )
+fit1$par
+fit2$par
+fit3$par
 
-for(j in 2:time) { 
-  for( i in 1:nspp){ 
-    out1[j, i] <- out1[j-1, i]*ann_plant_mod(out1[j-1, ], form = form1, pars = pars1[[i]])
-    out2[j, i] <- out2[j-1, i]*ann_plant_mod(out2[j-1, ], form = form2, pars = pars2[[i]])
-  }
-} 
-
-ap1_eq <- out1[nrow(out1), ]
-ap2_eq <- out2[nrow(out2), ]
-mech_eq
-
-ap2_eq
-ap1_eq
-
-(ap1_eq - mech_eq)/mech_eq
-(ap2_eq - mech_eq)/mech_eq
-
-#
-State <- as.numeric( ap1_eq)
-State[2] <- 1
-#as.matrix( apply( experiments, 2, median))
-State <- data.frame( t(State) ) 
-names( State) <- c('N1', 'N2', 'N3')
-
-form1 <- paste('~ -1 + N1 + N2 + N3')
-form2 <- paste(form1, '+ I(N1*N2) + I(N1*N3) + I(N2*N3)')
-all_forms <- c(form1, form2)
-
-nspp <- length(State)
-time <- 1000
-
-out1 <- out2 <- data.frame( matrix(NA, ncol = nspp, nrow = time))
-out1[1, ] <- out2[1, ] <- as.numeric( State)
-names(out1) <- names(out2) <- c('N1', 'N2', 'N3')
-
-pars1 <- lapply( results, function(x) x[[1]]$par )
-pars2 <- lapply( results, function(x) x[[2]]$par )
-
-for(j in 2:time) { 
-  for( i in 1:nspp){ 
-    out1[j, i] <- out1[j-1, i]*ann_plant_mod(out1[j-1, ], form = form1, pars = pars1[[i]])
-    out2[j, i] <- out2[j-1, i]*ann_plant_mod(out2[j-1, ], form = form2, pars = pars2[[i]])
-  }
-} 
-
-ap1_eq
-mech_eq
-out1[time, ]
-matplot(out1)
-
-#
-State <- as.numeric( ap1_eq)
-State[3] <- 1
-#as.matrix( apply( experiments, 2, median))
-State <- data.frame( t(State) ) 
-names( State) <- c('N1', 'N2', 'N3')
-
-form1 <- paste('~ -1 + N1 + N2 + N3')
-form2 <- paste(form1, '+ I(N1*N2) + I(N1*N3) + I(N2*N3)')
-all_forms <- c(form1, form2)
-
-nspp <- length(State)
-time <- 1000
-
-out1 <- out2 <- data.frame( matrix(NA, ncol = nspp, nrow = time))
-out1[1, ] <- out2[1, ] <- as.numeric( State)
-names(out1) <- names(out2) <- c('N1', 'N2', 'N3')
-
-pars1 <- lapply( results, function(x) x[[1]]$par )
-pars2 <- lapply( results, function(x) x[[2]]$par )
-
-for(j in 2:time) { 
-  for( i in 1:nspp){ 
-    out1[j, i] <- out1[j-1, i]*ann_plant_mod(out1[j-1, ], form = form1, pars = pars1[[i]])
-    out2[j, i] <- out2[j-1, i]*ann_plant_mod(out2[j-1, ], form = form2, pars = pars2[[i]])
-  }
-} 
-
-ap1_eq
-mech_eq
-out1[time, ]
-matplot(out1)
+matrix( c(fit1$par[2:4] , fit2$par[2:4], fit3$par[2:4]), 3, 3, byrow = T)
+alphas
 
 

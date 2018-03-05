@@ -177,12 +177,32 @@ find_N_hat2 <- function(my_range = c(1e-7, 100), fun, ... ){
   uniroot(fitness, interval = my_range, fun = fun, ... )
 }
 
-ann_plant_mod <- function(x, pars) { 
-  lambda <- pars[1]   
-  alphas <- pars[2:(length(pars)-1)]
-  tau <- pars[length(pars)]
-  y <- lambda*(1 + x%*%alphas)^(tau)    
+ann_plant_mod <- function(x, form, pars) { 
+  pars <- unlist(pars)
+  mm <- model.matrix(as.formula( form ), x )
+  nt <- ncol(mm)
+  nsp <- ncol( x %>% select(starts_with('N')))
   
-  return(x*y)
+  lambda <- head( pars, nsp)   
+  tau <- tail(pars, nsp)
+  alphas <- pars[ rev(rev(seq_along(pars))[-c(1:nsp)])[-c(1:nsp)] ]
+  alphas <- matrix( alphas, nsp, nt, byrow = T)
+  
+  y <- lambda*((1 + mm%*%alphas)^(tau))    
+  
+  return(y)
 }
 
+fit_ann_plant <- function(data, focal = 1, ... ){ 
+  
+  temp <- 
+    data %>% 
+    filter_( .dots = paste0( 'focal == "F', focal, '"')) %>% 
+    spread( competitor, density, fill = 0)
+  
+  nspp <- ncol(temp %>% select(starts_with('N')))
+  
+  temp$y <- temp$fecundity
+  
+  optim(par = c(max(temp$fecundity), rep(1, nspp), -1), mod_bh, data = temp, form = form, method = 'L-BFGS-B', lower = c(0.1,  0, 0, 0,  -2))
+}
