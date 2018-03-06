@@ -193,7 +193,7 @@ ann_plant_mod <- function(x, form, pars) {
   return(y)
 }
 
-fit_ann_plant <- function(data, focal = 1, ... ){ 
+fit_ann_plant <- function(data, focal = 1, model, my_inits = NULL, ... ){ 
   
   temp <- 
     data %>% 
@@ -203,6 +203,10 @@ fit_ann_plant <- function(data, focal = 1, ... ){
   nspp <- ncol(temp %>% select(starts_with('N')))
   
   temp$y <- temp$fecundity
-  
-  optim(par = c(max(temp$fecundity), rep(1, nspp), -1), mod_bh, data = temp, form = form, method = 'L-BFGS-B', lower = c(0.1,  0, 0, 0,  -2))
+  if( is.null(my_inits)){ 
+    par <- c(max(temp$fecundity), rep(1, nspp), -1)
+  }else{ 
+    par <- my_inits 
+  }
+  optim(par = par, model, data = temp, form = form)
 }
