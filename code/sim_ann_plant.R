@@ -11,14 +11,14 @@ source('code/sim_functions.R')
 source('code/figure_pars.R')
 
 # set parameters ------------------------------------- 
-alphas <- matrix( c(1, 0.9, 0.2, 0.3, 1, 0.1, 0.2, 0.9, 1), 3, 3, byrow = T)
-lambdas <- c(1, 2, 3)
-taus <- c(-1, -1, -1)
+alphas <- matrix( c(1, 0.5, 0.1, 0.3, 1, 0.2, 0.1, 0.2, 20), 3, 3, byrow = T)
+lambdas <- c(24, 32, 41)
+taus <- c(-1, -1, -0.2)
 pars <- list( lambdas = lambdas, alphas = alphas , taus = taus) 
 
 # ------------------------------------------------ 
 
-experiments <- expand.grid( N1 = c(0, 2^seq(0, 8, 1)), N2 = c(0, 2^seq(0, 8, 1)), N3 = c(0, 2^seq(0, 8, 1)) )
+experiments <- expand.grid( N1 = c(0, 2^seq(0, 12, 1)), N2 = c(0, 2^seq(0, 12, 1)), N3 = c(0, 2^seq(0, 12, 1)) )
 form <- as.formula('~ -1 + N1 + N2 + N3')
 
 out <- experiments
@@ -38,11 +38,16 @@ experiments <-
   filter( lambda | density > 0 ) %>% 
   gather( focal, fecundity, F1:F3)  
 
-experiments %>% 
-  ggplot(aes( x = density, y = fecundity, color = competitor) ) + 
-  geom_point(alpha = 1) + 
-  geom_line(alpha = 0.5) + 
-  facet_grid(focal ~ competitor )
+
+test <- experiments
+test$competitor_label <- paste0( 'competitor\n', test$competitor) 
+test$focal_label <- paste0( 'focal\n', str_replace( test$focal, 'F', 'N'))
+
+test %>% 
+  ggplot(aes( x = density, y = fecundity, color = competitor_label) ) + 
+  geom_point() + 
+  geom_line() + 
+  facet_grid(focal_label ~ competitor_label )
 
 
 fit1 <- fit_ann_plant(experiments, focal = 1)
