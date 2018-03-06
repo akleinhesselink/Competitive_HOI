@@ -1,0 +1,256 @@
+---
+bibliography: higher_order_interactions.bib
+csl: ecology.csl
+fontsize: 12pt
+geometry: margin=1in
+header-includes:
+- \usepackage{lineno}
+- \usepackage{longtable}
+- \usepackage{booktabs}
+- \usepackage{setspace}
+- \doublespacing
+- \usepackage[documeZnt]{ragged2e}
+- \usepackage{amsmath}
+- \usepackage{pdflscape}
+- \usepackage{geometry}
+- \usepackage{caption}
+- \usepackage{bm}
+- \usepackage{multirow}
+- \newcommand{\blandscape}{\begin{landscape}}
+- \newcommand{\elandscape}{\end{landscape}}
+- \newcommand{\beginsupplement}{\setcounter{table}{0}\renewcommand{\thetable}{S\arabic{table}}\setcounter{figure}{0}\renewcommand{\thefigure}{S\arabic{figure}}\setcounter{equation}{0}\renewcommand{\theequation}{S\arabic{equation}}}
+
+layout: 12pt
+linkcolor: black
+output:
+  pdf_document:
+    fig_caption: yes
+    keep_tex: yes
+  word_document: default
+urlcolor: black
+---
+
+```{r caching, include=FALSE}
+library('png')
+library('grid')
+library("methods")
+library("knitr")
+basename <- "manuscript"
+opts_chunk$set(fig.path = paste("components/figure/", basename, "-", sep=""),
+               cache.path = paste("components/cache/", basename, "/", sep=""))
+opts_chunk$set(cache = FALSE)
+opts_chunk$set(tidy=FALSE, warning=FALSE, message=FALSE, 
+               comment = NA, verbose = TRUE, echo=FALSE)
+
+# PDF-based figures
+opts_chunk$set(dev='pdf')
+```
+
+```{R echo = FALSE}
+
+```
+
+
+\renewcommand*{\thefootnote}{\fnsymbol{footnote}}
+
+\begin{titlepage}
+\begin{centering}
+
+\sloppy
+
+\ 
+
+\ 
+
+\ 
+
+ 
+
+
+\textbf{\large{Where do higher order interactions come from?}}
+
+\textsc{\small{Andrew R. Kleinhesselink\footnote{Corresponding author: arklein@ucla.edu}\textsuperscript{1}, Nathan Kraft\textsuperscript{1}, Jonathan M. Levine\\textsuperscript{2}}}
+
+
+\textit{\small{\textsuperscript{1}Department of Ecology and Evolutionary Biology, University of California, Los Angeles 621 Charles E. Young Drive South Los Angeles, CA 90095 USA}} \\
+\textit{\small{\textsuperscript{2}ETH, Zurich Switzerland}} \\
+
+\end{centering}
+
+\bigskip \textbf{Running title:} Higher order interactions
+
+\smallskip \textbf{Submission type:} Article
+\vspace{3 cm}
+
+
+
+\renewcommand*{\thefootnote}{\arabic{footnote}}
+\setcounter{footnote}{0}
+
+\end{titlepage}
+\pagebreak{}
+\linenumbers
+
+Abstract
+--------
+
+*Key words: competition, coexistence theory*
+
+Introduction
+-------------
+
+
+
+
+Methods
+---------------------
+#### Phenomenological models of annual plant competition  
+
+\vspace{-4em}
+\begin{equation} \label{eq1}
+\begin{split}
+N_{i,t+1} = sN_{i, t}(1-g) + gN_{i,t}\lambda_i (1 + \sum_{j = 1}^n \alpha_{ij}g_jN_{j,t})^{\tau_i}
+\end{split}
+\end{equation}
+
+\vspace{-4em}
+\begin{equation} \label{eq2}
+\begin{split}
+N_{i,t+1} = sN_{i, t}(1-g) + gN_{i,t}\frac{ \lambda_i }{ (1 + \sum_{j = 1}^n[g_jN_{j,t}]^{\eta_j}) }
+\end{split}
+\end{equation}
+
+
+#### Mechanistic model of annual plant competition
+
+
+#### Assessing higher order interactions
+
+
+Results
+-------
+
+Discussion
+-----------
+
+Conclusion
+----------
+
+
+Acknowledgments
+---------------
+
+\pagebreak{}
+
+References
+----------
+\setlength{\parindent}{-0.2in}
+\setlength{\leftskip}{0.2in}
+\setlength{\parskip}{12pt}
+\noindent
+
+
+<div id="refs"></div>
+
+
+\pagebreak{} 
+
+\setlength{\parindent}{0in}
+\setlength{\leftskip}{0in}
+\setlength{\parskip}{12pt}
+
+Tables
+------
+
+<!-- \captionsetup{width=14cm} -->
+<!-- \begin{table}[ht] -->
+<!-- \centering -->
+<!-- \caption{Summary of } -->
+<!-- \label{tab:table1} -->
+<!-- \begin{tabular}{llll} -->
+<!--   \toprule -->
+<!--   \input{ test.txt} -->
+<!-- \end{tabular} -->
+<!-- \end{table} -->
+
+
+\pagebreak{}
+
+
+Figure Legends
+-------
+
+**Figure \ref{fig:hypothesis}.** 
+
+**Figure \ref{fig:map}.** 
+
+**Figure \ref{fig:effects}.** 
+
+\pagebreak{}
+
+
+Figures
+------
+
+<!-- \begin{figure}[!ht] -->
+<!--   \centering -->
+<!--       \includegraphics[width=6in]{../figures/hypothesis.png} -->
+<!--   \caption{} -->
+<!--   \label{fig:hypothesis} -->
+<!-- \end{figure} -->
+
+
+\pagebreak{}
+
+
+Appendix S1:
+===========================================================================
+
+\beginsupplement
+
+
+```{R echo = FALSE}
+
+```
+
+
+Mechanistic Model
+------
+
+
+\pagebreak{}
+
+
+Tables
+------
+
+<!-- \captionsetup{width=14cm} -->
+<!-- \begin{table}[ht] -->
+<!-- \centering -->
+<!-- \caption{} -->
+<!-- \label{tab:subspecies} -->
+<!-- \begin{tabular}{llll} -->
+<!--   \toprule -->
+<!--   \input{ ../data/table.txt} -->
+<!-- \end{tabular} -->
+<!-- \end{table} -->
+
+
+
+\pagebreak{}
+
+
+
+Figures
+-------
+
+
+
+<!-- \begin{figure}[!ht] -->
+<!--   \centering -->
+<!--       \includegraphics[width=6in]{../figures/test.png} -->
+<!--   \caption{} -->
+<!--   \label{fig:test} -->
+<!-- \end{figure} -->
+
+
