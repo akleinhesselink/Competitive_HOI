@@ -208,5 +208,32 @@ fit_ann_plant <- function(data, focal = 1, model, my_inits = NULL, ... ){
   }else{ 
     par <- my_inits 
   }
-  optim(par = par, model, data = temp, form = form)
+  optim(par = par, model, data = temp, form = form, ... )
 }
+
+predict_fit <- function( dat, model, pars, foc = 1 ){ 
+  mod_name <- deparse(substitute(model))
+  
+  dat <- 
+    dat %>% 
+    filter( focal == paste0('F', foc)) %>% 
+    distinct(id, focal, competitor, density) %>% 
+    spread( competitor, density , fill = 0) %>% 
+    arrange(N1, N2, N3) %>% 
+    group_by( N1, N2, N3) %>% 
+    arrange( as.numeric(id) ) %>% 
+    filter( row_number() == 1 )
+  
+  dat$y <- NA
+  dat$pred <- as.numeric(model(pars = pars, dat, form = form, predict = T))
+  
+  dat %>% 
+    ungroup() %>% 
+    select(id, focal, pred) %>% 
+    filter( !is.na(pred)) %>% 
+    distinct() %>% 
+    arrange( as.numeric(id)) %>% 
+    mutate( focal_predicted = paste0('pred.', mod_name, '.', focal)) %>% 
+    spread( focal_predicted, pred )
+}
+

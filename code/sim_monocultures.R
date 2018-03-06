@@ -3,37 +3,13 @@ library(tidyr)
 library(deSolve)
 library(ggplot2)
 library(parallel)
+library(stringr)
 
 rm(list = ls())
 par(mfrow = c(1,1))
 
 source('code/sim_functions.R')
 source('code/figure_pars.R')
-
-predict_fit <- function( dat, model, pars, foc = 1 ){ 
-  
-  dat <- 
-    dat %>% 
-    filter( focal == paste0('F', foc)) %>% 
-    distinct(id, focal, competitor, density) %>% 
-    spread( competitor, density , fill = 0) %>% 
-    arrange(N1, N2, N3) %>% 
-    group_by( N1, N2, N3) %>% 
-    arrange( as.numeric(id) ) %>% 
-    filter( row_number() == 1 )
-  
-  dat$y <- NA
-  dat$pred <- as.numeric(model(pars = pars, dat, form = form, predict = T))
-  
-  dat %>% 
-    ungroup() %>% 
-    select(id, focal, pred) %>% 
-    filter( !is.na(pred)) %>% 
-    distinct() %>% 
-    arrange( as.numeric(id)) %>% 
-    mutate( focal_predicted = paste0('pred_', focal)) %>% 
-    spread( focal_predicted, pred )
-}
 
 # parameterize model --------------------------------------------------------------------------------------------------- 
 times <- 200             # length of simulation in days 
@@ -56,9 +32,12 @@ plot_transpiration(parms,  my_colors)
 plot_growth_rate(parms, my_colors)
 plot_Rstar(parms, my_colors)
 
-# -------- simulate multiple years -------------------------- # 
-maxdens <- 8
-experiments <- expand.grid(N1 = c(0, c(2^c(0:maxdens))), N2 = c(0, 2^c(0:maxdens)), N3 = c(0, 2^c(0:maxdens)))
+# -------- simulate gradient  -------------------------- # 
+maxdens <- 10
+base <- 2 
+experiments <- expand.grid(N1 = c(0, c(base^c(0:maxdens))), N2 = c(0, base^c(0:maxdens)), N3 = c(0, base^c(0:maxdens)))
+
+form <- as.formula('~ -1 + N1 + N2 + N3')
 
 monocultures <- 
   experiments %>% 
@@ -117,59 +96,63 @@ results %>%
 
 form <- as.formula('~ -1 + N1 + N2 + N3')
 
+fits <- lapply(1:3, function(x, ...) fit_ann_plant(focal = x, ... ), data = results, model = mod_bh, method = 'BFGS' )
+converged <- lapply( fits, function(x) x$convergence) == 0
+fitpars <- lapply( fits, function(x) x$par )
+fits[!converged] <- mapply(x = which(!converged), y = fitpars[!converged], FUN = function(x, y, ... ) fit_ann_plant(focal = x, my_inits = y, ... ), MoreArgs = list( data = results, model = mod_bh, method = 'BFGS', control = list( maxit = 1e4, reltol = 1e-10)), SIMPLIFY = F)
 
-fit1 <- fit_ann_plant(results, focal = 1, model = mod_bh, my_inits = c(24, 1, 0, 0, -1), method = 'L-BFGS-B', lower = c(10, 0, 0, 0, -2), upper = c(1000, 20, 20, 20, -0.0001))
-fit1 <- fit_ann_plant(results, focal = 1, model = mod_bh, my_inits = fit1$par, method = 'BFGS', lower = c(10, 0, 0, 0, -2), upper = c(1000, 20, 20, 20, -0.0001), control = list(maxit = 1e5))
-fit2 <- fit_ann_plant(results, focal = 2, model = mod_bh, method = 'BFGS')
+fit_ann_plant(focal = 3, model = mod_bh, my_inits = c(40, 0, 0, 0, -0.5), data = results, method = 'L-BFGS-B', lower = c(0, 0,0,0,-4), upper= c(1e5, 1e5, 1e5, 1e6, 0))
+fits[[3]] <- fit_ann_plant(focal = 3, model = mod_bh, my_inits = c(400, 200, 200, 200, -0.5), data = results, method = 'L-BFGS-B', lower = c(41, 0,0,0, -4 ), upper= c(50, 1e5, 1e5, 1e6, 0))
 
-fit3 <- fit_ann_plant(results, focal = 3, model = mod_bh, my_inits = c(41, 0, 0, 10, -0.5), method = 'L-BFGS-B', lower = c(10, 0, 0, 0, -2), upper = c(1000, 20, 20, 100, -0.0001))
-fit3 <- fit_ann_plant(results, focal = 3, model = mod_bh, my_inits = fit1$par, method = 'BFGS')
+fits.2 <- lapply(1:3, function(x, ...) fit_ann_plant(focal = x, ... ), data = results, model = mod_bh2, method = 'BFGS',  my_inits = c(40, 1,1,1))
+converged <- lapply( fits.2, function(x) x$convergence) == 0
+fitpars <- lapply( fits.2, function(x) x$par )
+fits.2[!converged] <- mapply(x = which(!converged), y = fitpars[!converged], FUN = function(x, y, ... ) fit_ann_plant(focal = x, my_inits = y, ... ), MoreArgs = list( data = results, model = mod_bh2, method = 'BFGS' ), SIMPLIFY = F)
 
+pred_fit1 <- predict_fit(results, model = mod_bh, fits[[1]]$par, 1) 
+pred_fit2 <- predict_fit(results, model = mod_bh, fits[[2]]$par, 2)
+pred_fit3 <- predict_fit(results, model = mod_bh, fits[[3]]$par, 3)
 
-fit1.2 <-fit_ann_plant(results, focal = 1, model = mod_bh2, my_inits = c(41, 0.1, 0.1, 0.1), method = 'BFGS')
-fit2.2 <-fit_ann_plant(results, focal = 2, model = mod_bh2, my_inits = c(41, 0.1, 0.1, 0.1), method = 'BFGS')
-fit3.2 <-fit_ann_plant(results, focal = 3, model = mod_bh2, my_inits = c(41, 0.1, 0.1, 0.1), method = 'BFGS')
-fit3.2
+pred_fit1.2 <- predict_fit(results, model = mod_bh2, fits.2[[1]]$par, 1) 
+pred_fit2.2 <- predict_fit(results, model = mod_bh2, fits.2[[2]]$par, 2)
+pred_fit3.2 <- predict_fit(results, model = mod_bh2, fits.2[[3]]$par, 3)
 
-fit3.2 <-fit_ann_plant(results, focal = 3, model = mod_bh2, my_inits = fit3.2$par, method = 'BFGS')
-fit3.2$par
-
-pred_fit1 <- predict_fit(results, model = mod_bh, fit1$par, 1) 
-pred_fit2 <- predict_fit(results, model = mod_bh, fit2$par, 2)
-
-my_par <- fit3.2$par
-pred_fit3 <- predict_fit(results, model = mod_bh2, my_par, 3)
-
-testtest <- 
+figdat <- 
   results %>% 
   left_join(pred_fit1, by = c('id', 'focal')) %>% 
   left_join(pred_fit2, by = c('id', 'focal')) %>% 
-  left_join(pred_fit3, by = c('id', 'focal')) 
-
-testtest <- testtest %>% 
+  left_join(pred_fit3, by = c('id', 'focal')) %>%
+  left_join(pred_fit1.2, by = c('id', 'focal')) %>% 
+  left_join(pred_fit2.2, by = c('id', 'focal')) %>% 
+  left_join(pred_fit3.2, by = c('id', 'focal')) %>%
   gather( predicted, pred_fecundity, starts_with('pred')) %>% 
-  select(-predicted) %>% 
+  separate( predicted, c('t1', 'model', 'predicted_sp'), sep = '\\.') %>% 
+  select(-t1, -predicted_sp) %>% 
   filter( !is.na(pred_fecundity))
 
-testtest %>%
+all_fits <- 
+  figdat %>%
   ggplot(aes( x = density, y = fecundity) ) + 
   geom_point() + 
-  geom_line(aes( y = pred_fecundity), linetype = 2) + 
+  geom_line(aes( y = pred_fecundity, color = model), linetype = 1) +
   facet_grid(focal_label ~ competitor_label )
 
-testtest %>%
+
+sp3_fits <- 
+  figdat %>%
   filter( focal == 'F3') %>% 
   ggplot(aes( x = density, y = fecundity) ) + 
   geom_point() + 
-  geom_line(aes(y = pred_fecundity), alpha = 0.5, linetype = 2) + 
+  geom_line(aes( y = pred_fecundity, color = model), linetype = 1) +
   ylab('fecundity of N3')  + 
   facet_grid( ~ competitor_label )
 
-testtest %>%
-  filter( focal == 'F3') %>% 
-  ggplot(aes( x = density, y = fecundity) ) + 
-  geom_point() + 
-  geom_line(aes(y = pred_fecundity), alpha = 0.5, linetype = 2) + 
-  ylab('fecundity of N3')  + 
-  facet_grid( ~ competitor_label ) + 
-  scale_y_continuous(trans = 'log')
+
+sp3_fits_log <- 
+  sp3_fits + scale_y_continuous(trans = 'log')
+
+
+ggsave(all_fits, filename = 'figures/mechanistic_model_fits.png', width = 10, height = 5)
+ggsave(sp3_fits, filename = 'figures/mechanistic_sp_3_fits.png', width = 10, height = 5)
+ggsave(sp3_fits_log, filename = 'figures/mechanisitic_sp_3_fits_log.png', width = 10, height = 5)
+
