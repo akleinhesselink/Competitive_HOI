@@ -11,75 +11,45 @@ source('code/sim_functions.R')
 source('code/figure_pars.R')
 
 # set parameters ------------------------------------- 
-alphas <- matrix( c(1, 0.5, 0.1, 0.3, 1, 0.2, 0.1, 0.2, 20), 3, 3, byrow = T)
+nspp <- 3 
+alphas <- matrix( c(1, 0.5, 0.1, 0.3, 1, 0.2, 0.1, 0.2, 20), nspp, nspp, byrow = T)
 lambdas <- c(24, 32, 41)
 taus <- c(-1, -1, -0.2)
-pars <- list( lambdas = lambdas, alphas = alphas , taus = taus) 
-
-# -------- simulate gradient  -------------------------- # 
+pars <- list( lambdas = lambdas, alphas = alphas , taus = taus ) 
+# 
 maxdens <- 10
 base <- 2 
-experiments <- expand.grid(N1 = c(0, c(base^c(0:maxdens))), N2 = c(0, base^c(0:maxdens)), N3 = c(0, base^c(0:maxdens)))
 
-# 
-form <- as.formula('~ -1 + N1 + N2 + N3')
+# -----------------------------------------------------
+experiments <- make_experiments(maxdens , base, nspp)
 
 out <- experiments
 for( i in 1:nrow(experiments)){ 
-  seeds <- experiments[i, ]
-  out[i, ] <- ann_plant_mod(seeds, form, unlist(pars))
+  seeds <- experiments[i,1:3]
+  out[i,1:nspp] <- ann_plant_mod(seeds, form1, unlist(pars))
 }
 
-results <- data.frame(experiments, out)
-names(results) <- c(paste0('N', 1:3), paste0('F', 1:3))
+results <- merge( experiments, out, by = 'id')
+names(results)[-1] <- c(paste0('N', 1:nspp), paste0('F', 1:nspp))
 
-results <- 
-  results %>%   
-  tibble::rownames_to_column('id') %>% 
-  filter( (N1 == 0 & N2 == 0) | (N3 == 0 & N2 == 0 ) | (N1 == 0 & N3 == 0 ) ) %>% 
-  mutate( lambda =  ifelse(N1 == 0 & N2 == 0 & N3 == 0 , T, F)) %>% 
-  gather( competitor, density, N1:N3) %>% 
-  filter( lambda | density > 0 ) %>% 
-  gather( focal, fecundity, F1:F3)  
+results <- make_monoculture(results)
 
+fits.1 <- fit_2_converge(results, model = mod_bh, method = 'L-BFGS-B', form = form1, lower = c(0, 0, 0, 0, -2))
+fits.2 <- fit_2_converge(results, model = mod_bh2, method = 'L-BFGS-B', form = form1, my_inits = c(10, 1,1,1), lower = c(1, 0, 0, 0))
 
-results$competitor_label <- paste0( 'competitor\n', results$competitor) 
-results$focal_label <- paste0( 'focal\n', str_replace( results$focal, 'F', 'N'))
+pred_fit1 <- mapply( x = 1:nspp, y = fits.1, FUN = function(x,y, ... ) predict_fit(pars = y$par, foc = x, dat = results, model = mod_bh, form = form1), SIMPLIFY = F)
+pred_fit2 <- mapply( x = 1:nspp, y = fits.2, FUN = function(x,y, ... ) predict_fit(pars = y$par, foc = x, dat = results, model = mod_bh2, form = form1), SIMPLIFY = F)
 
-fits <- lapply(1:3, function(x, ...) fit_ann_plant(focal = x, ... ), data = results, model = mod_bh, method = 'BFGS' )
-converged <- lapply( fits, function(x) x$convergence) == 0
-fitpars <- lapply( fits, function(x) x$par )
-fits[!converged] <- mapply(x = which(!converged), y = fitpars[!converged], FUN = function(x, y, ... ) fit_ann_plant(focal = x, my_inits = y, ... ), MoreArgs = list( data = results, model = mod_bh, method = 'BFGS' ), SIMPLIFY = F)
+preds <- do.call( rbind, lapply( c(pred_fit1, pred_fit2), function(x) x %>% gather( predicted, pred_fecundity, starts_with('pred'))))
 
-
-fits.2 <- lapply(1:3, function(x, ...) fit_ann_plant(focal = x, ... ), data = results, model = mod_bh2, method = 'L-BFGS-B',  my_inits = c(20, 0,0,0), lower = c(1, 1e-6, 1e-6, 1e-6 ))
-converged <- lapply( fits.2, function(x) x$convergence) == 0
-fitpars <- lapply( fits.2, function(x) x$par )
-fits.2[!converged] <- mapply(x = which(!converged), y = fitpars[!converged], FUN = function(x, y, ... ) fit_ann_plant(focal = x, my_inits = y, ... ), MoreArgs = list( data = results, model = mod_bh2, method = 'BFGS' ), SIMPLIFY = F)
-
-pred_fit1 <- predict_fit(results, model = mod_bh, fits[[1]]$par, 1) 
-pred_fit2 <- predict_fit(results, model = mod_bh, fits[[2]]$par, 2)
-pred_fit3 <- predict_fit(results, model = mod_bh, fits[[3]]$par, 3)
-
-pred_fit1.2 <- predict_fit(results, model = mod_bh2, fits.2[[1]]$par, 1) 
-pred_fit2.2 <- predict_fit(results, model = mod_bh2, fits.2[[2]]$par, 2)
-pred_fit3.2 <- predict_fit(results, model = mod_bh2, fits.2[[3]]$par, 3)
-
-figdat <- 
-  results %>% 
-  left_join(pred_fit1, by = c('id', 'focal')) %>% 
-  left_join(pred_fit2, by = c('id', 'focal')) %>% 
-  left_join(pred_fit3, by = c('id', 'focal')) %>%
-  left_join(pred_fit1.2, by = c('id', 'focal')) %>% 
-  left_join(pred_fit2.2, by = c('id', 'focal')) %>% 
-  left_join(pred_fit3.2, by = c('id', 'focal')) %>%
-  gather( predicted, pred_fecundity, starts_with('pred')) %>% 
+figdat <-
+  preds %>% 
   separate( predicted, c('t1', 'model', 'predicted_sp'), sep = '\\.') %>% 
   select(-t1, -predicted_sp) %>% 
   filter( !is.na(pred_fecundity))
 
 all_fits <- 
-  figdat %>%
+  left_join(results, figdat, by = c('id', 'focal')) %>%
   ggplot(aes( x = density, y = fecundity) ) + 
   geom_point() + 
   geom_line(aes( y = pred_fecundity, color = model), linetype = 1) +
@@ -90,16 +60,15 @@ ggsave(all_fits + scale_y_continuous(trans = 'log'), filename = 'figures/fit_ann
 
 # compare parameters 
 
-
 fitted <- 
-  data.frame( N1 = fits[[1]]$par, N2 = fits[[2]]$par, N3 = fits[[3]]$par) %>%
-  mutate( par = c('lambda', paste0('alpha_', 1:3), 'tau')) %>% 
-  gather( species, value, N1:N3) %>% 
+  data.frame( N1 = fits.1[[1]]$par, N2 = fits.1[[2]]$par, N3 = fits.1[[3]]$par) %>%
+  mutate( par = c('lambda', paste0('alpha_', 1:nspp), 'tau')) %>% 
+  gather( species, value, starts_with('N')) %>% 
   mutate( par = str_replace(par, '_', str_extract(species, '\\d+'))) %>% 
   mutate( type = 'fitted')
 
 original <- 
-  data.frame( species = c('N1', 'N2', 'N3'), lambda = pars$lambdas, alpha = pars$alphas, tau = pars$taus ) %>% 
+  data.frame( species = paste0('N', 1:nspp), lambda = pars$lambdas, alpha = pars$alphas, tau = pars$taus ) %>% 
   gather( par, value, lambda:tau) %>%
   mutate( par = str_replace(par, '\\.', str_extract(species, '\\d+'))) %>%
   mutate( type = 'original')
@@ -108,7 +77,6 @@ pars_df <-
   bind_rows(fitted, original ) %>% 
   mutate( par_type = str_extract(par, '[a-z]+')) %>% 
   mutate( par = ifelse(!str_detect(par, '\\d+'), paste0(par, str_extract(species, '\\d+')), par))
-
 
 pars_plot <- 
   ggplot(pars_df, aes( x = par, y = value, shape = type, color = type)) + 

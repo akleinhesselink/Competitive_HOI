@@ -91,6 +91,24 @@ mod_bh <- function(pars, data, form, predict = FALSE){
   }
 }
 
+mod_bh3 <- function(pars, data, form, predict = FALSE){ 
+  
+  if(length(pars) < 2){ stop('not enough parameters supplied!')}
+  
+  mm <- model.matrix(form, data)
+  
+  mu <- pars[1]*(pars[2] + mm%*%pars[c(3:(length(pars) - 1))])^pars[length(pars)]
+  
+  Error <- sum( (log(mu) - log(data$y))^2 )
+  
+  if(predict){ 
+    return(mu)
+  }else if(!predict){ 
+    return(Error) 
+  }
+}
+
+
 
 
 
@@ -193,7 +211,7 @@ ann_plant_mod <- function(x, form, pars) {
   return(y)
 }
 
-fit_ann_plant <- function(data, focal = 1, model, my_inits = NULL, ... ){ 
+fit_ann_plant <- function(data,  model, focal = 1, my_inits = NULL, ... ){ 
   
   temp <- 
     data %>% 
@@ -208,10 +226,10 @@ fit_ann_plant <- function(data, focal = 1, model, my_inits = NULL, ... ){
   }else{ 
     par <- my_inits 
   }
-  optim(par = par, model, data = temp, form = form, ... )
+  optim(par = par, fn = model, data = temp, ... )
 }
 
-predict_fit <- function( dat, model, pars, foc = 1 ){ 
+predict_fit <- function( dat, model, pars, form, foc = 1 ){ 
   mod_name <- deparse(substitute(model))
   
   dat <- 
@@ -236,4 +254,51 @@ predict_fit <- function( dat, model, pars, foc = 1 ){
     mutate( focal_predicted = paste0('pred.', mod_name, '.', focal)) %>% 
     spread( focal_predicted, pred )
 }
+
+
+make_monoculture <- function(results) { 
+  
+  if( !identical( names(results), c('id', 'N1', 'N2', 'N3', 'F1', 'F2', 'F3')) ) { 
+    stop( 'incorrect format for results') 
+  }
+  
+  results <- 
+    results %>%   
+    arrange(as.numeric(id)) %>%
+    filter( (N1 == 0 & N2 == 0) | (N3 == 0 & N2 == 0 ) | (N1 == 0 & N3 == 0 ) ) %>% 
+    mutate( lambda =  ifelse(N1 == 0 & N2 == 0 & N3 == 0 , T, F)) %>% 
+    gather( competitor, density, N1:N3) %>% 
+    filter( lambda | density > 0 ) %>% 
+    gather( focal, fecundity, F1:F3)  
+  
+  results$competitor_label <- paste0( 'competitor\n', results$competitor) 
+  results$focal_label <- paste0( 'focal\n', str_replace( results$focal, 'F', 'N'))
+  
+  return(results)  
+}
+
+fit_2_converge <- function(results, model, ... ){ 
+  fits <- lapply(1:nspp, function(x, ...) fit_ann_plant(focal = x, ... ), data = results, model = model, ... )
+  converged <- lapply( fits, function(x) x$convergence) == 0
+  
+  while ( ! all(converged) ) { 
+    fitpars <- lapply( fits, function(x) x$par )
+    fits[!converged] <- mapply(x = which(!converged), y = fitpars[!converged], FUN = function(x, y, ... ) fit_ann_plant(focal = x, my_inits = y, model = model, ... ), MoreArgs = list( data = results, ...), SIMPLIFY = F)
+    converged <- lapply( fits, function(x) x$convergence) == 0
+  }
+  
+  return(fits)
+}
+
+form1 <- as.formula('~ -1 + N1 + N2 + N3')
+formHOI <- as.formula('~ -1 + N1 + N2 + N3 + I(N1*N2) + I(N1*N3) + I(N2*N3)')
+
+
+make_experiments <- function(maxdens = 10, base = 2, nspp) { 
+  # -------- simulate gradient  -------------------------- # 
+  experiments <- expand.grid(N1 = c(0, c(base^c(0:maxdens))), N2 = c(0, base^c(0:maxdens)), N3 = c(0, base^c(0:maxdens)))
+  experiments$id <- row.names(experiments)
+  return(experiments)
+}
+
 
