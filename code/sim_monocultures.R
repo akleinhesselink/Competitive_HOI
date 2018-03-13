@@ -32,54 +32,36 @@ plot_transpiration(parms,  my_colors)
 plot_growth_rate(parms, my_colors)
 plot_Rstar(parms, my_colors)
 
-# -------- simulate gradient  -------------------------- # 
+# -----------------------------------------------------
+nspp <- length(parms$K)
 maxdens <- 10
 base <- 2 
-experiments <- expand.grid(N1 = c(0, c(base^c(0:maxdens))), N2 = c(0, base^c(0:maxdens)), N3 = c(0, base^c(0:maxdens)))
 
-form <- as.formula('~ -1 + N1 + N2 + N3')
+experiments <- make_experiments()
 
-monocultures <- 
-  experiments %>% 
-  filter( (N1 == 0 & N2 == 0) | (N3 == 0 & N2 == 0 ) | (N1 == 0 & N3 == 0 ) ) %>% 
-  filter( N1 + N2 + N3 > 0)
+monocultures <- make_monoculture(experiments)
 
-bicultures <- 
-  rbind( 
-  experiments %>% 
-  filter( N1 == 1 & (N2 == 0 | N3 == 0)) , 
-  experiments %>% 
-  filter( N2 == 1 & (N1 == 0 | N3 == 0)) , 
-  experiments %>% 
-  filter( N3 == 1 & (N1 == 0 | N2 == 0) ))
-  
 experiments <- 
-  rbind(monocultures, bicultures) %>% 
-  tibble::rownames_to_column('id') %>% 
-  gather( competitor, density, N1:N3) %>% 
-  group_by( id ) %>%  
-  mutate( lambda = ifelse( sum(density) == 1, T, F))  %>% 
-  spread( competitor, density) %>% 
-  ungroup() 
+  rbind( add_focal(monocultures, c(1,0,0)), 
+       add_focal(monocultures, c(0,1,0)), 
+       add_focal(monocultures, c(0,0,1))) %>% 
+  mutate( lambda_plot = N1 + N2 + N3 == 1  )
 
-results <- experiments %>% select(starts_with('N'))
-
-for( i in 1:nrow(experiments)){ 
-  results[i, ] <- run_experiment(results[i,], parms)
+results <- experiments
+for( i in 1:nrow(results)){ 
+  results[i, grep('N', names(results))] <- run_experiment(results[i, grep('N', names(results))], parms)
 }
 
-results <- results/(experiments %>% select(starts_with('N')))
-names( results ) <- paste0('F', 1:ncol(results))
+results[ , grep('N', names(results)) ] <- (results %>% select(starts_with('N')))/(experiments %>% select(starts_with('N')))
+
+names( results ) <- str_replace( names(results), '^N', 'F')
 
 results <- 
-  data.frame(experiments, results ) %>% 
-  arrange(as.numeric(id)) %>% 
-  gather( focal, fecundity, F1:F3) %>%
-  gather( competitor, density, N1:N3) %>%  
-  filter( !is.na(fecundity)) %>%
-  mutate( density = ifelse( str_extract(competitor, '\\d+') == str_extract(focal, '\\d+'), density - 1, density)) %>% 
-  filter( !is.na(density), !is.na(fecundity)) %>% 
-  filter( (density > 1) | lambda ) %>% 
+  merge( monocultures, results, by = c('id')) %>% 
+  gather( focal, fecundity, starts_with('F')) %>% 
+  filter( is.finite(fecundity)) %>% 
+  gather( competitor, density, starts_with('N')) %>% 
+  filter( (density > 1) | lambda_plot ) %>% 
   group_by(focal, competitor, density ) %>% 
   arrange(id) %>% 
   filter(row_number() == 1) %>% 
@@ -94,52 +76,29 @@ results %>%
   geom_line(alpha = 0.5) + 
   facet_grid(focal_label ~ competitor_label )
 
-form <- as.formula('~ -1 + N1 + N2 + N3')
+fits.1 <- fit_2_converge(results, model = mod_bh, method = 'L-BFGS-B', form = form1, lower = c(1, 0, 0, 0, -2))
+fits.2 <- fit_2_converge(results, model = mod_bh2, method = 'L-BFGS-B', form = form1, my_inits = c(20, 1,1,1), lower = c(1, 0, 0, 0))
 
-fits <- lapply(1:3, function(x, ...) fit_ann_plant(focal = x, ... ), data = results, model = mod_bh, method = 'BFGS' )
-converged <- lapply( fits, function(x) x$convergence) == 0
-fitpars <- lapply( fits, function(x) x$par )
-fits[!converged] <- mapply(x = which(!converged), y = fitpars[!converged], FUN = function(x, y, ... ) fit_ann_plant(focal = x, my_inits = y, ... ), MoreArgs = list( data = results, model = mod_bh, method = 'BFGS', control = list( maxit = 1e4, reltol = 1e-10)), SIMPLIFY = F)
+pred_fit1 <- mapply( x = 1:nspp, y = fits.1, FUN = function(x,y, ... ) predict_fit(pars = y$par, foc = x, dat = results, model = mod_bh, form = form1), SIMPLIFY = F)
+pred_fit2 <- mapply( x = 1:nspp, y = fits.2, FUN = function(x,y, ... ) predict_fit(pars = y$par, foc = x, dat = results, model = mod_bh2, form = form1), SIMPLIFY = F)
 
-fit_ann_plant(focal = 3, model = mod_bh, my_inits = c(40, 0, 0, 0, -0.5), data = results, method = 'L-BFGS-B', lower = c(0, 0,0,0,-4), upper= c(1e5, 1e5, 1e5, 1e6, 0))
-fits[[3]] <- fit_ann_plant(focal = 3, model = mod_bh, my_inits = c(400, 200, 200, 200, -0.5), data = results, method = 'L-BFGS-B', lower = c(41, 0,0,0, -4 ), upper= c(50, 1e5, 1e5, 1e6, 0))
+preds <- do.call( rbind, lapply( c(pred_fit1, pred_fit2), function(x) x %>% gather( predicted, pred_fecundity, starts_with('pred'))))
 
-fits.2 <- lapply(1:3, function(x, ...) fit_ann_plant(focal = x, ... ), data = results, model = mod_bh2, method = 'BFGS',  my_inits = c(40, 1,1,1))
-converged <- lapply( fits.2, function(x) x$convergence) == 0
-fitpars <- lapply( fits.2, function(x) x$par )
-fits.2[!converged] <- mapply(x = which(!converged), y = fitpars[!converged], FUN = function(x, y, ... ) fit_ann_plant(focal = x, my_inits = y, ... ), MoreArgs = list( data = results, model = mod_bh2, method = 'BFGS' ), SIMPLIFY = F)
-
-pred_fit1 <- predict_fit(results, model = mod_bh, fits[[1]]$par, 1) 
-pred_fit2 <- predict_fit(results, model = mod_bh, fits[[2]]$par, 2)
-pred_fit3 <- predict_fit(results, model = mod_bh, fits[[3]]$par, 3)
-
-pred_fit1.2 <- predict_fit(results, model = mod_bh2, fits.2[[1]]$par, 1) 
-pred_fit2.2 <- predict_fit(results, model = mod_bh2, fits.2[[2]]$par, 2)
-pred_fit3.2 <- predict_fit(results, model = mod_bh2, fits.2[[3]]$par, 3)
-
-figdat <- 
-  results %>% 
-  left_join(pred_fit1, by = c('id', 'focal')) %>% 
-  left_join(pred_fit2, by = c('id', 'focal')) %>% 
-  left_join(pred_fit3, by = c('id', 'focal')) %>%
-  left_join(pred_fit1.2, by = c('id', 'focal')) %>% 
-  left_join(pred_fit2.2, by = c('id', 'focal')) %>% 
-  left_join(pred_fit3.2, by = c('id', 'focal')) %>%
-  gather( predicted, pred_fecundity, starts_with('pred')) %>% 
+figdat <-
+  preds %>% 
   separate( predicted, c('t1', 'model', 'predicted_sp'), sep = '\\.') %>% 
   select(-t1, -predicted_sp) %>% 
   filter( !is.na(pred_fecundity))
 
 all_fits <- 
-  figdat %>%
+  left_join(results, figdat, by = c('id', 'focal')) %>%
   ggplot(aes( x = density, y = fecundity) ) + 
   geom_point() + 
   geom_line(aes( y = pred_fecundity, color = model), linetype = 1) +
   facet_grid(focal_label ~ competitor_label )
 
-
 sp3_fits <- 
-  figdat %>%
+  all_fits$data %>%
   filter( focal == 'F3') %>% 
   ggplot(aes( x = density, y = fecundity) ) + 
   geom_point() + 
@@ -147,10 +106,8 @@ sp3_fits <-
   ylab('fecundity of N3')  + 
   facet_grid( ~ competitor_label )
 
-
 sp3_fits_log <- 
   sp3_fits + scale_y_continuous(trans = 'log')
-
 
 ggsave(all_fits, filename = 'figures/mechanistic_model_fits.png', width = 10, height = 5)
 ggsave(sp3_fits, filename = 'figures/mechanistic_sp_3_fits.png', width = 10, height = 5)

@@ -256,28 +256,24 @@ predict_fit <- function( dat, model, pars, form, foc = 1 ){
 }
 
 
-make_monoculture <- function(results) { 
+make_monoculture <- function(experiments) { 
   
-  if( !identical( names(results), c('id', 'N1', 'N2', 'N3', 'F1', 'F2', 'F3')) ) { 
-    stop( 'incorrect format for results') 
+  if( !identical( names(experiments), c('N1', 'N2', 'N3', 'id')) ) { 
+    stop( 'incorrect format for experiments') 
   }
   
-  results <- 
-    results %>%   
+  experiments <- 
+    experiments %>%   
     arrange(as.numeric(id)) %>%
-    filter( (N1 == 0 & N2 == 0) | (N3 == 0 & N2 == 0 ) | (N1 == 0 & N3 == 0 ) ) %>% 
-    mutate( lambda =  ifelse(N1 == 0 & N2 == 0 & N3 == 0 , T, F)) %>% 
-    gather( competitor, density, N1:N3) %>% 
-    filter( lambda | density > 0 ) %>% 
-    gather( focal, fecundity, F1:F3)  
+    filter( (N1 == 0 & N2 == 0) | (N3 == 0 & N2 == 0 ) | (N1 == 0 & N3 == 0 ) )
   
-  results$competitor_label <- paste0( 'competitor\n', results$competitor) 
-  results$focal_label <- paste0( 'focal\n', str_replace( results$focal, 'F', 'N'))
-  
-  return(results)  
+  return(experiments)  
 }
 
 fit_2_converge <- function(results, model, ... ){ 
+  
+  nspp <- length(unique( results$competitor))
+  
   fits <- lapply(1:nspp, function(x, ...) fit_ann_plant(focal = x, ... ), data = results, model = model, ... )
   converged <- lapply( fits, function(x) x$convergence) == 0
   
@@ -299,6 +295,12 @@ make_experiments <- function(maxdens = 10, base = 2, nspp) {
   experiments <- expand.grid(N1 = c(0, c(base^c(0:maxdens))), N2 = c(0, base^c(0:maxdens)), N3 = c(0, base^c(0:maxdens)))
   experiments$id <- row.names(experiments)
   return(experiments)
+}
+
+add_focal <- function(mono, focal) { 
+  out <- mono
+  out[, grep('N', names(out)) ] <- data.frame( t(apply( out[, grep('N', names(out)) ], 1, function(x) x  + focal)))
+  out 
 }
 
 

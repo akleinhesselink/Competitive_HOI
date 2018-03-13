@@ -22,17 +22,25 @@ base <- 2
 
 # -----------------------------------------------------
 experiments <- make_experiments(maxdens , base, nspp)
+monocultures <- make_monoculture(experiments)
 
-out <- experiments
-for( i in 1:nrow(experiments)){ 
-  seeds <- experiments[i,1:3]
+out <- monocultures
+for( i in 1:nrow(monocultures)){ 
+  seeds <- monocultures[i,1:nspp]
   out[i,1:nspp] <- ann_plant_mod(seeds, form1, unlist(pars))
 }
 
-results <- merge( experiments, out, by = 'id')
-names(results)[-1] <- c(paste0('N', 1:nspp), paste0('F', 1:nspp))
+names(out)[1:nspp] <- paste0('F', 1:nspp)
 
-results <- make_monoculture(results)
+results <- 
+  left_join(monocultures, out, by = 'id') %>% 
+  mutate( lambda =  ifelse(N1 == 0 & N2 == 0 & N3 == 0 , T, F)) %>% 
+  gather( competitor, density, N1:N3) %>% 
+  filter( lambda | density > 0 ) %>% 
+  gather( focal, fecundity, F1:F3)  
+
+results$competitor_label <- paste0( 'competitor\n', results$competitor) 
+results$focal_label <- paste0( 'focal\n', str_replace( results$focal, 'F', 'N'))
 
 fits.1 <- fit_2_converge(results, model = mod_bh, method = 'L-BFGS-B', form = form1, lower = c(0, 0, 0, 0, -2))
 fits.2 <- fit_2_converge(results, model = mod_bh2, method = 'L-BFGS-B', form = form1, my_inits = c(10, 1,1,1), lower = c(1, 0, 0, 0))
