@@ -215,9 +215,8 @@ fit_ann_plant <- function(data,  model, focal = 1, my_inits = NULL, ... ){
   
   temp <- 
     data %>% 
-    filter_( .dots = paste0( 'focal == "F', focal, '"')) %>% 
-    spread( competitor, density, fill = 0)
-  
+    filter_( .dots = paste0( 'focal == "F', focal, '"')) 
+
   nspp <- ncol(temp %>% select(starts_with('N')))
   
   temp$y <- temp$fecundity
@@ -234,14 +233,8 @@ predict_fit <- function( dat, model, pars, form, foc = 1 ){
   
   dat <- 
     dat %>% 
-    filter( focal == paste0('F', foc)) %>% 
-    distinct(id, focal, competitor, density) %>% 
-    spread( competitor, density , fill = 0) %>% 
-    arrange(N1, N2, N3) %>% 
-    group_by( N1, N2, N3) %>% 
-    arrange( as.numeric(id) ) %>% 
-    filter( row_number() == 1 )
-  
+    filter( focal == paste0('F', foc) )
+
   dat$y <- NA
   dat$pred <- as.numeric(model(pars = pars, dat, form = form, predict = T))
   
@@ -270,9 +263,23 @@ make_monoculture <- function(experiments) {
   return(experiments)  
 }
 
+make_biculture <- function(experiments) { 
+  
+  if( !identical( names(experiments), c('N1', 'N2', 'N3', 'id')) ) { 
+    stop( 'incorrect format for experiments') 
+  }
+  
+  experiments <- 
+    experiments %>%   
+    arrange(as.numeric(id)) %>%
+    filter( (N1 == 0) | (N2 == 0 ) | (N3 == 0 ) )
+  
+  return(experiments)  
+}
+
 fit_2_converge <- function(results, model, ... ){ 
   
-  nspp <- length(unique( results$competitor))
+  nspp <- length(grep('N', names(results)))
   
   fits <- lapply(1:nspp, function(x, ...) fit_ann_plant(focal = x, ... ), data = results, model = model, ... )
   converged <- lapply( fits, function(x) x$convergence) == 0
@@ -297,10 +304,37 @@ make_experiments <- function(maxdens = 10, base = 2, nspp) {
   return(experiments)
 }
 
-add_focal <- function(mono, focal) { 
-  out <- mono
+add_focal <- function(X, focal, focal_lab) { 
+  out <- X
   out[, grep('N', names(out)) ] <- data.frame( t(apply( out[, grep('N', names(out)) ], 1, function(x) x  + focal)))
-  out 
+  out$focal <- focal_lab 
+  out
+}
+
+basic_breaks <- function(n = 10){
+  function(x) {
+    axisTicks(log10(range(x, na.rm = TRUE)), log = TRUE, n = n)
+  }
+}
+
+plot_two_sp <- function( data, focal = 'F1', C1 = 'N1', C2 = 'N2', C3 = 'N3', C2_dens = c(0, 16, 64, 256, 1024) ) { 
+  
+  data <- data[ data$focal == focal, ] 
+  
+  data$C1 <- as.numeric(unlist(data[, C1]))
+  data$C2 <- as.numeric(unlist(data[, C2]))
+  data$C3 <- as.numeric(unlist(data[, C3]))
+  
+  data %>%
+    filter( comp_n == 0 | ( C3 == 0 )) %>%
+    select(-C3) %>%
+    filter( C2 %in% C2_dens ) %>%  
+    mutate( C2 = as.factor(C2)) %>%
+    ggplot( aes( y = fecundity, x = C1, color = C2)) +
+    geom_point() +
+    scale_y_continuous(name = paste0('N', str_extract(focal, '\\d'), ' fecundity'), trans = 'log', breaks = basic_breaks()) +
+    scale_x_continuous(name = paste(C1, 'density')) + 
+    scale_color_discrete(name = paste(C2, 'density'))
 }
 
 

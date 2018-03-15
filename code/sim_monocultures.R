@@ -26,6 +26,7 @@ seedling_mass <- c(0.005) # seed/seedling mass in g
 conversion <- 0.1        # proportion live biomass converted to seed mass 
 R <- seq(0, 500, length.out = 1000)
 parms <- list( r = r, K = K, m =m , p = c(rep(pulse, rainy), rep(0, times - rainy)), epsilon = epsilon, q = q, soil_m = soil_m, conversion = conversion, seedling_mass = seedling_mass, R = R, times = times)
+save(parms, file = 'data/parms.rda')
 rm( list = names(parms) )
 
 plot_transpiration(parms,  my_colors)
@@ -42,10 +43,9 @@ experiments <- make_experiments()
 monocultures <- make_monoculture(experiments)
 
 experiments <- 
-  rbind( add_focal(monocultures, c(1,0,0)), 
-       add_focal(monocultures, c(0,1,0)), 
-       add_focal(monocultures, c(0,0,1))) %>% 
-  mutate( lambda_plot = N1 + N2 + N3 == 1  )
+  rbind( add_focal(monocultures, c(1,0,0), focal_lab = 'F1'), 
+       add_focal(monocultures, c(0,1,0), focal_lab = 'F2'), 
+       add_focal(monocultures, c(0,0,1), focal_lab = 'F3')) 
 
 results <- experiments
 for( i in 1:nrow(results)){ 
@@ -56,31 +56,34 @@ results[ , grep('N', names(results)) ] <- (results %>% select(starts_with('N')))
 
 names( results ) <- str_replace( names(results), '^N', 'F')
 
-results <- 
-  merge( monocultures, results, by = c('id')) %>% 
-  gather( focal, fecundity, starts_with('F')) %>% 
-  filter( is.finite(fecundity)) %>% 
+results2 <- merge( monocultures, results, by = c('id')) %>% 
+  gather( focal2, fecundity, starts_with('F', ignore.case = F)) %>% 
+  filter( focal == focal2) %>% 
+  select(-focal2) %>%
   gather( competitor, density, starts_with('N')) %>% 
-  filter( (density > 1) | lambda_plot ) %>% 
-  group_by(focal, competitor, density ) %>% 
-  arrange(id) %>% 
-  filter(row_number() == 1) %>% 
+  group_by( id, focal ) %>% 
+  mutate( comp_n = sum(density > 0)) %>% 
+  spread( competitor, density, fill = 0) %>% 
   ungroup()
 
-results$competitor_label <- paste0( 'competitor\n', results$competitor) 
-results$focal_label <- paste0( 'focal\n', str_replace( results$focal, 'F', 'N'))
+results2$focal_label <- paste0( 'focal\n', str_replace( results2$focal, 'F', 'N'))
 
-results %>%
-  ggplot(aes( x = density, y = fecundity, color = competitor_label) ) + 
+results2 %>%
+  filter( comp_n  < 2 ) %>% 
+  gather( competitor, density, starts_with('N')) %>% 
+  filter( comp_n == 0 | density > 0 ) %>%
+  ggplot(aes( x = density, y = fecundity, color = competitor) ) + 
   geom_point(alpha = 1) + 
   geom_line(alpha = 0.5) + 
-  facet_grid(focal_label ~ competitor_label )
+  scale_color_discrete(guide = F) + 
+  facet_grid(focal_label ~ competitor)
 
-fits.1 <- fit_2_converge(results, model = mod_bh, method = 'L-BFGS-B', form = form1, lower = c(1, 0, 0, 0, -2))
-fits.2 <- fit_2_converge(results, model = mod_bh2, method = 'L-BFGS-B', form = form1, my_inits = c(20, 1,1,1), lower = c(1, 0, 0, 0))
 
-pred_fit1 <- mapply( x = 1:nspp, y = fits.1, FUN = function(x,y, ... ) predict_fit(pars = y$par, foc = x, dat = results, model = mod_bh, form = form1), SIMPLIFY = F)
-pred_fit2 <- mapply( x = 1:nspp, y = fits.2, FUN = function(x,y, ... ) predict_fit(pars = y$par, foc = x, dat = results, model = mod_bh2, form = form1), SIMPLIFY = F)
+fits.1 <- fit_2_converge(results2, model = mod_bh, method = 'BFGS', form = form1)
+fits.2 <- fit_2_converge(results2, model = mod_bh2, method = 'L-BFGS-B', form = form1, my_inits = c(20, 1,1,1), lower = c(1, 0, 0, 0))
+
+pred_fit1 <- mapply( x = 1:nspp, y = fits.1, FUN = function(x,y, ... ) predict_fit(pars = y$par, foc = x, dat = results2, model = mod_bh, form = form1), SIMPLIFY = F)
+pred_fit2 <- mapply( x = 1:nspp, y = fits.2, FUN = function(x,y, ... ) predict_fit(pars = y$par, foc = x, dat = results2, model = mod_bh2, form = form1), SIMPLIFY = F)
 
 preds <- do.call( rbind, lapply( c(pred_fit1, pred_fit2), function(x) x %>% gather( predicted, pred_fecundity, starts_with('pred'))))
 
@@ -91,11 +94,13 @@ figdat <-
   filter( !is.na(pred_fecundity))
 
 all_fits <- 
-  left_join(results, figdat, by = c('id', 'focal')) %>%
+  left_join(results2, figdat, by = c('id', 'focal')) %>%
+  gather( competitor, density, starts_with('N')) %>% 
+  filter( comp_n == 0 | density > 0 ) %>%  
   ggplot(aes( x = density, y = fecundity) ) + 
   geom_point() + 
   geom_line(aes( y = pred_fecundity, color = model), linetype = 1) +
-  facet_grid(focal_label ~ competitor_label )
+  facet_grid(focal_label ~ competitor )
 
 sp3_fits <- 
   all_fits$data %>%
@@ -104,7 +109,7 @@ sp3_fits <-
   geom_point() + 
   geom_line(aes( y = pred_fecundity, color = model), linetype = 1) +
   ylab('fecundity of N3')  + 
-  facet_grid( ~ competitor_label )
+  facet_grid( ~ competitor )
 
 sp3_fits_log <- 
   sp3_fits + scale_y_continuous(trans = 'log')

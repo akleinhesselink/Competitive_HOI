@@ -34,12 +34,15 @@ names(out)[1:nspp] <- paste0('F', 1:nspp)
 
 results <- 
   left_join(monocultures, out, by = 'id') %>% 
-  mutate( lambda =  ifelse(N1 == 0 & N2 == 0 & N3 == 0 , T, F)) %>% 
-  gather( competitor, density, N1:N3) %>% 
-  filter( lambda | density > 0 ) %>% 
-  gather( focal, fecundity, F1:F3)  
+  gather( focal, fecundity, starts_with('F')) %>% 
+  gather( competitor, density, starts_with('N')) %>% 
+  group_by( id, focal ) %>% 
+  mutate( comp_n = sum(density > 0)) %>% 
+  filter( comp_n == 0 | density > 0 ) %>% 
+  spread( competitor, density, fill = 0) %>% 
+  ungroup()
 
-results$competitor_label <- paste0( 'competitor\n', results$competitor) 
+
 results$focal_label <- paste0( 'focal\n', str_replace( results$focal, 'F', 'N'))
 
 fits.1 <- fit_2_converge(results, model = mod_bh, method = 'L-BFGS-B', form = form1, lower = c(0, 0, 0, 0, -2))
@@ -56,12 +59,15 @@ figdat <-
   select(-t1, -predicted_sp) %>% 
   filter( !is.na(pred_fecundity))
 
+
 all_fits <- 
   left_join(results, figdat, by = c('id', 'focal')) %>%
+  gather( competitor, density, starts_with('N')) %>% 
+  filter( comp_n == 0 | density > 0 ) %>%  
   ggplot(aes( x = density, y = fecundity) ) + 
   geom_point() + 
   geom_line(aes( y = pred_fecundity, color = model), linetype = 1) +
-  facet_grid(focal_label ~ competitor_label )
+  facet_grid(focal_label ~ competitor )
 
 ggsave(all_fits, filename = 'figures/fit_ann_plant_model.png', width = 10, height = 5)
 ggsave(all_fits + scale_y_continuous(trans = 'log'), filename = 'figures/fit_ann_plant_model_log.png', width = 10, height = 5)
