@@ -74,60 +74,39 @@ plot_timeseries <- function(x, parms, ... ){
   legend(5, -0.1, legend = paste('species', 1:nspp), col = my_colors[1:nspp], cex = 1, xpd = T, lty = 1, bg = NA, box.col = NA, yjust = 0)
 }
 
-mod_bh <- function(pars, data, form, predict = FALSE){ 
+mod_bh <- function(pars, y, mm, predict = FALSE){ 
   
-  if(length(pars) < 2){ stop('not enough parameters supplied!')}
+  if( !length(pars) == ncol(mm) + 2 ){ stop('wrong number of parameters supplied!')}
   
-  mm <- model.matrix(form, data)
-  
-  mu <- pars[1]*(1 + mm%*%pars[c(2:(length(pars) - 1))])^pars[length(pars)]
-  
-  Error <- sum( (log(mu) - log(data$y))^2 )
-
-  if(predict){ 
-    return(mu)
-  }else if(!predict){ 
-    return(Error) 
-  }
-}
-
-mod_bh3 <- function(pars, data, form, predict = FALSE){ 
-  
-  if(length(pars) < 2){ stop('not enough parameters supplied!')}
-  
-  mm <- model.matrix(form, data)
-  
-  mu <- pars[1]*(pars[2] + mm%*%pars[c(3:(length(pars) - 1))])^pars[length(pars)]
-  
-  Error <- sum( (log(mu) - log(data$y))^2 )
-  
-  if(predict){ 
-    return(mu)
-  }else if(!predict){ 
-    return(Error) 
-  }
-}
-
-
-
-
-
-mod_bh2 <- function( pars, data, form, predict = F, lg = F){ 
-  
-  if(length(pars) < 2){ stop('not enough parameters supplied!')}
-  
-  mm <- model.matrix(form, data)
   lambda <- pars[1]
-  pars <- pars[-1]
+  tau <- pars[length(pars)]
+  alphas <- pars[2:(length(pars) - 1)]
   
-  taus <- pars[ 1:ncol(mm) ]
+  mu <- lambda*(1 + mm%*%alphas)^tau
+  
+  Error <- sum( ( log(mu) - log(y) )^2 )
 
+  if(predict){ 
+    return(mu)
+  }else if(!predict){ 
+    return(Error) 
+  }
+}
+
+
+mod_bh2 <- function( pars, y, mm, predict = F){ 
+  
+  if(!length(pars) == ncol(mm) + 1 ){ stop('wrong number of parameters supplied!')}
+  
+  alphas <- pars[ 2:length(pars) ]
+  lambda <- pars[1]
+  
   mu <- NA
   for( i in 1:nrow(mm)){ 
-    mu[i] <- lambda/( 1 + sum(  mm[i, ]^taus  ) )
+    mu[i] <- lambda/( 1 + sum(  mm[i, ]^alphas  ) )
   }
   
-  Error <- sum( (log(mu) - log(data$y))^2 ) 
+  Error <- sum( (log(mu) - log(y))^2 ) 
 
   if(predict){ 
     return(mu)
@@ -211,21 +190,23 @@ ann_plant_mod <- function(x, form, pars) {
   return(y)
 }
 
-fit_ann_plant <- function(data,  model, focal = 1, my_inits = NULL, ... ){ 
+fit_ann_plant <- function(data, model, form, focal = 1, my_inits = NULL, ... ){ 
   
   temp <- 
     data %>% 
     filter_( .dots = paste0( 'focal == "F', focal, '"')) 
-
-  nspp <- ncol(temp %>% select(starts_with('N')))
   
-  temp$y <- temp$fecundity
-  if( is.null(my_inits)){ 
-    par <- c(max(temp$fecundity), rep(1, nspp), -1)
+  mm <- model.matrix(form, temp)
+  
+  npar <- ncol(mm)
+
+  if( is.null(my_inits) ){ 
+    par <- c( max(temp$fecundity), rep(1, npar), -1)
   }else{ 
     par <- my_inits 
   }
-  optim(par = par, fn = model, data = temp, ... )
+
+  optim(par = par, fn = model, y = temp$fecundity, mm = mm, ... )
 }
 
 predict_fit <- function( dat, model, pars, form, foc = 1 ){ 
@@ -236,7 +217,9 @@ predict_fit <- function( dat, model, pars, form, foc = 1 ){
     filter( focal == paste0('F', foc) )
 
   dat$y <- NA
-  dat$pred <- as.numeric(model(pars = pars, dat, form = form, predict = T))
+  mm <- model.matrix( form, dat)
+  
+  dat$pred <- as.numeric(model(pars = pars, dat$y, mm, predict = T))
   
   dat %>% 
     ungroup() %>% 
@@ -277,16 +260,16 @@ make_biculture <- function(experiments) {
   return(experiments)  
 }
 
-fit_2_converge <- function(results, model, ... ){ 
+fit_2_converge <- function(results, model, form, ... ){ 
   
   nspp <- length(grep('N', names(results)))
   
-  fits <- lapply(1:nspp, function(x, ...) fit_ann_plant(focal = x, ... ), data = results, model = model, ... )
+  fits <- lapply(1:nspp, function(x, ...) fit_ann_plant(focal = x, ... ), data = results, model = model, form, ... )
   converged <- lapply( fits, function(x) x$convergence) == 0
   
   while ( ! all(converged) ) { 
     fitpars <- lapply( fits, function(x) x$par )
-    fits[!converged] <- mapply(x = which(!converged), y = fitpars[!converged], FUN = function(x, y, ... ) fit_ann_plant(focal = x, my_inits = y, model = model, ... ), MoreArgs = list( data = results, ...), SIMPLIFY = F)
+    fits[!converged] <- mapply(x = which(!converged), y = fitpars[!converged], FUN = function(x, y, ... ) fit_ann_plant(focal = x, my_inits = y, model = model, form, ... ), MoreArgs = list( data = results, ...), SIMPLIFY = F)
     converged <- lapply( fits, function(x) x$convergence) == 0
   }
   
