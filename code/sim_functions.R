@@ -1,3 +1,17 @@
+library(dplyr)
+library(tidyr)
+library(deSolve)
+library(ggplot2)
+library(stringr)
+library(parallel)
+library(gridExtra)
+library(scales)
+
+# annual plant model formula 
+
+form1 <- as.formula('~ -1 + N1 + N2 + N3')
+formHOI <- as.formula('~ -1 + N1 + N2 + N3 + I(N1*N2) + I(N1*N3) + I(N2*N3)')
+
 
 f <- function(R, r, K){ r*R/(K + R) }              # resource (water) uptake rate. Saturates at r
 dBdu <- function(u, B, R, r, K, q, m) { B*(q*f(R, r, K) - m)}  # growth as a function of biomass and resource uptake
@@ -74,49 +88,6 @@ plot_timeseries <- function(x, parms, ... ){
   legend(5, -0.1, legend = paste('species', 1:nspp), col = my_colors[1:nspp], cex = 1, xpd = T, lty = 1, bg = NA, box.col = NA, yjust = 0)
 }
 
-mod_bh <- function(pars, y, mm, predict = FALSE){ 
-  
-  if( !length(pars) == ncol(mm) + 2 ){ stop('wrong number of parameters supplied!')}
-  
-  lambda <- pars[1]
-  tau <- pars[length(pars)]
-  alphas <- pars[2:(length(pars) - 1)]
-  
-  mu <- lambda*(1 + mm%*%alphas)^tau
-  
-  Error <- sum( ( log(mu) - log(y) )^2 )
-
-  if(predict){ 
-    return(mu)
-  }else if(!predict){ 
-    return(Error) 
-  }
-}
-
-
-mod_bh2 <- function( pars, y, mm, predict = F){ 
-  
-  if(!length(pars) == ncol(mm) + 1 ){ stop('wrong number of parameters supplied!')}
-  
-  alphas <- pars[ 2:length(pars) ]
-  lambda <- pars[1]
-  
-  mu <- NA
-  for( i in 1:nrow(mm)){ 
-    mu[i] <- lambda/( 1 + sum(  mm[i, ]^alphas  ) )
-  }
-  
-  Error <- sum( (log(mu) - log(y))^2 ) 
-
-  if(predict){ 
-    return(mu)
-  }else if(!predict){ 
-    return(Error) 
-  }
-  
-}
-
-
 plot_transpiration <- function(parms, my_colors ){
   # plot transpiration rate curve 
   par(mfrow =c(1,1))  
@@ -182,10 +153,11 @@ ann_plant_mod <- function(x, form, pars) {
   
   lambda <- head( pars, nsp)   
   tau <- tail(pars, nsp)
-  alphas <- pars[ rev(rev(seq_along(pars))[-c(1:nsp)])[-c(1:nsp)] ]
-  alphas <- matrix( alphas, nsp, nt, byrow = T)
-  
-  y <- lambda*((1 + mm%*%alphas)^(tau))    
+  alphas <- pars[ -which(pars == lambda | pars == tau) ]
+
+  alphas <- matrix( alphas, nsp, nt)
+
+  y <- lambda*((1 + rowSums( sweep(alphas, 2, mm, '*') ))^(tau))    
   
   return(y)
 }
@@ -211,7 +183,7 @@ fit_ann_plant <- function(data, model, form, focal = 1, my_inits = NULL, ... ){
 
 predict_fit <- function( dat, model, pars, form, foc = 1 ){ 
   mod_name <- deparse(substitute(model))
-  
+  form_name <- deparse(substitute(form))
   dat <- 
     dat %>% 
     filter( focal == paste0('F', foc) )
@@ -220,8 +192,8 @@ predict_fit <- function( dat, model, pars, form, foc = 1 ){
   mm <- model.matrix( form, dat)
   
   dat$pred <- as.numeric(model(pars = pars, dat$y, mm, predict = T))
-  
-  dat %>% 
+
+  dat <- dat %>% 
     ungroup() %>% 
     select(id, focal, pred) %>% 
     filter( !is.na(pred)) %>% 
@@ -229,6 +201,11 @@ predict_fit <- function( dat, model, pars, form, foc = 1 ){
     arrange( as.numeric(id)) %>% 
     mutate( focal_predicted = paste0('pred.', mod_name, '.', focal)) %>% 
     spread( focal_predicted, pred )
+  
+  dat$form <- form_name
+  
+  dat
+  
 }
 
 
@@ -259,26 +236,6 @@ make_biculture <- function(experiments) {
   
   return(experiments)  
 }
-
-fit_2_converge <- function(results, model, form, ... ){ 
-  
-  nspp <- length(grep('N', names(results)))
-  
-  fits <- lapply(1:nspp, function(x, ...) fit_ann_plant(focal = x, ... ), data = results, model = model, form, ... )
-  converged <- lapply( fits, function(x) x$convergence) == 0
-  
-  while ( ! all(converged) ) { 
-    fitpars <- lapply( fits, function(x) x$par )
-    fits[!converged] <- mapply(x = which(!converged), y = fitpars[!converged], FUN = function(x, y, ... ) fit_ann_plant(focal = x, my_inits = y, model = model, form, ... ), MoreArgs = list( data = results, ...), SIMPLIFY = F)
-    converged <- lapply( fits, function(x) x$convergence) == 0
-  }
-  
-  return(fits)
-}
-
-form1 <- as.formula('~ -1 + N1 + N2 + N3')
-formHOI <- as.formula('~ -1 + N1 + N2 + N3 + I(N1*N2) + I(N1*N3) + I(N2*N3)')
-
 
 make_experiments <- function(maxdens = 10, base = 2, nspp) { 
   # -------- simulate gradient  -------------------------- # 
@@ -320,4 +277,142 @@ plot_two_sp <- function( data, focal = 'F1', C1 = 'N1', C2 = 'N2', C3 = 'N3', C2
     scale_color_discrete(name = paste(C2, 'density'))
 }
 
+mod_bh <- function(pars, y, mm, predict = FALSE){ 
+  
+  if( !length(pars) == ncol(mm) + 2 ){ stop('wrong number of parameters supplied!')}
+  
+  lambda <- pars[1]
+  tau <- pars[length(pars)]
+  alphas <- pars[2:(length(pars) - 1)]
+  
+  mu <- lambda*(1 + mm%*%alphas)^tau
+  
+  Error <- sum( (mu - y )^2 )
+  
+  if(predict){ 
+    return(mu)
+  }else if(!predict){ 
+    return(Error) 
+  }
+}
+
+
+mod_bh2 <- function( pars, y, mm, predict = F){ 
+  
+  if(!length(pars) == ncol(mm) + 1 ){ stop('wrong number of parameters supplied!')}
+  
+  alphas <- pars[ 2:length(pars) ]
+  lambda <- pars[1]
+  
+  mu <- NA
+  for( i in 1:nrow(mm)){ 
+    mu[i] <- lambda/( 1 + sum(  mm[i, ]^alphas  ) )
+  }
+  
+  Error <- sum( (mu - y)^2 ) 
+  
+  if(predict){ 
+    return(mu)
+  }else if(!predict){ 
+    return(Error) 
+  }
+  
+}
+
+mod_bh_ll <- function(pars, y, mm, sd = 1, predict = FALSE){ 
+  
+  if( !length(pars) == ncol(mm) + 2 ){ stop('wrong number of parameters supplied!')}
+  
+  lambda <- pars[1]
+  tau <- pars[length(pars)]
+  alphas <- pars[2:(length(pars) - 1)]
+  
+  mu <- lambda*(1 + mm%*%alphas)^tau
+  
+  neg_ll <- sum( - dnorm( mu, y, sd, log = T) )
+  
+  if(predict){ 
+    return(mu)
+  }else if(!predict){ 
+    return(neg_ll) 
+  }
+}
+
+mod_bh2_ll <- function(pars, y, mm, sd = 1, predict = FALSE){ 
+  
+  if( !length(pars) == ncol(mm) + 1 ){ stop('wrong number of parameters supplied!')}
+  
+  lambda <- pars[1]
+  alphas <- pars[2:(length(pars))]
+  
+  mu <- NA
+  for( i in 1:nrow(mm)){ 
+    mu[i] <- lambda/( 1 + sum(  mm[i, ]^alphas  ) )
+  }
+  
+  neg_ll <- sum( - dnorm( mu, y, sd, log = T) )
+  
+  if(predict){ 
+    return(mu)
+  }else if(!predict){ 
+    return(neg_ll) 
+  }
+}
+
+
+fit_2_converge <- function(n_seq, start_sd, min_sd,  my_inits, model, ...){ 
+  res <- list()
+  inits <- list()
+  inits[[1]] <- my_inits
+  
+  sd_grad <- rev( seq(min_sd, start_sd, length.out = n_seq))
+  sd <- sd_grad[1]
+  res[[1]]  <- fit_ann_plant(sd = sd, my_inits = my_inits, model = model, ...)
+  
+  for( i in 2:n_seq) { 
+    sd <- sd_grad[i]
+    inits[[i]] <- res[[i-1]]$par
+    res[[i]] <- fit_ann_plant( my_inits = inits[[i]], sd = sd, model = model, ... )
+  }
+  converged <- unlist( lapply( res, function(x) x$convergence == 0 ))
+  sd_grad <- sd_grad[which(converged)]
+  res <- res[which(converged)]
+  
+  return( list( sd_grad = sd_grad, res = res) )
+}  
+
+fit_both_mods <- function( focal = 1, form1, inits1, lower1, model, ... ){  
+  mod_name <- deparse(substitute(model))
+  
+  fits <- fit_2_converge(focal = focal, form = form1, my_inits = inits1, lower = lower1, model, ... )
+  
+  best_fit <- which.min( unlist( lapply( fits$res, function(x)  x$value ) ) )
+  fit1 <- fits$res[[best_fit]]
+  lambda <- fit1$par[1]
+  
+  if(str_detect(mod_name, '2')) { 
+    alpha  <- 2:length(inits1)
+    alpha  <- fit1$par[ 2:length(fit1$par) ]
+    
+    HOI_inits <- c(lambda, alpha, inits1[-1])
+    lower  <- c(lower1[1], lower1[-1])
+    
+  }else{ 
+    alpha  <- fit1$par[-c(1, length(fit1$par)) ]
+    tau    <- fit1$par[length(fit1$par)]  
+    HOI_inits <- c(lambda, rep(0, 2*length(alpha)), tau)
+    lower  <- rep( 0, length(HOI_inits))
+    lower[length(lower)] <- -1 
+  }
+  
+  lower[1] <- lower1[1]
+  
+  fits <- fit_2_converge(focal = focal, form = formHOI, my_inits = HOI_inits, lower = lower, model, ... )
+  
+  best_fit <- which.min( unlist( lapply( fits$res, function(x)  x$value ) ) )
+  fitHOI <- fits$res[[best_fit]]
+  
+  return( list(fit1 = fit1, fitHOI = fitHOI))
+  
+}
 

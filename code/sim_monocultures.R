@@ -1,10 +1,3 @@
-library(dplyr)
-library(tidyr)
-library(deSolve)
-library(ggplot2)
-library(parallel)
-library(stringr)
-
 rm(list = ls())
 par(mfrow = c(1,1))
 
@@ -35,10 +28,10 @@ plot_Rstar(parms, my_colors)
 
 # -----------------------------------------------------
 nspp <- length(parms$K)
-maxdens <- 10
+maxdens <- 5
 base <- 2 
 
-experiments <- make_experiments()
+experiments <- make_experiments(maxdens, base, nspp)
 
 monocultures <- make_monoculture(experiments)
 
@@ -79,11 +72,80 @@ results2 %>%
   facet_grid(focal_label ~ competitor)
 
 
-fits.1 <- fit_2_converge(results2, model = mod_bh, method = 'BFGS', form = form1)
-fits.2 <- fit_2_converge(results2, model = mod_bh2, method = 'L-BFGS-B', form = form1, my_inits = c(20, 1,1,1), lower = c(1, 0, 0, 0))
+my_fits1 <- fit_both_mods(focal = 1, 
+                          n_seq = 20, 
+                          start_sd = 2, 
+                          min_sd = 0.01, 
+                          form1 = form1,
+                          data = results2, 
+                          model = mod_bh_ll, 
+                          lower1 = c(1, 0, 0, 0, -2),
+                          inits1 = c(10, 0, 0, 0, -1.5), 
+                          method = 'L-BFGS-B')
 
-pred_fit1 <- mapply( x = 1:nspp, y = fits.1, FUN = function(x,y, ... ) predict_fit(pars = y$par, foc = x, dat = results2, model = mod_bh, form = form1), SIMPLIFY = F)
-pred_fit2 <- mapply( x = 1:nspp, y = fits.2, FUN = function(x,y, ... ) predict_fit(pars = y$par, foc = x, dat = results2, model = mod_bh2, form = form1), SIMPLIFY = F)
+my_fits2 <- fit_both_mods(focal = 2, 
+                          n_seq = 20, 
+                          start_sd = 2, 
+                          min_sd = 0.01, 
+                          form1 = form1,
+                          data = results2, 
+                          model = mod_bh_ll, 
+                          lower1 = c(10, 0, 0, 0, -2),
+                          inits1 = c(10, 0, 0, 0, -1.1), 
+                          method = 'L-BFGS-B')
+
+my_fits3.1 <- fit_both_mods(focal = 3, 
+                          n_seq = 20, 
+                          start_sd = 2, 
+                          min_sd = 0.01, 
+                          form1 = form1,
+                          data = results2, 
+                          model = mod_bh_ll, 
+                          lower1 = c(10, 0, 0, 0, -2),
+                          inits1 = c(10, 1, 1, 1, -1.1), 
+                          method = 'L-BFGS-B')
+
+my_fits3.2 <- fit_both_mods(focal = 3, 
+                          n_seq = 20, 
+                          start_sd = 2, 
+                          min_sd = 0.01, 
+                          form1 = form1,
+                          data = results2, 
+                          model = mod_bh2_ll, 
+                          lower1 = c(20, 0, 0, 0),
+                          inits1 = c(20, 1, 1, 1), 
+                          method = 'L-BFGS-B')
+
+
+
+refit1 <- fit_ann_plant(focal = 3, data = results2, model = mod_bh, form = form1, my_inits = my_fits3.1$fit1$par, method = 'L-BFGS-B', lower = c(1, 0, 0, 0, -2))
+refit2 <- fit_ann_plant(focal = 3, data = results2, model = mod_bh2, form = form1, my_inits = my_fits3.2$fit1$par, method = 'L-BFGS-B', lower = c(1, 0, 0, 0))
+my_fits3 <- list(my_fits3.1, my_fits3.2)[[ which.min(c(refit1$value, refit2$value)) ]]
+
+fits1 <- lapply(list(my_fits1, my_fits2, my_fits3), function(x) x$fit1)
+fitsHOI <- lapply(list(my_fits1, my_fits2, my_fits3), function(x) x$fitHOI)
+
+pred_fit1 <- mapply( x = 1:nspp, 
+                     y = fits1, 
+                     z = c(mod_bh_ll, mod_bh_ll, mod_bh2_ll), 
+                     FUN = function(x,y,z, ... ) 
+                       predict_fit(pars = y$par, 
+                                   foc = x, 
+                                   model = z, 
+                                   dat = results2, 
+                                   form = form1), 
+                     SIMPLIFY = F)
+
+pred_fit2 <- mapply( x = 1:nspp, 
+                     y = fitsHOI, 
+                     z = c(mod_bh_ll, mod_bh_ll, mod_bh2_ll), 
+                     FUN = function(x,y,z, ... ) 
+                       predict_fit(pars = y$par, 
+                                   foc = x, 
+                                   model = z, 
+                                   dat = results2, 
+                                   form = formHOI), 
+                     SIMPLIFY = F)
 
 preds <- do.call( rbind, lapply( c(pred_fit1, pred_fit2), function(x) x %>% gather( predicted, pred_fecundity, starts_with('pred'))))
 
@@ -99,20 +161,24 @@ all_fits <-
   filter( comp_n == 0 | density > 0 ) %>%  
   ggplot(aes( x = density, y = fecundity) ) + 
   geom_point() + 
-  geom_line(aes( y = pred_fecundity, color = model), linetype = 1) +
-  facet_grid(focal_label ~ competitor )
+  geom_line(aes( y = pred_fecundity, color = form), linetype = 1) +
+  facet_grid(focal_label ~ competitor + form)
+
 
 sp3_fits <- 
   all_fits$data %>%
   filter( focal == 'F3') %>% 
   ggplot(aes( x = density, y = fecundity) ) + 
   geom_point() + 
-  geom_line(aes( y = pred_fecundity, color = model), linetype = 1) +
+  geom_line(aes( y = pred_fecundity, color = form), linetype = 1) +
   ylab('fecundity of N3')  + 
   facet_grid( ~ competitor )
 
 sp3_fits_log <- 
   sp3_fits + scale_y_continuous(trans = 'log')
+
+sp3_fits
+sp3_fits_log
 
 ggsave(all_fits, filename = 'figures/mechanistic_model_fits.png', width = 10, height = 5)
 ggsave(sp3_fits, filename = 'figures/mechanistic_sp_3_fits.png', width = 10, height = 5)
