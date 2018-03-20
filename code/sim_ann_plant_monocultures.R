@@ -1,9 +1,4 @@
-library(dplyr)
-library(tidyr)
-library(deSolve)
-library(ggplot2)
-library(stringr)
-library(parallel)
+
 rm(list = ls())
 par(mfrow = c(1,1))
 
@@ -12,28 +7,36 @@ source('code/figure_pars.R')
 
 # set parameters ------------------------------------- 
 nspp <- 3 
-alphas <- matrix( c(1, 0.5, 0.1, 0.3, 1, 0.2, 0.1, 0.2, 20), nspp, nspp, byrow = T)
+alphas <- matrix( c(1, 0.5, 0.1,  
+                    0.3, 1, 0.4, 
+                    0.1, 0.5, 1), nspp, nspp, byrow = T)
+#betas <- alphas 
+#betas[] <- rep(0.01, nspp*nspp)
+betas <- matrix( c(0.01, 0.001, 0.00, 
+                   0.00, 0.01, 0.0002, 
+                   0.0, 0.0, 0.01), nspp, nspp, byrow = T)
+
 lambdas <- c(24, 32, 41)
-taus <- c(-1, -1, -0.2)
-pars <- list( lambdas = lambdas, alphas = alphas , taus = taus ) 
+taus <- c(-1, -1, -1)
+pars <- list( lambdas = lambdas, alphas = cbind(alphas, betas), taus = taus ) 
 # 
 maxdens <- 10
 base <- 2 
 
 # -----------------------------------------------------
-experiments <- make_experiments(maxdens , base, nspp)
-monocultures <- make_monoculture(experiments)
+experiments <- make_experiments(maxdens, base, nspp)
+experiments <- make_monoculture(experiments)
 
-out <- monocultures
-for( i in 1:nrow(monocultures)){ 
-  seeds <- monocultures[i,1:nspp]
-  out[i,1:nspp] <- ann_plant_mod(seeds, form1, unlist(pars))
+out <- experiments
+for( i in 1:nrow(experiments)){ 
+  seeds <- experiments[i,1:nspp]
+  out[i,1:nspp] <- ann_plant_mod(seeds, formHOI, unlist(pars))
 }
 
 names(out)[1:nspp] <- paste0('F', 1:nspp)
 
 results <- 
-  left_join(monocultures, out, by = 'id') %>% 
+  left_join(experiments, out, by = 'id') %>% 
   gather( focal, fecundity, starts_with('F')) %>% 
   gather( competitor, density, starts_with('N')) %>% 
   group_by( id, focal ) %>% 
@@ -42,16 +45,56 @@ results <-
   spread( competitor, density, fill = 0) %>% 
   ungroup()
 
-
 results$focal_label <- paste0( 'focal\n', str_replace( results$focal, 'F', 'N'))
 
-fits.1 <- fit_2_converge(results, model = mod_bh, method = 'L-BFGS-B', form = form1, lower = c(0, 0, 0, 0, -2))
-fits.2 <- fit_2_converge(results, model = mod_bh2, method = 'L-BFGS-B', form = form1, my_inits = c(10, 1,1,1), lower = c(1, 0, 0, 0))
 
-pred_fit1 <- mapply( x = 1:nspp, y = fits.1, FUN = function(x,y, ... ) predict_fit(pars = y$par, foc = x, dat = results, model = mod_bh, form = form1), SIMPLIFY = F)
-pred_fit2 <- mapply( x = 1:nspp, y = fits.2, FUN = function(x,y, ... ) predict_fit(pars = y$par, foc = x, dat = results, model = mod_bh2, form = form1), SIMPLIFY = F)
+my_fits1 <- fit_both_mods(focal = 1, 
+                          n_seq = 20, 
+                          start_sd = 2, 
+                          min_sd = 0.01, 
+                          form1 = form1,
+                          data = results, 
+                          model = mod_bh_ll, 
+                          lower1 = c(1, 0, 0, 0, -2),
+                          inits1 = c(10, 0, 0, 0, -1.5), 
+                          method = 'L-BFGS-B')
 
-preds <- do.call( rbind, lapply( c(pred_fit1, pred_fit2), function(x) x %>% gather( predicted, pred_fecundity, starts_with('pred'))))
+my_fits2 <- fit_both_mods(focal = 2, 
+                          n_seq = 20, 
+                          start_sd = 2, 
+                          min_sd = 0.01, 
+                          form1 = form1,
+                          data = results, 
+                          model = mod_bh_ll, 
+                          lower1 = c(10, 0, 0, 0, -2),
+                          inits1 = c(10, 0, 0, 0, -1.1), 
+                          method = 'L-BFGS-B')
+
+my_fits3 <- fit_both_mods(focal = 3, 
+                          n_seq = 20, 
+                          start_sd = 2, 
+                          min_sd = 0.01, 
+                          form1 = form1,
+                          data = results, 
+                          model = mod_bh_ll, 
+                          lower1 = c(10, 0, 0, 0, -2),
+                          inits1 = c(10, 0, 0, 0, -1.1), 
+                          method = 'L-BFGS-B')
+
+fits1 <- lapply(list(my_fits1, my_fits2, my_fits3), function(x) x$fit1)
+
+pred_fit1 <- mapply( x = 1:nspp, 
+                     y = fits1, 
+                     z = c(mod_bh_ll, mod_bh_ll, mod_bh_ll), 
+                     FUN = function(x,y,z, ... ) 
+                       predict_fit(pars = y$par, 
+                                   foc = x, 
+                                   model = z, 
+                                   dat = results, 
+                                   form = form1), 
+                     SIMPLIFY = F)
+
+preds <- do.call( rbind, lapply( pred_fit1, function(x) x %>% gather( predicted, pred_fecundity, starts_with('pred'))))
 
 figdat <-
   preds %>% 
@@ -59,44 +102,27 @@ figdat <-
   select(-t1, -predicted_sp) %>% 
   filter( !is.na(pred_fecundity))
 
-
 all_fits <- 
   left_join(results, figdat, by = c('id', 'focal')) %>%
   gather( competitor, density, starts_with('N')) %>% 
   filter( comp_n == 0 | density > 0 ) %>%  
   ggplot(aes( x = density, y = fecundity) ) + 
   geom_point() + 
-  geom_line(aes( y = pred_fecundity, color = model), linetype = 1) +
-  facet_grid(focal_label ~ competitor )
+  geom_line(aes( y = pred_fecundity, color = form), linetype = 1) +
+  facet_grid(focal_label ~ competitor + form)
 
-ggsave(all_fits, filename = 'figures/fit_ann_plant_model.png', width = 10, height = 5)
-ggsave(all_fits + scale_y_continuous(trans = 'log'), filename = 'figures/fit_ann_plant_model_log.png', width = 10, height = 5)
+sp3_fits <- 
+  all_fits$data %>%
+  filter( focal == 'F3') %>% 
+  ggplot(aes( x = density, y = fecundity) ) + 
+  geom_point() + 
+  geom_line(aes( y = pred_fecundity, color = form), linetype = 1) +
+  ylab('fecundity of N3')  + 
+  facet_grid( ~ competitor )
 
-# compare parameters 
+sp3_fits_log <- 
+  sp3_fits + scale_y_continuous(trans = 'log')
 
-fitted <- 
-  data.frame( N1 = fits.1[[1]]$par, N2 = fits.1[[2]]$par, N3 = fits.1[[3]]$par) %>%
-  mutate( par = c('lambda', paste0('alpha_', 1:nspp), 'tau')) %>% 
-  gather( species, value, starts_with('N')) %>% 
-  mutate( par = str_replace(par, '_', str_extract(species, '\\d+'))) %>% 
-  mutate( type = 'fitted')
-
-original <- 
-  data.frame( species = paste0('N', 1:nspp), lambda = pars$lambdas, alpha = pars$alphas, tau = pars$taus ) %>% 
-  gather( par, value, lambda:tau) %>%
-  mutate( par = str_replace(par, '\\.', str_extract(species, '\\d+'))) %>%
-  mutate( type = 'original')
-
-pars_df <- 
-  bind_rows(fitted, original ) %>% 
-  mutate( par_type = str_extract(par, '[a-z]+')) %>% 
-  mutate( par = ifelse(!str_detect(par, '\\d+'), paste0(par, str_extract(species, '\\d+')), par))
-
-pars_plot <- 
-  ggplot(pars_df, aes( x = par, y = value, shape = type, color = type)) + 
-  geom_point(alpha = 1, size = 4)  +
-  scale_shape_manual(values = c(3,1)) + 
-  facet_wrap( ~ par_type , scales = 'free') + 
-  coord_flip()
-
-ggsave(pars_plot, filename = 'figures/plot_ann_plant_pars.png')
+sp3_fits
+sp3_fits_log
+all_fits
