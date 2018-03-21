@@ -173,7 +173,7 @@ fit_ann_plant <- function(data, model, form, focal = 1, my_inits = NULL, ... ){
   npar <- ncol(mm)
 
   if( is.null(my_inits) ){ 
-    par <- c( max(temp$fecundity), rep(1, npar), -1)
+    par <- c( max(temp$fecundity), -1, rep(1, npar))
   }else{ 
     par <- my_inits 
   }
@@ -257,7 +257,8 @@ basic_breaks <- function(n = 10){
   }
 }
 
-plot_two_sp <- function( data, focal = 'F1', C1 = 'N1', C2 = 'N2', C3 = 'N3', C2_dens = c(0, 16, 64, 256, 1024) ) { 
+plot_two_sp <- function( data, focal = 'F1', C1 = 'N1', C2 = 'N2', C3 = 'N3', 
+                         C2_dens = c(1, 4, 6, 8, 9) ) { 
   
   data <- data[ data$focal == focal, ] 
   
@@ -268,8 +269,8 @@ plot_two_sp <- function( data, focal = 'F1', C1 = 'N1', C2 = 'N2', C3 = 'N3', C2
   data %>%
     filter( comp_n == 0 | ( C3 == 0 )) %>%
     select(-C3) %>%
-    filter( C2 %in% C2_dens ) %>%  
     mutate( C2 = as.factor(C2)) %>%
+    filter( as.numeric(C2) %in% C2_dens ) %>%  
     ggplot( aes( y = fecundity, x = C1, color = C2)) +
     geom_point() +
     scale_y_continuous(name = paste0('N', str_extract(focal, '\\d'), ' fecundity'), trans = 'log', breaks = basic_breaks()) +
@@ -282,8 +283,8 @@ mod_bh <- function(pars, y, mm, predict = FALSE){
   if( !length(pars) == ncol(mm) + 2 ){ stop('wrong number of parameters supplied!')}
   
   lambda <- pars[1]
-  tau <- pars[length(pars)]
-  alphas <- pars[2:(length(pars) - 1)]
+  tau <- pars[2]
+  alphas <- pars[3:(length(pars))]
   
   mu <- lambda*(1 + mm%*%alphas)^tau
   
@@ -324,12 +325,29 @@ mod_bh_ll <- function(pars, y, mm, sd = 1, predict = FALSE){
   if( !length(pars) == ncol(mm) + 2 ){ stop('wrong number of parameters supplied!')}
   
   lambda <- pars[1]
-  tau <- pars[length(pars)]
-  alphas <- pars[2:(length(pars) - 1)]
+  tau <- pars[2]
+  alphas <- pars[3:(length(pars))]
   
   mu <- lambda*(1 + mm%*%alphas)^tau
   
-  neg_ll <- sum( - dnorm( mu, y, sd, log = T) )
+  neg_ll <- sum( - dnorm( log(mu), log(y), sd, log = T) )
+  
+  if(predict){ 
+    return(mu)
+  }else if(!predict){ 
+    return(neg_ll) 
+  }
+}
+
+mod_bh_HOI_ll <- function(pars, y, mm, lambda, tau, alphas, sd = 1, predict = FALSE){ 
+  
+  if( !length(pars) == 1 ){ stop('wrong number of parameters supplied!')}
+  
+  alphas <- c(alphas, pars)
+  
+  mu <- lambda*(1 + mm%*%alphas)^tau
+  
+  neg_ll <- sum( - dnorm( log(mu), log(y), sd, log = T) )
   
   if(predict){ 
     return(mu)
@@ -381,33 +399,31 @@ fit_2_converge <- function(n_seq, start_sd, min_sd,  my_inits, model, ...){
   return( list( sd_grad = sd_grad, res = res) )
 }  
 
-fit_both_mods <- function( focal = 1, form1, inits1, lower1, model, ... ){  
+fit_both_mods <- function( focal = 1, form1, inits1, lower1, upper1, model, ... ){  
   mod_name <- deparse(substitute(model))
   
-  fits <- fit_2_converge(focal = focal, form = form1, my_inits = inits1, lower = lower1, model, ... )
+  fits <- fit_2_converge(focal = focal, form = form1, my_inits = inits1, lower = lower1, upper = upper1, model, ... )
   
   best_fit <- which.min( unlist( lapply( fits$res, function(x)  x$value ) ) )
   fit1 <- fits$res[[best_fit]]
   lambda <- fit1$par[1]
   
   if(str_detect(mod_name, '2')) { 
-    alpha  <- 2:length(inits1)
     alpha  <- fit1$par[ 2:length(fit1$par) ]
-    
-    HOI_inits <- c(lambda, alpha, inits1[-1])
-    lower  <- c(lower1[1], lower1[-1])
+    HOI_inits <- c(lambda, alpha, rep(0, length(alpha)))
+    lower  <- c(lower1[1], lower1[-1], lower1[-1])
+    upper  <- c(upper1[1], upper1[-1], upper1[-1]/10)
     
   }else{ 
-    alpha  <- fit1$par[-c(1, length(fit1$par)) ]
-    tau    <- fit1$par[length(fit1$par)]  
-    HOI_inits <- c(lambda, rep(0, 2*length(alpha)), tau)
-    lower  <- rep( 0, length(HOI_inits))
-    lower[length(lower)] <- -1 
+    tau    <- fit1$par[2]  
+    alpha  <- fit1$par[2:length(fit1$par)]
+    HOI_inits <- c(lambda, tau, alpha, rep(0, length(alpha)))
+    lower  <- c(lower1[1:2], lower1[-c(1:2)], lower1[-c(1:2)])
+    upper  <- c(upper1[1:2], upper1[-c(1:2)], upper1[-c(1:2)]/10)
+    
   }
   
-  lower[1] <- lower1[1]
-  
-  fits <- fit_2_converge(focal = focal, form = formHOI, my_inits = HOI_inits, lower = lower, model, ... )
+  fits <- fit_2_converge(focal = focal, form = formHOI, my_inits = HOI_inits, lower = lower, upper = upper, model, ... )
   
   best_fit <- which.min( unlist( lapply( fits$res, function(x)  x$value ) ) )
   fitHOI <- fits$res[[best_fit]]
@@ -415,4 +431,29 @@ fit_both_mods <- function( focal = 1, form1, inits1, lower1, model, ... ){
   return( list(fit1 = fit1, fitHOI = fitHOI))
   
 }
+
+fit_HOI <- function(data, focal, HOI_term, nspp, lambda, tau, alpha, ... ){ 
+  focal <- paste0( 'F', focal)
+  temp <- results[results$focal == focal, ]
+  
+  mm <- model.matrix( formHOI, temp ) 
+  use <- rowSums(mm[, 1:nspp] == 0) > 0 
+  mm <- mm[ use , c(1:nspp, nspp + HOI_term)] 
+  y <- temp$fecundity[use]
+  
+  optim(par = 0, mod_bh_HOI_ll, mm = mm, y = y, lambda = lambda, tau = tau, alpha = alpha, method = 'L-BFGS-B', lower = 0, upper = 2, ... )
+}
+
+fit_single_sp <- function(data, focal, comp, form, ... ){ 
+  focal <- paste0( 'F', focal)
+  temp <- results[results$focal == focal, ]
+  init_lambda <- max(temp$fecundity)
+  mm <- model.matrix( form, temp )
+  use <- mm[ , comp ] == rowSums(mm)
+  mm <- as.matrix( mm [ use, comp ] )
+  y <- temp$fecundity[use]
+  
+  optim( par = c(init_lambda, -1, 0), mod_bh_ll, mm = mm, y = y, method = 'L-BFGS-B', lower = c(1, -2, 0), upper = c(1e3, 0, 10), ... )
+}
+
 

@@ -12,26 +12,26 @@ alphas <- matrix( c(1, 0.5, 0.1,
                     0.1, 0.5, 1), nspp, nspp, byrow = T)
 #betas <- alphas 
 #betas[] <- rep(0.01, nspp*nspp)
-betas <- matrix( c(0.01, 0.001, 0.00, 
-          0.00, 0.01, 0.0002, 
-          0.0, 0.0, 0.01), nspp, nspp, byrow = T)
+betas <- matrix(c(0.1,  0.2,  0.01, 
+                  0.001,  0.1,  0.01, 
+                  0.01,  0.02,  0.01), nspp, nspp, byrow = T)
 
 lambdas <- c(24, 32, 41)
-taus <- c(-1, -1, -1)
-pars <- list( lambdas = lambdas, alphas = cbind(alphas, betas), taus = taus ) 
+taus <- c(-1.01, -1, -0.9)
+#pars <- list( lambdas = lambdas, alphas = cbind(alphas, betas), taus = taus ) 
 # 
-maxdens <- 10
-base <- 2 
+maxdens <- 8
+base <- 2
 
 # -----------------------------------------------------
 experiments <- make_experiments(maxdens, base, nspp)
 #experiments <- make_biculture(experiments)
 
-
 out <- experiments
-for( i in 1:nrow(experiments)){ 
-  seeds <- experiments[i,1:nspp]
-  out[i,1:nspp] <- ann_plant_mod(seeds, formHOI, unlist(pars))
+mm <- model.matrix(formHOI, experiments)
+
+for( i in 1:nspp) { 
+  out[,i] <- mod_bh(pars = c(lambdas[i], taus[i], alphas[i, ], betas[i, ]), y = NA, mm = mm, predict = T)
 }
 
 names(out)[1:nspp] <- paste0('F', 1:nspp)
@@ -48,45 +48,87 @@ results <-
 
 results$focal_label <- paste0( 'focal\n', str_replace( results$focal, 'F', 'N'))
 
+par_ests <- expand.grid( focal = 1:nspp, comp = 1:nspp, lambda = NA, tau = NA, alpha = NA)
 
-my_fits1 <- fit_both_mods(focal = 1, 
-                          n_seq = 20, 
-                          start_sd = 2, 
-                          min_sd = 0.01, 
-                          form1 = form1,
-                          data = results, 
-                          model = mod_bh_ll, 
-                          lower1 = c(1, 0, 0, 0, -2),
-                          inits1 = c(10, 0, 0, 0, -1.5), 
-                          method = 'L-BFGS-B')
+for( i in 1:nrow(par_ests)) {
+  temp_fit <- fit_single_sp(results, 
+                            focal = par_ests$focal[i], 
+                            comp = par_ests$comp[i], 
+                            form = form1, sd = 2)
+  if(temp_fit$convergence == 0 ) { 
+    par_ests[i, c('lambda', 'tau', 'alpha')] <- temp_fit$par 
+  }
+}
 
-my_fits2 <- fit_both_mods(focal = 2, 
-                          n_seq = 20, 
-                          start_sd = 2, 
-                          min_sd = 0.01, 
-                          form1 = form1,
-                          data = results, 
-                          model = mod_bh_ll, 
-                          lower1 = c(10, 0, 0, 0, -2),
-                          inits1 = c(10, 0, 0, 0, -1.1), 
-                          method = 'L-BFGS-B')
+par_ests <- 
+  par_ests %>% 
+  group_by( focal ) %>% 
+  mutate( lambda_hat = mean(lambda), tau_hat = mean(tau)) %>% 
+  gather( alpha_par, alpha_value, alpha) %>% 
+  unite( alpha, alpha_par, focal, comp, sep = '', remove = F) %>% 
+  select( - alpha_par ) %>% 
+  arrange( alpha ) 
 
-my_fits3 <- fit_both_mods(focal = 3, 
-                          n_seq = 20, 
-                          start_sd = 2, 
-                          min_sd = 0.01, 
-                          form1 = form1,
-                          data = results, 
-                          model = mod_bh_ll, 
-                          lower1 = c(10, 0, 0, 0, -2),
-                          inits1 = c(10, 0, 0, 0, -1.1), 
-                          method = 'L-BFGS-B')
+alpha_est <- matrix( par_ests$alpha_value, nspp, nspp , byrow = T)
+lambda_est <-  unique(par_ests$lambda_hat)
+tau_est <- unique( par_ests$tau_hat)
 
-fits1 <- lapply(list(my_fits1, my_fits2, my_fits3), function(x) x$fit1)
-fitsHOI <- lapply(list(my_fits1, my_fits2, my_fits3), function(x) x$fitHOI)
+# now fit HOIs 
 
-pred_fit1 <- mapply( x = 1:nspp, y = fits1, FUN = function(x,y, ... ) predict_fit(pars = y$par, foc = x, dat = results, model = mod_bh_ll, form = form1), SIMPLIFY = F)
-pred_fit2 <- mapply( x = 1:nspp, y = fitsHOI, FUN = function(x,y, ... ) predict_fit(pars = y$par, foc = x, dat = results, model = mod_bh_ll, form = formHOI), SIMPLIFY = F)
+
+
+par_ests <- expand.grid( focal = 1:nspp, HOI_term = 1:nspp)
+par_ests$lambda = lambda_est
+par_ests$tau = tau_est
+
+par_ests$alpha <- matrix( rep( t(alpha_est), nspp), nspp*nspp, nspp, byrow = T)
+par_ests$beta  <- NA
+
+for(i in 1:nrow(par_ests)){ 
+  
+  temp_fit <- 
+    fit_HOI(data = results, 
+            focal = par_ests$focal[i], 
+            HOI_term = par_ests$HOI_term[i],
+            nspp = 3, 
+            sd = 3,
+            lambda = par_ests$lambda[i], 
+            tau = par_ests$tau[i], 
+            alpha = par_ests$alpha[i, ])
+  
+  if(temp_fit$convergence == 0 ){ 
+    par_ests$beta[i] <- temp_fit$par 
+  }
+  
+}
+
+beta_est <- matrix(par_ests$beta, nspp, nspp)
+
+fits <- data.frame(focal = 1:3, lambda = lambda_est, tau = tau_est)
+fits$alpha <- alpha_est
+fits$beta <- beta_est
+
+pred_fit1 <- list()
+pred_fit2 <- list()
+
+beta_est
+
+for( i in 1:nrow(fits)){ 
+  
+  pred_fit1[[i]] <- predict_fit(pars = unlist(fits[i, c('lambda', 'tau', 'alpha')]), 
+              foc = i, 
+              dat = results, 
+              model = mod_bh_ll, 
+              form = form1)
+  
+  pred_fit2[[i]] <- predict_fit(pars = unlist(fits[i, c('lambda', 'tau', 'alpha', 'beta')]), 
+                                foc = i, 
+                                dat = results, 
+                                model = mod_bh_ll, 
+                                form = formHOI)
+  
+  
+}
 
 preds <- do.call( rbind, lapply( c(pred_fit1, pred_fit2), function(x) x %>% gather( predicted, pred_fecundity, starts_with('pred'))))
 
@@ -151,20 +193,23 @@ sp3_fits <- grid.arrange(p1, p2, p3, ncol = 3)
 
 # compare parameters 
 
-fitted <- 
-  data.frame( N1 = fitsHOI[[1]]$par, N2 = fitsHOI[[2]]$par, N3 = fitsHOI[[3]]$par) %>%
-  mutate( par = c('lambda', paste0('alpha_', 1:(ncol(alphas))), paste0('betas_', 1:(ncol(betas))), 'tau')) %>% 
-  gather( species, value, starts_with('N')) %>% 
-  mutate( par = str_replace(par, '_', str_extract(species, '\\d+'))) %>% 
-  mutate( type = 'fitted')
 
+fitted <- 
+  data.frame( species = paste0('N', 1:nspp), 
+              lambda = lambda_est,
+              alpha = alpha_est, 
+              betas = beta_est, 
+              tau = tau_est ) %>%   
+  gather( par, value, lambda:tau) %>%
+  mutate( par = str_replace(par, '\\.', str_extract(species, '\\d+'))) %>%
+  mutate( type = 'fitted')
 
 original <- 
   data.frame( species = paste0('N', 1:nspp), 
-              lambda = pars$lambdas, 
+              lambda = lambdas, 
               alpha = alphas, 
               betas = betas, 
-              tau = pars$taus ) %>% 
+              tau = taus ) %>% 
   gather( par, value, lambda:tau) %>%
   mutate( par = str_replace(par, '\\.', str_extract(species, '\\d+'))) %>%
   mutate( type = 'original')
