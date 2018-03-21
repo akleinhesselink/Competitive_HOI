@@ -28,7 +28,7 @@ plot_Rstar(parms, my_colors)
 
 # -----------------------------------------------------
 nspp <- length(parms$K)
-maxdens <- 5
+maxdens <- 8
 base <- 2 
 
 experiments <- make_experiments(maxdens, base, nspp)
@@ -72,80 +72,117 @@ results2 %>%
   facet_grid(focal_label ~ competitor)
 
 
-my_fits1 <- fit_both_mods(focal = 1, 
-                          n_seq = 20, 
-                          start_sd = 2, 
-                          min_sd = 0.01, 
-                          form1 = form1,
-                          data = results2, 
-                          model = mod_bh_ll, 
-                          lower1 = c(1, 0, 0, 0, -2),
-                          inits1 = c(10, 0, 0, 0, -1.5), 
-                          method = 'L-BFGS-B')
+par_ests <- expand.grid( focal = 1:nspp, comp = 1:nspp, lambda = NA, tau = NA, alpha = NA)
 
-my_fits2 <- fit_both_mods(focal = 2, 
-                          n_seq = 20, 
-                          start_sd = 2, 
-                          min_sd = 0.01, 
-                          form1 = form1,
-                          data = results2, 
-                          model = mod_bh_ll, 
-                          lower1 = c(10, 0, 0, 0, -2),
-                          inits1 = c(10, 0, 0, 0, -1.1), 
-                          method = 'L-BFGS-B')
+for( i in 1:nrow(par_ests)) {
+  temp <- fit_2_converge(n_seq = 20, 
+                         start_sd = 3, 
+                         min_sd = 0.2, 
+                         init_tau = -1, 
+                         init_alpha = 0, 
+                         data = results2, 
+                         focal = par_ests$focal[i], 
+                         comp  = par_ests$comp[i], 
+                         form = form1)
+  
+  best_fit <- temp$res[[which.min( unlist( lapply( temp$res, function(x) x$value)))]]
+  
+  if(best_fit$convergence == 0 ) { 
+    par_ests[i, c('lambda', 'tau', 'alpha')] <- best_fit$par 
+  }
+}
 
-my_fits3.1 <- fit_both_mods(focal = 3, 
-                          n_seq = 20, 
-                          start_sd = 2, 
-                          min_sd = 0.01, 
-                          form1 = form1,
-                          data = results2, 
-                          model = mod_bh_ll, 
-                          lower1 = c(10, 0, 0, 0, -2),
-                          inits1 = c(10, 1, 1, 1, -1.1), 
-                          method = 'L-BFGS-B')
+par_ests <- 
+  par_ests %>% 
+  group_by( focal ) %>% 
+  mutate( lambda_hat = mean(lambda), tau_hat = mean(tau)) %>% 
+  gather( alpha_par, alpha_value, alpha) %>% 
+  unite( alpha, alpha_par, focal, comp, sep = '', remove = F) %>% 
+  select( - alpha_par ) %>% 
+  arrange( alpha ) 
 
-my_fits3.2 <- fit_both_mods(focal = 3, 
-                          n_seq = 20, 
-                          start_sd = 2, 
-                          min_sd = 0.01, 
-                          form1 = form1,
-                          data = results2, 
-                          model = mod_bh2_ll, 
-                          lower1 = c(20, 0, 0, 0),
-                          inits1 = c(20, 1, 1, 1), 
-                          method = 'L-BFGS-B')
+alpha_est <- matrix( par_ests$alpha_value, nspp, nspp , byrow = T)
+lambda_est <-  unique(par_ests$lambda_hat)
+tau_est <- unique( par_ests$tau_hat)
 
+fit_pars <- list(NA)
+for( i in 1:nspp) {
+  temp <- fit_2_converge(n_seq = 20, 
+                         start_sd = 3, 
+                         min_sd = 0.2, 
+                         init_lambda = lambda_est[i],
+                         init_tau = tau_est[i], 
+                         init_alpha = alpha_est[i, ], 
+                         data = results2, 
+                         focal = i, 
+                         form = form1, 
+                         FUN = fit_single_tau)
+  
+  best_fit <- temp$res[[which.min( unlist( lapply( temp$res, function(x) x$value)))]]
+  
+  if(best_fit$convergence == 0 ) { 
+    fit_pars[[i]] <- best_fit$par 
+  }
+}
+fit_pars <- do.call(rbind, fit_pars)
 
+# now fit HOIs ---------------------------------------------- # 
 
-refit1 <- fit_ann_plant(focal = 3, data = results2, model = mod_bh, form = form1, my_inits = my_fits3.1$fit1$par, method = 'L-BFGS-B', lower = c(1, 0, 0, 0, -2))
-refit2 <- fit_ann_plant(focal = 3, data = results2, model = mod_bh2, form = form1, my_inits = my_fits3.2$fit1$par, method = 'L-BFGS-B', lower = c(1, 0, 0, 0))
-my_fits3 <- list(my_fits3.1, my_fits3.2)[[ which.min(c(refit1$value, refit2$value)) ]]
+par_ests <- expand.grid( focal = 1:nspp, comp = 1:nspp)
+par_ests$lambda = lambda_est
+par_ests$tau = fit_pars[,1]
 
-fits1 <- lapply(list(my_fits1, my_fits2, my_fits3), function(x) x$fit1)
-fitsHOI <- lapply(list(my_fits1, my_fits2, my_fits3), function(x) x$fitHOI)
+alpha_est <- fit_pars[, 1 + 1:nspp]
+par_ests$alpha <- matrix( rep( t(alpha_est), nspp), nspp*nspp, nspp, byrow = T)
+par_ests$beta  <- NA
 
-pred_fit1 <- mapply( x = 1:nspp, 
-                     y = fits1, 
-                     z = c(mod_bh_ll, mod_bh_ll, mod_bh2_ll), 
-                     FUN = function(x,y,z, ... ) 
-                       predict_fit(pars = y$par, 
-                                   foc = x, 
-                                   model = z, 
-                                   dat = results2, 
-                                   form = form1), 
-                     SIMPLIFY = F)
+for(i in 1:nrow(par_ests)){ 
+  
+  temp <- fit_2_converge(n_seq = 20, 
+                         start_sd = 3, 
+                         min_sd = 0.2, 
+                         init_lambda = par_ests$lambda[i],
+                         init_tau = par_ests$tau[i],
+                         init_alpha = par_ests$alpha[i,], 
+                         data = results2, 
+                         focal = par_ests$focal[i], 
+                         comp  = par_ests$comp[i], 
+                         form = formHOI, 
+                         FUN = fit_HOI)
+  
+  best_fit <- temp$res[[which.min( unlist( lapply( temp$res, function(x) x$value)))]]
+  
+  if(best_fit$convergence == 0 ) { 
+    par_ests$beta[i] <- best_fit$par 
+  }
+  
+}
 
-pred_fit2 <- mapply( x = 1:nspp, 
-                     y = fitsHOI, 
-                     z = c(mod_bh_ll, mod_bh_ll, mod_bh2_ll), 
-                     FUN = function(x,y,z, ... ) 
-                       predict_fit(pars = y$par, 
-                                   foc = x, 
-                                   model = z, 
-                                   dat = results2, 
-                                   form = formHOI), 
-                     SIMPLIFY = F)
+beta_est <- matrix(par_ests$beta, nspp, nspp)
+
+fits <- data.frame(focal = 1:3, lambda = lambda_est, tau = tau_est)
+fits$alpha <- alpha_est
+fits$beta <- beta_est
+
+pred_fit1 <- list()
+pred_fit2 <- list()
+
+for( i in 1:nrow(fits)){ 
+  
+  pred_fit1[[i]] <- predict_fit(pars = unlist(fits[i, c('lambda', 'tau', 'alpha')]), 
+                                foc = i, 
+                                dat = results2, 
+                                model = mod_bh_ll, 
+                                form = form1)
+  
+  pred_fit2[[i]] <- predict_fit(pars = unlist(fits[i, c('lambda', 'tau', 'alpha', 'beta')]), 
+                                foc = i, 
+                                dat = results2, 
+                                model = mod_bh_ll, 
+                                form = formHOI)
+  
+  
+}
 
 preds <- do.call( rbind, lapply( c(pred_fit1, pred_fit2), function(x) x %>% gather( predicted, pred_fecundity, starts_with('pred'))))
 
@@ -164,6 +201,7 @@ all_fits <-
   geom_line(aes( y = pred_fecundity, color = form), linetype = 1) +
   facet_grid(focal_label ~ competitor + form)
 
+all_fits
 
 sp3_fits <- 
   all_fits$data %>%
@@ -179,8 +217,4 @@ sp3_fits_log <-
 
 sp3_fits
 sp3_fits_log
-
-ggsave(all_fits, filename = 'figures/mechanistic_model_fits.png', width = 10, height = 5)
-ggsave(sp3_fits, filename = 'figures/mechanistic_sp_3_fits.png', width = 10, height = 5)
-ggsave(sp3_fits_log, filename = 'figures/mechanisitic_sp_3_fits_log.png', width = 10, height = 5)
 
