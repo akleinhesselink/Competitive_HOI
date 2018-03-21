@@ -258,13 +258,18 @@ basic_breaks <- function(n = 10){
 }
 
 plot_two_sp <- function( data, focal = 'F1', C1 = 'N1', C2 = 'N2', C3 = 'N3', 
-                         C2_dens = c(1, 4, 6, 8, 9) ) { 
+                         C2_dens = NULL ) { 
   
   data <- data[ data$focal == focal, ] 
   
   data$C1 <- as.numeric(unlist(data[, C1]))
   data$C2 <- as.numeric(unlist(data[, C2]))
   data$C3 <- as.numeric(unlist(data[, C3]))
+  
+  if(is.null(C2_dens)){
+    C2_factor <- as.numeric( factor(data$C2)  )
+    C2_dens <- floor( seq(min(C2_factor), max(C2_factor), length.out = 4))
+  } 
   
   data %>%
     filter( comp_n == 0 | ( C3 == 0 )) %>%
@@ -377,27 +382,25 @@ mod_bh2_ll <- function(pars, y, mm, sd = 1, predict = FALSE){
   }
 }
 
-
-fit_2_converge <- function(n_seq, start_sd, min_sd,  my_inits, model, ...){ 
-  res <- list()
-  inits <- list()
-  inits[[1]] <- my_inits
+mod_bh_ll_no_lambda <- function(pars, y, mm, lambda, sd = 1, predict = FALSE){ 
   
-  sd_grad <- rev( seq(min_sd, start_sd, length.out = n_seq))
-  sd <- sd_grad[1]
-  res[[1]]  <- fit_ann_plant(sd = sd, my_inits = my_inits, model = model, ...)
+  if( !length(pars) == ncol(mm) + 1 ){ stop('wrong number of parameters supplied!')}
   
-  for( i in 2:n_seq) { 
-    sd <- sd_grad[i]
-    inits[[i]] <- res[[i-1]]$par
-    res[[i]] <- fit_ann_plant( my_inits = inits[[i]], sd = sd, model = model, ... )
+  tau <- pars[1]
+  alphas <- pars[2:(length(pars))]
+  
+  mu <- lambda*(1 + mm%*%alphas)^tau
+  
+  neg_ll <- sum( - dnorm( log(mu), log(y), sd, log = T) )
+  
+  if(predict){ 
+    return(mu)
+  }else if(!predict){ 
+    return(neg_ll) 
   }
-  converged <- unlist( lapply( res, function(x) x$convergence == 0 ))
-  sd_grad <- sd_grad[which(converged)]
-  res <- res[which(converged)]
-  
-  return( list( sd_grad = sd_grad, res = res) )
-}  
+}
+
+ 
 
 fit_both_mods <- function( focal = 1, form1, inits1, lower1, upper1, model, ... ){  
   mod_name <- deparse(substitute(model))
@@ -432,28 +435,102 @@ fit_both_mods <- function( focal = 1, form1, inits1, lower1, upper1, model, ... 
   
 }
 
-fit_HOI <- function(data, focal, HOI_term, nspp, lambda, tau, alpha, ... ){ 
-  focal <- paste0( 'F', focal)
-  temp <- results[results$focal == focal, ]
+fit_2_converge <- function(n_seq, start_sd, min_sd, init_tau, init_alpha, FUN = fit_single_sp, ...){ 
+  FUN_name <- deparse(substitute(FUN))
+  res <- list()
+  inits <- list()
   
-  mm <- model.matrix( formHOI, temp ) 
-  use <- rowSums(mm[, 1:nspp] == 0) > 0 
-  mm <- mm[ use , c(1:nspp, nspp + HOI_term)] 
-  y <- temp$fecundity[use]
+  sd_grad <- rev( seq(min_sd, start_sd, length.out = n_seq))
+  sd <- sd_grad[1]
+  res[[1]]  <- FUN(sd = sd, init_tau = init_tau, init_alpha = init_alpha, ... )
   
-  optim(par = 0, mod_bh_HOI_ll, mm = mm, y = y, lambda = lambda, tau = tau, alpha = alpha, method = 'L-BFGS-B', lower = 0, upper = 2, ... )
-}
+  for( i in 2:n_seq) { 
+    sd <- sd_grad[i]
+    inits[[i]] <- res[[i-1]]$par
+    if( FUN_name == 'fit_HOI') { 
+      init_par <- inits[[i]][1]
+      res[[i]] <- FUN(sd = sd, init_par = init_par, init_tau = init_tau, init_alpha = init_alpha, ... )
+    }else if( FUN_name == "fit_single_sp"){ 
+      init_tau <- inits[[i]][2]
+      init_alpha <- inits[[i]][3]
+      res[[i]] <- FUN(sd = sd, init_tau = init_tau, init_alpha = init_alpha, ... )
+    }else if( FUN_name == "fit_single_tau"){ 
+      init_tau <- inits[[i]][1]
+      init_alpha <- inits[[i]][ 1:nspp + 1 ]
+      res[[i]] <- FUN(sd = sd, init_tau = init_tau, init_alpha = init_alpha, ... )
+    }
+  }
+  converged <- unlist( lapply( res, function(x) x$convergence == 0 ))
+  sd_grad <- sd_grad[which(converged)]
+  res <- res[which(converged)]
+  
+  return( list( sd_grad = sd_grad, res = res) )
+} 
 
-fit_single_sp <- function(data, focal, comp, form, ... ){ 
+
+fit_single_sp <- function(data, focal, comp, form, init_lambda = NULL, init_tau = -1, init_alpha = 0,  ... ){ 
   focal <- paste0( 'F', focal)
-  temp <- results[results$focal == focal, ]
-  init_lambda <- max(temp$fecundity)
+  temp <- data[data$focal == focal, ]
+  
+  if(is.null(init_lambda)){
+    init_lambda <- max(temp$fecundity)
+  }
   mm <- model.matrix( form, temp )
   use <- mm[ , comp ] == rowSums(mm)
   mm <- as.matrix( mm [ use, comp ] )
   y <- temp$fecundity[use]
   
-  optim( par = c(init_lambda, -1, 0), mod_bh_ll, mm = mm, y = y, method = 'L-BFGS-B', lower = c(1, -2, 0), upper = c(1e3, 0, 10), ... )
+  optim( par = c(init_lambda, init_tau, init_alpha), mod_bh_ll, mm = mm, y = y, method = 'L-BFGS-B', lower = c(1, -2, 0), upper = c(1e3, 0, 1e2), ... )
+}
+
+fit_single_tau <- function(data, focal, form, nspp = 3, init_lambda = NULL, init_tau = -1, init_alpha = NULL,  ... ){ 
+  focal <- paste0( 'F', focal)
+  temp <- data[data$focal == focal, ]
+  
+  if(is.null(init_lambda)){
+    init_lambda <- max(temp$fecundity)
+  }
+  if(is.null(init_alpha)){ 
+    init_alpha <- rep(0, nspp)
+  }
+  
+  mm <- model.matrix( form, temp )
+  use <- rowSums(mm[, 1:nspp] == 0) >= (nspp - 1) 
+  mm <- as.matrix( mm [ use,  ] )
+  y <- temp$fecundity[use]
+  
+  optim( par = c(init_tau, init_alpha), 
+         mod_bh_ll_no_lambda, 
+         mm = mm, 
+         y = y, 
+         lambda = init_lambda,  
+         method = 'L-BFGS-B', 
+         lower = c(-2, rep(0, nspp)), 
+         upper = c(0, rep(1e2, nspp)), 
+         ... )
 }
 
 
+fit_HOI <- function(data, focal, comp, form = formHOI, init_par = 0, init_lambda = NULL, init_tau = -1, init_alpha = 1, nspp = 3, ... ){ 
+  focal <- paste0( 'F', focal)
+  temp <- data[data$focal == focal, ]
+  
+  if(is.null(init_lambda)){
+    init_lambda <- max(temp$fecundity)
+  }
+  
+  mm <- model.matrix( form, temp ) 
+  use <- rowSums(mm[, 1:nspp] == 0) > 0 
+  mm <- mm[ use, c(1:nspp, nspp + comp)] 
+  y <- temp$fecundity[use]
+  
+  optim(par = init_par, 
+        mod_bh_HOI_ll, 
+        mm = mm, y = y, 
+        lambda = init_lambda, 
+        tau = init_tau, 
+        alpha = init_alpha, 
+        method = 'L-BFGS-B', 
+        lower = -1e-2, 
+        upper = 2, ... )
+}

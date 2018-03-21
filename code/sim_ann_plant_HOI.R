@@ -13,15 +13,15 @@ alphas <- matrix( c(1, 0.5, 0.1,
 #betas <- alphas 
 #betas[] <- rep(0.01, nspp*nspp)
 betas <- matrix(c(0.1,  0.2,  0.01, 
-                  0.001,  0.1,  0.01, 
+                  0.001,  0.1,  -0.01, 
                   0.01,  0.02,  0.01), nspp, nspp, byrow = T)
 
 lambdas <- c(24, 32, 41)
 taus <- c(-1.01, -1, -0.9)
 #pars <- list( lambdas = lambdas, alphas = cbind(alphas, betas), taus = taus ) 
 # 
-maxdens <- 8
-base <- 2
+maxdens <- 20
+base <- 1.2
 
 # -----------------------------------------------------
 experiments <- make_experiments(maxdens, base, nspp)
@@ -51,12 +51,20 @@ results$focal_label <- paste0( 'focal\n', str_replace( results$focal, 'F', 'N'))
 par_ests <- expand.grid( focal = 1:nspp, comp = 1:nspp, lambda = NA, tau = NA, alpha = NA)
 
 for( i in 1:nrow(par_ests)) {
-  temp_fit <- fit_single_sp(results, 
-                            focal = par_ests$focal[i], 
-                            comp = par_ests$comp[i], 
-                            form = form1, sd = 2)
-  if(temp_fit$convergence == 0 ) { 
-    par_ests[i, c('lambda', 'tau', 'alpha')] <- temp_fit$par 
+  temp <- fit_2_converge(n_seq = 20, 
+                         start_sd = 3, 
+                         min_sd = 0.2, 
+                         init_tau = -1, 
+                         init_alpha = 0, 
+                         data = results, 
+                         focal = par_ests$focal[i], 
+                         comp  = par_ests$comp[i], 
+                         form = form1)
+  
+  best_fit <- temp$res[[which.min( unlist( lapply( temp$res, function(x) x$value)))]]
+  
+  if(best_fit$convergence == 0 ) { 
+    par_ests[i, c('lambda', 'tau', 'alpha')] <- best_fit$par 
   }
 }
 
@@ -73,36 +81,61 @@ alpha_est <- matrix( par_ests$alpha_value, nspp, nspp , byrow = T)
 lambda_est <-  unique(par_ests$lambda_hat)
 tau_est <- unique( par_ests$tau_hat)
 
+fit_pars <- list(NA)
+for( i in 1:nspp) {
+  temp <- fit_2_converge(n_seq = 20, 
+                         start_sd = 3, 
+                             min_sd = 0.2, 
+                             init_lambda = lambda_est[i],
+                             init_tau = tau_est[i], 
+                             init_alpha = alpha_est[i, ], 
+                             data = results, 
+                             focal = i, 
+                             form = form1, 
+                             FUN = fit_single_tau)
+  
+  best_fit <- temp$res[[which.min( unlist( lapply( temp$res, function(x) x$value)))]]
+  
+  if(best_fit$convergence == 0 ) { 
+    fit_pars[[i]] <- best_fit$par 
+  }
+}
+
+fit_pars <- do.call(rbind, fit_pars)
+
 # now fit HOIs 
-
-
-
-par_ests <- expand.grid( focal = 1:nspp, HOI_term = 1:nspp)
+par_ests <- expand.grid( focal = 1:nspp, comp = 1:nspp)
 par_ests$lambda = lambda_est
-par_ests$tau = tau_est
+par_ests$tau = fit_pars[,1]
 
+alpha_est <- fit_pars[, 1 + 1:nspp]
 par_ests$alpha <- matrix( rep( t(alpha_est), nspp), nspp*nspp, nspp, byrow = T)
 par_ests$beta  <- NA
 
 for(i in 1:nrow(par_ests)){ 
   
-  temp_fit <- 
-    fit_HOI(data = results, 
-            focal = par_ests$focal[i], 
-            HOI_term = par_ests$HOI_term[i],
-            nspp = 3, 
-            sd = 3,
-            lambda = par_ests$lambda[i], 
-            tau = par_ests$tau[i], 
-            alpha = par_ests$alpha[i, ])
+  temp <- fit_2_converge(n_seq = 20, 
+                             start_sd = 3, 
+                             min_sd = 0.2, 
+                             init_lambda = par_ests$lambda[i],
+                             init_tau = par_ests$tau[i],
+                             init_alpha = par_ests$alpha[i,], 
+                             data = results, 
+                             focal = par_ests$focal[i], 
+                             comp  = par_ests$comp[i], 
+                             form = formHOI, 
+                             FUN = fit_HOI)
   
-  if(temp_fit$convergence == 0 ){ 
-    par_ests$beta[i] <- temp_fit$par 
+  best_fit <- temp$res[[which.min( unlist( lapply( temp$res, function(x) x$value)))]]
+  
+  if(best_fit$convergence == 0 ) { 
+    par_ests$beta[i] <- best_fit$par 
   }
   
 }
 
 beta_est <- matrix(par_ests$beta, nspp, nspp)
+round( beta_est, 3) == betas
 
 fits <- data.frame(focal = 1:3, lambda = lambda_est, tau = tau_est)
 fits$alpha <- alpha_est
@@ -110,8 +143,6 @@ fits$beta <- beta_est
 
 pred_fit1 <- list()
 pred_fit2 <- list()
-
-beta_est
 
 for( i in 1:nrow(fits)){ 
   
@@ -179,6 +210,7 @@ p1 <- plot_two_sp(all_fits, focal = 'F3', 'N3', 'N1', 'N2') +
   geom_line(aes( y = pred_fecundity, linetype = form)) + 
   scale_linetype_manual(values = c(2,3), guide = F) + 
   theme(legend.position = c(0.85, 0.7) )
+
 p2 <- plot_two_sp(all_fits, focal = 'F3', 'N3', 'N2', 'N1') + 
   geom_line(aes( y = pred_fecundity, linetype = form)) + 
   scale_linetype_manual(values = c(2,3), guide = F) + 
@@ -192,8 +224,6 @@ p3 <- plot_two_sp(all_fits, focal = 'F3', 'N1', 'N2', 'N3') +
 sp3_fits <- grid.arrange(p1, p2, p3, ncol = 3)
 
 # compare parameters 
-
-
 fitted <- 
   data.frame( species = paste0('N', 1:nspp), 
               lambda = lambda_est,
