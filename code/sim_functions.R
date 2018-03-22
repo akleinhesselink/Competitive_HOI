@@ -373,7 +373,28 @@ mod_bh2_ll <- function(pars, y, mm, sd = 1, predict = FALSE){
     mu[i] <- lambda/( 1 + sum(  mm[i, ]^alphas  ) )
   }
   
-  neg_ll <- sum( - dnorm( mu, y, sd, log = T) )
+  neg_ll <- sum( - dnorm( log(mu), log(y), sd, log = T) )
+  
+  if(predict){ 
+    return(mu)
+  }else if(!predict){ 
+    return(neg_ll) 
+  }
+}
+
+
+mod_bh2_HOI_ll <- function(pars, y, lambda, alphas, mm, sd = 1, predict = FALSE){ 
+  
+  if( !length(pars) == 1 ){ stop('wrong number of parameters supplied!')}
+  
+  alphas <- c(alphas, pars)
+  
+  mu <- NA
+  for( i in 1:nrow(mm)){ 
+    mu[i] <- lambda/( 1 + sum(  mm[i, ]^alphas  ) )
+  }
+  
+  neg_ll <- sum( - dnorm( log(mu), log(y), sd, log = T) )
   
   if(predict){ 
     return(mu)
@@ -435,14 +456,21 @@ fit_both_mods <- function( focal = 1, form1, inits1, lower1, upper1, model, ... 
   
 }
 
-fit_2_converge <- function(n_seq, start_sd, min_sd, init_tau, init_alpha, FUN = fit_single_sp, ...){ 
+fit_2_converge <- function(n_seq, start_sd, min_sd, init_alpha, init_tau = NULL, FUN = fit_single_sp, ...){ 
   FUN_name <- deparse(substitute(FUN))
   res <- list()
   inits <- list()
   
   sd_grad <- rev( seq(min_sd, start_sd, length.out = n_seq))
   sd <- sd_grad[1]
-  res[[1]]  <- FUN(sd = sd, init_tau = init_tau, init_alpha = init_alpha, ... )
+  
+  if(FUN_name == 'fit_single_sp2'){ 
+    res[[1]]  <- FUN(sd = sd, init_alpha = init_alpha, ... )
+  }else if( FUN_name == 'fit_HOI2'){
+    res[[1]]  <- FUN(sd = sd, init_alpha = init_alpha, ... )
+  }else{ 
+    res[[1]] <- FUN(sd = sd, init_tau = init_tau, init_alpha = init_alpha, ... )  
+  }
   
   for( i in 2:n_seq) { 
     sd <- sd_grad[i]
@@ -450,10 +478,16 @@ fit_2_converge <- function(n_seq, start_sd, min_sd, init_tau, init_alpha, FUN = 
     if( FUN_name == 'fit_HOI') { 
       init_par <- inits[[i]][1]
       res[[i]] <- FUN(sd = sd, init_par = init_par, init_tau = init_tau, init_alpha = init_alpha, ... )
+    }else if( FUN_name == 'fit_HOI2') { 
+      init_par <- inits[[i]][1]
+      res[[i]] <- FUN(sd = sd, init_par = init_par, init_alpha = init_alpha, ... )
     }else if( FUN_name == "fit_single_sp"){ 
       init_tau <- inits[[i]][2]
       init_alpha <- inits[[i]][3]
       res[[i]] <- FUN(sd = sd, init_tau = init_tau, init_alpha = init_alpha, ... )
+    }else if( FUN_name == "fit_single_sp2"){ 
+      init_alpha <- inits[[i]][2]
+      res[[i]] <- FUN(sd = sd, init_alpha = init_alpha, ... )
     }else if( FUN_name == "fit_single_tau"){ 
       init_tau <- inits[[i]][1]
       init_alpha <- inits[[i]][ 1:nspp + 1 ]
@@ -480,7 +514,15 @@ fit_single_sp <- function(data, focal, comp, form, init_lambda = NULL, init_tau 
   mm <- as.matrix( mm [ use, comp ] )
   y <- temp$fecundity[use]
   
-  optim( par = c(init_lambda, init_tau, init_alpha), mod_bh_ll, mm = mm, y = y, method = 'L-BFGS-B', lower = c(1, -2, 0), upper = c(1e3, 0, 1e2), ... )
+  optim( par = c(init_lambda, 
+                 init_tau, 
+                 init_alpha), 
+         mod_bh_ll, 
+         mm = mm,
+         y = y, 
+         method = 'L-BFGS-B', 
+         lower = c(1, -2, 0), 
+         upper = c(1e3, 0, 1e2), ... )
 }
 
 fit_single_tau <- function(data, focal, form, nspp = 3, init_lambda = NULL, init_tau = -1, init_alpha = NULL,  ... ){ 
@@ -526,7 +568,8 @@ fit_HOI <- function(data, focal, comp, form = formHOI, init_par = 0, init_lambda
   
   optim(par = init_par, 
         mod_bh_HOI_ll, 
-        mm = mm, y = y, 
+        mm = mm, 
+        y = y, 
         lambda = init_lambda, 
         tau = init_tau, 
         alpha = init_alpha, 
@@ -534,3 +577,58 @@ fit_HOI <- function(data, focal, comp, form = formHOI, init_par = 0, init_lambda
         lower = -1e-2, 
         upper = 2, ... )
 }
+
+
+
+fit_single_sp2 <- function(data, focal, comp, form, init_lambda = NULL, init_alpha = 0,  model = mod_bh_ll, ... ){ 
+  focal <- paste0( 'F', focal)
+  temp <- data[data$focal == focal, ]
+  
+  if(is.null(init_lambda)){
+    init_lambda <- max(temp$fecundity)
+  }
+  mm <- model.matrix( form, temp )
+  use <- mm[ , comp ] == rowSums(mm)
+  mm <- as.matrix( mm [ use, comp ] )
+  y <- temp$fecundity[use]
+
+  par <- c(init_lambda, init_alpha)
+  lower = c(1, 0)
+  upper = c(1e3, 1e2)
+  
+  optim(par, 
+        model, 
+        mm = mm, 
+        y = y, 
+        method = 'L-BFGS-B', 
+        lower = lower, 
+        upper = upper, 
+        ... )
+}
+
+
+fit_HOI2 <- function(data, focal, comp, form = formHOI, init_par = 0, init_lambda = NULL, init_tau = -1, init_alpha = 1, nspp = 3, ... ){ 
+  focal <- paste0( 'F', focal)
+  temp <- data[data$focal == focal, ]
+  
+  if(is.null(init_lambda)){
+    init_lambda <- max(temp$fecundity)
+  }
+  
+  mm <- model.matrix( form, temp ) 
+  use <- rowSums(mm[, 1:nspp] == 0) > 0 
+  mm <- mm[ use, c(1:nspp, nspp + comp)] 
+  y <- temp$fecundity[use]
+  
+  optim(par = init_par, 
+        mod_bh2_HOI_ll, 
+        mm = mm, 
+        y = y, 
+        lambda = init_lambda, 
+        alpha = init_alpha, 
+        method = 'L-BFGS-B', 
+        lower = 1e-20, 
+        upper = 4, ... )
+}
+
+
