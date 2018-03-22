@@ -13,9 +13,9 @@ alphas <- matrix( c(1, 0.5, 0.1,
                     0.3, 1, 0.4, 
                     0.1, 0.5, 1), nspp, nspp, byrow = T)
 
-betas <- matrix(c(0.1,  0.2,  0.01, 
+betas <- matrix(c(0.01,  0.02,  0.01, 
                   1e-20,  1e-20,  1e-20, 
-                  0.01,  0.02,  1e-20), nspp, nspp, byrow = T)
+                  1e-20,  0.002,  1e-20), nspp, nspp, byrow = T)
 
 lambdas <- c(24, 32, 41)
 

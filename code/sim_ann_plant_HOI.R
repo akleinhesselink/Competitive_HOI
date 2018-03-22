@@ -5,8 +5,8 @@ par(mfrow = c(1,1))
 source('code/sim_functions.R')
 source('code/figure_pars.R')
 
-results_file <- 'data/ann_plant_sim.rds'
-pars_file    <- 'data/ann_plant_pars.rds'
+results_file <- 'data/ann_plant_sim1.rds'
+pars_file    <- 'data/ann_plant_pars1.rds'
 
 # set parameters ------------------------------------- 
 nspp <- 3 

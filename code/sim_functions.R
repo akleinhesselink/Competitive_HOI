@@ -490,7 +490,7 @@ fit_2_converge <- function(n_seq, start_sd, min_sd, init_alpha, init_tau = NULL,
       res[[i]] <- FUN(sd = sd, init_alpha = init_alpha, ... )
     }else if( FUN_name == "fit_single_tau"){ 
       init_tau <- inits[[i]][1]
-      init_alpha <- inits[[i]][ 1:nspp + 1 ]
+      init_alpha <- inits[[i]][ -1]
       res[[i]] <- FUN(sd = sd, init_tau = init_tau, init_alpha = init_alpha, ... )
     }
   }
@@ -631,4 +631,357 @@ fit_HOI2 <- function(data, focal, comp, form = formHOI, init_par = 0, init_lambd
         upper = 4, ... )
 }
 
+
+fit_mod2 <- function(sim_data_file, fit_file, fitted_pars_file) { 
+  
+  results  <- readRDS(sim_data_file)
+  
+  nspp <- length( unique( results$focal ))
+  
+  par_ests <- expand.grid( focal = 1:nspp, comp = 1:nspp, lambda = NA, alpha = NA)
+  
+  for( i in 1:nrow(par_ests)) {
+    temp <- fit_2_converge(n_seq = 20, 
+                           start_sd = 3, 
+                           min_sd = 0.1, 
+                           init_alpha = 0, 
+                           data = results, 
+                           focal = par_ests$focal[i], 
+                           comp  = par_ests$comp[i], 
+                           form = form1, 
+                           FUN = fit_single_sp2,
+                           model = mod_bh2_ll)
+    
+    best_fit <- temp$res[[which.min( unlist( lapply( temp$res, function(x) x$value)))]]
+    
+    if(best_fit$convergence == 0 ) { 
+      par_ests[i, c('lambda', 'alpha')] <- best_fit$par 
+    }
+  }
+  
+  par_ests <- 
+    par_ests %>% 
+    group_by( focal ) %>% 
+    mutate( lambda_hat = mean(lambda)) %>% 
+    gather( alpha_par, alpha_value, alpha) %>% 
+    unite( alpha, alpha_par, focal, comp, sep = '', remove = F) %>% 
+    select( - alpha_par ) %>% 
+    arrange( alpha ) 
+  
+  alpha_est <- matrix( par_ests$alpha_value, nspp, nspp , byrow = T)
+  lambda_est <-  unique(par_ests$lambda_hat)
+  
+  # now fit HOIs ----------------------------------- # 
+  par_ests <- expand.grid( focal = 1:nspp, comp = 1:nspp)
+  par_ests$lambda <- lambda_est
+  
+  par_ests$alpha <- matrix( rep( t(alpha_est), nspp), nspp*nspp, nspp, byrow = T)
+  par_ests$beta  <- NA
+  
+  for(i in 1:nrow(par_ests)){ 
+    
+    temp <- fit_2_converge(n_seq = 20, 
+                           start_sd = 3, 
+                           min_sd = 0.2, 
+                           init_lambda = par_ests$lambda[i],
+                           init_alpha = par_ests$alpha[i,], 
+                           data = results, 
+                           focal = par_ests$focal[i], 
+                           comp  = par_ests$comp[i], 
+                           form = formHOI, 
+                           FUN = fit_HOI2)
+    
+    best_fit <- temp$res[[which.min( unlist( lapply( temp$res, function(x) x$value)))]]
+    
+    if(best_fit$convergence == 0 ) { 
+      par_ests$beta[i] <- best_fit$par 
+    }
+  }
+  
+  beta_est <- matrix(par_ests$beta, nspp, nspp)
+  
+  fits <- data.frame(focal = 1:3, lambda = lambda_est)
+  fits$alpha <- alpha_est
+  fits$beta <- beta_est
+  
+  pred_fit1 <- list()
+  pred_fit2 <- list()
+  
+  for( i in 1:nrow(fits)){ 
+    
+    pred_fit1[[i]] <- predict_fit(pars = unlist(fits[i, c('lambda', 'alpha')]), 
+                                  foc = i, 
+                                  dat = results, 
+                                  model = mod_bh2_ll, 
+                                  form = form1)
+    
+    pred_fit2[[i]] <- predict_fit(pars = unlist(fits[i, c('lambda', 'alpha', 'beta')]), 
+                                  foc = i, 
+                                  dat = results, 
+                                  model = mod_bh2_ll, 
+                                  form = formHOI)
+    
+    
+  }
+  
+  preds <- do.call( rbind, lapply( c(pred_fit1, pred_fit2), function(x) x %>% gather( predicted, pred_fecundity, starts_with('pred'))))
+  
+  figdat <-
+    preds %>% 
+    separate( predicted, c('t1', 'model', 'predicted_sp'), sep = '\\.') %>% 
+    select(-t1, -predicted_sp) %>% 
+    filter( !is.na(pred_fecundity))
+  
+  all_fits <- 
+    left_join(results, figdat, by = c('id', 'focal'))
+  
+  fitted <- 
+    data.frame( species = paste0('N', 1:nspp), 
+                lambda = lambda_est,
+                alpha = alpha_est, 
+                betas = beta_est)  %>%   
+    gather( par, value, -species) %>%
+    mutate( par = str_replace(par, '\\.', str_extract(species, '\\d+'))) %>%
+    mutate( type = 'fitted')
+  
+  ann_plant_fit <- all_fits
+  ann_plant_fitted_pars <- fitted
+  ann_plant_fitted_pars$model <- 'mod_bh2_ll'
+  
+  saveRDS(ann_plant_fit, file = fit_file)
+  saveRDS(ann_plant_fitted_pars, file = fitted_pars_file)
+}
+
+
+fit_mod1 <- function(sim_data_file, fit_file, fitted_pars_file) { 
+  
+  results  <- readRDS(sim_data_file)
+  
+  nspp <- length( unique( results$focal ))
+  
+  par_ests <- expand.grid( focal = 1:nspp, comp = 1:nspp, lambda = NA, tau = NA, alpha = NA)
+  
+  for( i in 1:nrow(par_ests)) {
+    temp <- fit_2_converge(n_seq = 20, 
+                           start_sd = 3, 
+                           min_sd = 0.2, 
+                           init_tau = -1, 
+                           init_alpha = 0, 
+                           data = results, 
+                           focal = par_ests$focal[i], 
+                           comp  = par_ests$comp[i], 
+                           form = form1)
+    
+    best_fit <- temp$res[[which.min( unlist( lapply( temp$res, function(x) x$value)))]]
+    
+    if(best_fit$convergence == 0 ) { 
+      par_ests[i, c('lambda', 'tau', 'alpha')] <- best_fit$par 
+    }
+  }
+  
+  par_ests <- 
+    par_ests %>% 
+    group_by( focal ) %>% 
+    mutate( lambda_hat = mean(lambda), tau_hat = mean(tau)) %>% 
+    gather( alpha_par, alpha_value, alpha) %>% 
+    unite( alpha, alpha_par, focal, comp, sep = '', remove = F) %>% 
+    select( - alpha_par ) %>% 
+    arrange( alpha ) 
+  
+  alpha_est <- matrix( par_ests$alpha_value, nspp, nspp , byrow = T)
+  lambda_est <-  unique(par_ests$lambda_hat)
+  tau_est <- unique( par_ests$tau_hat)
+  
+  fit_pars <- list(NA)
+  for( i in 1:nspp) {
+    temp <- fit_2_converge(n_seq = 20, 
+                           start_sd = 3, 
+                           min_sd = 0.2, 
+                           init_lambda = lambda_est[i],
+                           init_tau = tau_est[i], 
+                           init_alpha = alpha_est[i, ], 
+                           data = results, 
+                           focal = i, 
+                           form = form1, 
+                           FUN = fit_single_tau, 
+                           nspp = nspp)
+    
+    best_fit <- temp$res[[which.min( unlist( lapply( temp$res, function(x) x$value)))]]
+    
+    if(best_fit$convergence == 0 ) { 
+      fit_pars[[i]] <- best_fit$par 
+    }
+  }
+  
+  fit_pars <- do.call(rbind, fit_pars)
+  
+  # now fit HOIs ---------------------------------------------------------------- # 
+  par_ests <- expand.grid( focal = 1:nspp, comp = 1:nspp)
+  par_ests$lambda = lambda_est
+  par_ests$tau = fit_pars[,1]
+  
+  alpha_est <- fit_pars[, 1 + 1:nspp]
+  par_ests$alpha <- matrix( rep( t(alpha_est), nspp), nspp*nspp, nspp, byrow = T)
+  par_ests$beta  <- NA
+  
+  for(i in 1:nrow(par_ests)){ 
+    temp <- fit_2_converge(n_seq = 20, 
+                           start_sd = 3, 
+                           min_sd = 0.2, 
+                           init_lambda = par_ests$lambda[i],
+                           init_tau = par_ests$tau[i],
+                           init_alpha = par_ests$alpha[i,], 
+                           data = results, 
+                           focal = par_ests$focal[i], 
+                           comp  = par_ests$comp[i], 
+                           form = formHOI, 
+                           FUN = fit_HOI)
+    
+    best_fit <- temp$res[[which.min( unlist( lapply( temp$res, function(x) x$value)))]]
+    
+    if(best_fit$convergence == 0 ) { 
+      par_ests$beta[i] <- best_fit$par 
+    }
+    
+  }
+  
+  beta_est <- matrix(par_ests$beta, nspp, nspp)
+  
+  fits <- data.frame(focal = 1:3, lambda = lambda_est, tau = tau_est)
+  fits$alpha <- alpha_est
+  fits$beta <- beta_est
+  
+  pred_fit1 <- list()
+  pred_fit2 <- list()
+  
+  for( i in 1:nrow(fits)){ 
+    
+    pred_fit1[[i]] <- predict_fit(pars = unlist(fits[i, c('lambda', 'tau', 'alpha')]), 
+                                  foc = i, 
+                                  dat = results, 
+                                  model = mod_bh_ll, 
+                                  form = form1)
+    
+    pred_fit2[[i]] <- predict_fit(pars = unlist(fits[i, c('lambda', 'tau', 'alpha', 'beta')]), 
+                                  foc = i, 
+                                  dat = results, 
+                                  model = mod_bh_ll, 
+                                  form = formHOI)
+    
+    
+  }
+  
+  preds <- do.call( rbind, lapply( c(pred_fit1, pred_fit2), function(x) x %>% gather( predicted, pred_fecundity, starts_with('pred'))))
+  
+  figdat <-
+    preds %>% 
+    separate( predicted, c('t1', 'model', 'predicted_sp'), sep = '\\.') %>% 
+    select(-t1, -predicted_sp) %>% 
+    filter( !is.na(pred_fecundity))
+  
+  all_fits <- 
+    left_join(results, figdat, by = c('id', 'focal'))
+  
+  fitted <- 
+    data.frame( species = paste0('N', 1:nspp), 
+                lambda = lambda_est,
+                alpha = alpha_est, 
+                betas = beta_est, 
+                tau = tau_est ) %>%   
+    gather( par, value, lambda:tau) %>%
+    mutate( par = str_replace(par, '\\.', str_extract(species, '\\d+'))) %>%
+    mutate( type = 'fitted')
+  
+  ann_plant_fit <- all_fits
+  ann_plant_fitted_pars <- fitted
+  ann_plant_fitted_pars$model <- 'mod_bh_ll'
+  
+  saveRDS(ann_plant_fit, file = fit_file)
+  saveRDS(ann_plant_fitted_pars, file = fitted_pars_file)
+  
+}
+
+
+
+
+
+compare_parameters <- function(original_pars_file, fitted_pars_file){ 
+  
+  original <- readRDS(original_pars_file)
+  fitted   <- readRDS(fitted_pars_file)
+  
+  pars_df <- 
+    bind_rows(fitted, original ) %>% 
+    mutate( par_type = str_extract(par, '[a-z]+')) %>% 
+    mutate( par = ifelse(!str_detect(par, '\\d+'), paste0(par, str_extract(species, '\\d+')), par))
+  
+  pars_plot <- 
+    ggplot(pars_df, aes( x = par, y = value, shape = type, color = type)) + 
+    geom_point(alpha = 1, size = 4)  +
+    scale_shape_manual(values = c(3,1)) + 
+    facet_wrap( ~ par_type , scales = 'free') + 
+    coord_flip()
+  
+  pars_plot
+  
+}
+
+
+plot_all_fits <- function(all_fits){
+  
+  comp_spp <- names(all_fits) [ grep('^N\\d+', names(all_fits)) ] 
+  focal_spp <- unique(all_fits$focal) 
+  nspp <- length(focal_spp)
+  
+  fit_plot <- list()
+  
+  for( focal in 1:nspp){ 
+    
+    c1 <- sort(c(comp_spp[focal], comp_spp[-focal])[-nspp])
+    c2 <- comp_spp[-focal]
+    
+    combos <- 
+      expand.grid( focal = focal_spp[focal], 
+                   c1 = c1, 
+                   c2 = c2) %>% 
+      filter( as.character(c1) != as.character(c2)) %>% 
+      arrange(c1, c2)
+    
+    for(i in 1:nrow(combos)){ 
+      combos$c3[i] <- comp_spp[ ! comp_spp %in% unlist((combos %>% select( c1, c2))[i, ] ) ]
+    }
+    
+    combos <- as.matrix(combos)
+    
+    p <- list()
+    for( i in 1:nrow(combos)){ 
+      p[[i]] <- plot_two_sp(all_fits, 
+                            focal = combos[i, 1], 
+                            C1 = combos[i, 2], 
+                            C2 = combos[i, 3], 
+                            C3 = combos[i, 4]) +
+        geom_line(aes( y = pred_fecundity, linetype = form)) + 
+        scale_linetype_manual(values = c(2,3), guide = F) + 
+        theme(legend.position = c(0.85, 0.7))
+      
+      if(i == nrow(combos)){ 
+        p[[i]] <- plot_two_sp(all_fits, 
+                    focal = combos[i, 1], 
+                    C1 = combos[i, 2], 
+                    C2 = combos[i, 3], 
+                    C3 = combos[i, 4]) +
+          geom_line(aes( y = pred_fecundity, linetype = form)) + 
+          scale_linetype_manual(values = c(2,3)) + 
+          theme(legend.position = c(0.85, 0.7))
+      }
+      
+      
+    }
+    
+    fit_plot[[focal]] <- do.call( function(...) grid.arrange (..., ncol = nspp), p )
+    
+  } 
+  
+  fit_plot
+}
 
