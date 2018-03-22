@@ -32,6 +32,9 @@ for( i in 1:nrow(results)){
   results[i, grep('N', names(results))] <- run_experiment(results[i, grep('N', names(results))], parms)
 }
 
+# rs <- split( rs, 1:nrow(rs))
+# rs_results <- mclapply( rs, run_experiment, parms, mc.cores = 4)
+
 results[ , grep('N', names(results)) ] <- (results %>% select(starts_with('N')))/(experiments %>% select(starts_with('N')))
 
 names( results ) <- str_replace( names(results), '^N', 'F')
