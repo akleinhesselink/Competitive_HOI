@@ -1,50 +1,16 @@
-
 rm(list = ls())
 par(mfrow = c(1,1))
 
 source('code/sim_functions.R')
 source('code/figure_pars.R')
 
-# set parameters ------------------------------------- 
-nspp <- 3 
+original <- readRDS('data/ann_plant_pars2.rds')
+results  <- readRDS('data/ann_plant_sim2.rds')
 
-alphas <- matrix( c(1, 0.5, 0.2,  
-                    0.3, 1, 0.2, 
-                    0.1, 0.5, 1), nspp, nspp, byrow = T)
+results_file <- 'data/ann_plant_fit2.rds'
+pars_file    <- 'data/ann_plant_fitted_pars2.rds'
 
-betas <- matrix(c(0.1,  0.2,  1e-10, 
-                  1e-10,  1e-10,  0.01, 
-                  1e-10,  0.02,  0.01), nspp, nspp, byrow = T)
-
-lambdas <- c(24, 32, 41)
-
-# 
-maxdens <- 20
-base <- 1.2
-
-# -----------------------------------------------------
-experiments <- make_experiments(maxdens, base, nspp)
-
-out <- experiments
-mm <- model.matrix(formHOI, experiments)
-
-for( i in 1:nspp) { 
-  out[,i] <- mod_bh2(pars = c(lambdas[i], alphas[i, ], betas[i, ]), y = NA, mm = mm, predict = T)
-}
-
-names(out)[1:nspp] <- paste0('F', 1:nspp)
-
-results <- 
-  left_join(experiments, out, by = 'id') %>% 
-  gather( focal, fecundity, starts_with('F')) %>% 
-  gather( competitor, density, starts_with('N')) %>% 
-  group_by( id, focal ) %>% 
-  mutate( comp_n = sum(density > 0)) %>% 
-  filter( comp_n == 0 | density > 0 ) %>% 
-  spread( competitor, density, fill = 0) %>% 
-  ungroup()
-
-results$focal_label <- paste0( 'focal\n', str_replace( results$focal, 'F', 'N'))
+nspp <- length( unique( original$species ))
 
 par_ests <- expand.grid( focal = 1:nspp, comp = 1:nspp, lambda = NA, alpha = NA)
 
@@ -108,7 +74,6 @@ for(i in 1:nrow(par_ests)){
 
 beta_est <- matrix(par_ests$beta, nspp, nspp)
 
-round( beta_est, 2)  == round(betas, 2)
 fits <- data.frame(focal = 1:3, lambda = lambda_est)
 fits$alpha <- alpha_est
 fits$beta <- beta_est
@@ -205,15 +170,6 @@ fitted <-
   mutate( par = str_replace(par, '\\.', str_extract(species, '\\d+'))) %>%
   mutate( type = 'fitted')
 
-original <- 
-  data.frame( species = paste0('N', 1:nspp), 
-              lambda = lambdas, 
-              alpha = alphas, 
-              betas = betas) %>% 
-  gather( par, value, -species) %>%
-  mutate( par = str_replace(par, '\\.', str_extract(species, '\\d+'))) %>%
-  mutate( type = 'original')
-
 pars_df <- 
   bind_rows(fitted, original ) %>% 
   mutate( par_type = str_extract(par, '[a-z]+')) %>% 
@@ -226,12 +182,11 @@ pars_plot <-
   facet_wrap( ~ par_type , scales = 'free') + 
   coord_flip()
 
-
 pars_plot
 
-ann_plant_bh_fit <- all_fits
-ann_plant_bh_fitted_pars <- fitted
-ann_plant_bh_fitted_pars$model <- 'mod_bh_ll'
+ann_plant_fit <- all_fits
+ann_plant_fitted_pars <- fitted
+ann_plant_fitted_pars$model <- 'mod_bh2_ll'
 
-save(ann_plant_bh_fit, file = 'data/ann_plant_bh2_fit.rda')
-save(ann_plant_bh_fitted_pars, file = 'data/ann_plant_bh2_fitted_pars.rds')
+saveRDS(ann_plant_fit, file = results_file)
+saveRDS(ann_plant_fitted_pars, file = pars_file)
