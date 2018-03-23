@@ -253,9 +253,10 @@ add_focal <- function(X, focal, focal_lab) {
 
 basic_breaks <- function(n = 10){
   function(x) {
-    axisTicks(log10(range(x, na.rm = TRUE)), log = TRUE, n = n)
+    axisTicks(range(x, na.rm = TRUE), log = F, n = n)
   }
 }
+
 
 plot_two_sp <- function( data, focal = 'F1', C1 = 'N1', C2 = 'N2', C3 = 'N3', 
                          C2_dens = NULL ) { 
@@ -278,7 +279,7 @@ plot_two_sp <- function( data, focal = 'F1', C1 = 'N1', C2 = 'N2', C3 = 'N3',
     filter( as.numeric(C2) %in% C2_dens ) %>%  
     ggplot( aes( y = fecundity, x = C1, color = C2)) +
     geom_point() +
-    scale_y_continuous(name = paste0('N', str_extract(focal, '\\d'), ' fecundity'), trans = 'log', breaks = basic_breaks()) +
+    scale_y_continuous(name = paste0('N', str_extract(focal, '\\d'), ' fecundity'), breaks = basic_breaks()) +
     scale_x_continuous(name = paste(C1, 'density')) + 
     scale_color_discrete(name = paste(C2, 'density'))
 }
@@ -293,7 +294,7 @@ mod_bh <- function(pars, y, mm, predict = FALSE){
   
   mu <- lambda*(1 + mm%*%alphas)^tau
   
-  Error <- sum( (mu - y )^2 )
+  Error <- sum( (log(mu) - log(y) )^2 )
   
   if(predict){ 
     return(mu)
@@ -315,7 +316,7 @@ mod_bh2 <- function( pars, y, mm, predict = F){
     mu[i] <- lambda/( 1 + sum(  mm[i, ]^alphas  ) )
   }
   
-  Error <- sum( (mu - y)^2 ) 
+  Error <- sum( (log(mu) - log(y))^2 ) 
   
   if(predict){ 
     return(mu)
@@ -521,7 +522,7 @@ fit_single_sp <- function(data, focal, comp, form, init_lambda = NULL, init_tau 
          mm = mm,
          y = y, 
          method = 'L-BFGS-B', 
-         lower = c(1, -2, 0), 
+         lower = c(1, -2, -0.01), 
          upper = c(1e3, 0, 1e2), ... )
 }
 
@@ -547,7 +548,7 @@ fit_single_tau <- function(data, focal, form, nspp = 3, init_lambda = NULL, init
          y = y, 
          lambda = init_lambda,  
          method = 'L-BFGS-B', 
-         lower = c(-2, rep(0, nspp)), 
+         lower = c(-2, rep(-0.01, nspp)), 
          upper = c(0, rep(1e2, nspp)), 
          ... )
 }
@@ -574,8 +575,9 @@ fit_HOI <- function(data, focal, comp, form = formHOI, init_par = 0, init_lambda
         tau = init_tau, 
         alpha = init_alpha, 
         method = 'L-BFGS-B', 
-        lower = -1e-2, 
-        upper = 2, ... )
+        lower = -0.01, 
+        upper = 3, 
+        ... )
 }
 
 
@@ -593,7 +595,7 @@ fit_single_sp2 <- function(data, focal, comp, form, init_lambda = NULL, init_alp
   y <- temp$fecundity[use]
 
   par <- c(init_lambda, init_alpha)
-  lower = c(1, 0)
+  lower = c(1, 1e-30)
   upper = c(1e3, 1e2)
   
   optim(par, 
@@ -627,8 +629,9 @@ fit_HOI2 <- function(data, focal, comp, form = formHOI, init_par = 0, init_lambd
         lambda = init_lambda, 
         alpha = init_alpha, 
         method = 'L-BFGS-B', 
-        lower = 1e-20, 
-        upper = 4, ... )
+        lower = 1e-30, 
+        upper = 4, 
+        ... )
 }
 
 
@@ -984,4 +987,95 @@ plot_all_fits <- function(all_fits){
   
   fit_plot
 }
+
+
+fit_model <- function(dat, form = form1, mod_name = "mod_bh_ll", start_sd = 3, min_sd = 1, max_refit = 5){
+  
+  model <- eval(parse(text = mod_name))
+  
+  sd_grad <- rev(seq(min_sd, start_sd, length.out = max_refit))
+  form_name <- deparse(substitute(form))
+
+  if( str_detect(form_name, 'HOI') ){
+    if( str_detect(mod_name, '2')){ 
+      # HOI TYPE 2 
+      init <- c(20, 1e-30, 1e-30, 1e-30, 1e-30, 1e-30, 1e-30)
+      lower <- c(1, 1e-30, 1e-30, 1e-30, 1e-30, 1e-30, 1e-30)
+      upper <- c(1e2, 4, 4, 4, 2, 2, 2)
+    }else{
+      # HOI TYPE 1 
+      init <- c(20, -1, 0, 0, 0, 0, 0, 0)
+      lower <- c(1, -2, 0, 0, 0, -1e-4, -1e-4, -1e-4)
+      upper <- c(1e2, 0, 1e2, 1e2, 1e2, 1, 1, 1)
+    }
+  }else{
+    if( str_detect(mod_name, '2')){ 
+      # BASIC  TYPE 2 
+      init <- c(20, 1e-30, 1e-30, 1e-30)
+      lower <- c(1, 1e-30, 1e-30, 1e-30)
+      upper <- c(1e2, 4, 4, 4)
+    }else{
+      # BASIC  TYPE 1 
+      init <- c(20, -1, 0, 0, 0)
+      lower <- c(1, -2, 0, 0, 0)
+      upper <- c(1e2, 0, 1e2, 1e2, 1e2)
+    }
+  }
+  
+  mm <- model.matrix(form, dat)
+  
+  y <- dat$fecundity
+  init[1] <- max(y)
+  
+  fit <- optim(par = init, 
+               fn = model, 
+               mm = mm, 
+               y = y, 
+               method = 'L-BFGS-B', 
+               sd = sd_grad[1], 
+               lower = lower, 
+               upper = upper) 
+  
+  for(j in 1:max_refit){ 
+    
+    fit <- optim(par = fit$par, 
+                 fn = model, 
+                 mm = mm, 
+                 y = y, 
+                 method = 'L-BFGS-B', 
+                 sd = sd_grad[j], 
+                 lower = lower, 
+                 upper = upper) 
+  }
+  
+  if(fit$convergence != 0){
+    stop('fit1 did not converge')
+  }
+  
+  return(fit)
+}
+
+prep_data <- function( sp, dat){ 
+  focal <- paste0('F', sp)
+  
+  dat <- 
+    dat %>% 
+    filter_(.dots = paste0( 'focal == "', focal, '"')) %>% 
+    distinct(id, focal, fecundity, comp_n, N1, N2, N3)
+  
+  return(dat)
+}
+
+predict_fit <- function(pars, dat, mod_name, form = form1){
+  
+  model <- eval(parse(text = mod_name))
+  
+  mm <- model.matrix(form, dat)
+  y <- dat$fecundity
+  
+  y_pred <- model(pars, y = y, mm = mm, predict = T)
+  
+  return(y_pred)
+}
+
 
