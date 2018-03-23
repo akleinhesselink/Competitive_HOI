@@ -4,7 +4,7 @@ par(mfrow = c(1,1))
 source('code/sim_functions.R')
 source('code/figure_pars.R')
 
-results_file <- 'data/mechanistic_sim_bicultures.rds'
+results_file <- 'data/mechanistic_sim.rds'
 
 # parameterize model --------------------------------------------------------------------------------------------------- 
 load(file = 'data/mechanistic_parms.rda')
@@ -19,8 +19,6 @@ maxdens <- 5
 base <- 2 
 
 experiments <- make_experiments(maxdens, base, nspp)
-
-experiments <- make_biculture(experiments)
 
 experiments_with_focal <- 
   rbind( add_focal(experiments, c(1,0,0), focal_lab = 'F1'), 

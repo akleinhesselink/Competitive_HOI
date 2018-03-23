@@ -16,7 +16,6 @@ K <- c(98, 30, 0.5)      # resource half-saturation constant, soil moisture in m
 m <- 0.09                # tissue respiration and loss rate g per g per day 
 q <- 0.07                 # photosynthetic water use efficiency g of carbon gain per mm of water
 epsilon <- 0.01         # rate of water evaporation and runoff mm per mm per day
-seedlings <- c(1, 0, 0)      # number of seedlings 
 seedling_mass <- c(0.005) # seed/seedling mass in g 
 conversion <- 0.1        # proportion live biomass converted to seed mass 
 R <- seq(0, 500, length.out = 1000)
@@ -31,27 +30,31 @@ plot_Rstar(parms, my_colors)
 # -----------------------------------------------------
 nspp <- length(parms$K)
 maxdens <- 8
-base <- 2 
+base <- 1.5 
 
 experiments <- make_experiments(maxdens, base, nspp)
 
-monocultures <- make_monoculture(experiments)
+experiments <- make_monoculture(experiments)
 
-experiments <- 
-  rbind( add_focal(monocultures, c(1,0,0), focal_lab = 'F1'), 
-       add_focal(monocultures, c(0,1,0), focal_lab = 'F2'), 
-       add_focal(monocultures, c(0,0,1), focal_lab = 'F3')) 
+experiments_with_focal <- 
+  rbind( add_focal(experiments, c(1,0,0), focal_lab = 'F1'), 
+       add_focal(experiments, c(0,1,0), focal_lab = 'F2'), 
+       add_focal(experiments, c(0,0,1), focal_lab = 'F3')) 
 
-results <- experiments
-for( i in 1:nrow(results)){ 
-  results[i, grep('N', names(results))] <- run_experiment(results[i, grep('N', names(results))], parms)
-}
+results <- experiments_with_focal
 
-results[ , grep('N', names(results)) ] <- (results %>% select(starts_with('N')))/(experiments %>% select(starts_with('N')))
+seedling_mat <- split(as.matrix(results[1:3]), 1:nrow(results))
+results[ , grep('^N', names(results)) ] <- do.call(rbind, 
+                                                   mclapply(seedling_mat, 
+                                                            FUN = run_experiment, 
+                                                            parms = parms, 
+                                                            mc.cores = 4))
+
+results[ , grep('N', names(results)) ] <- (results %>% select(starts_with('N')))/(experiments_with_focal %>% select(starts_with('N')))
 
 names( results ) <- str_replace( names(results), '^N', 'F')
 
-results2 <- merge( monocultures, results, by = c('id')) %>% 
+results2 <- merge( experiments, results, by = c('id')) %>% 
   gather( focal2, fecundity, starts_with('F', ignore.case = F)) %>% 
   filter( focal == focal2) %>% 
   select(-focal2) %>%
