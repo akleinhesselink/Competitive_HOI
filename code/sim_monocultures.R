@@ -27,6 +27,8 @@ plot_transpiration(parms,  my_colors)
 plot_growth_rate(parms, my_colors)
 plot_Rstar(parms, my_colors)
 
+# plot time series and save 
+
 # -----------------------------------------------------
 nspp <- length(parms$K)
 maxdens <- 8

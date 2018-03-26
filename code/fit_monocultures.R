@@ -14,6 +14,8 @@ fit_mod2(sim_data_file = 'data/mechanistic_sim_monocultures.rds',
 all_fits1 <- readRDS('data/monoculture_fit1.rds')
 all_fits2 <- readRDS('data/monoculture_fit2.rds')
 
+plot_all_fits(all_fits1)
+plot_all_fits(all_fits2)
 
 all_fits <- left_join( all_fits1 %>% 
                          spread( model , pred_fecundity), 
