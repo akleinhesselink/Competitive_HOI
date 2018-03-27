@@ -77,7 +77,7 @@ run_multi_gen <- function(seedlings, t, parms, tol){
 }
 
 plot_timeseries <- function(x, parms, ... ){ 
-  par(mfrow = c(2,1))
+  par(mfrow = c(2,1), mai=c(0.8,0.8,0.2,0.4))
   nspp <- ncol(x) - 2
   with(parms, {
     flowering_times <- x[apply( x[, c(3:(2+nspp)), drop = F ], 2, find_phenology), 1]
@@ -85,7 +85,7 @@ plot_timeseries <- function(x, parms, ... ){
     abline( h = Rstar(r=r, K = K, m = m, q = q), lty = 2, ...)
     matplot(x = x[,1], x[, c(3:(2+nspp))], type = 'l', xlab = 'day', ylab = 'biomass', lty = 1, ...)
   })
-  legend(5, -0.1, legend = paste('species', 1:nspp), col = my_colors[1:nspp], cex = 1, xpd = T, lty = 1, bg = NA, box.col = NA, yjust = 0)
+  legend(5, -0.1, legend = paste('species', 1:nspp), cex = 1, xpd = T, lty = 1, bg = NA, box.col = NA, yjust = 0, ...)
 }
 
 plot_transpiration <- function(parms, my_colors ){
