@@ -7,10 +7,11 @@ nspp <- 3
 start_sd <- 2
 min_sd <- 1
 max_refit <- 6 
-data_file <- 'data/mechanistic_sim_bicultures.rds'
-model <- "mod_bh2_ll"
+data_file <- 'data/ann_plant_sim3.rds'
+model <- "mod_bh3_ll"
 
 fits <- plot <- list()
+i <- 1
 
 for ( i in 1:nspp){
   
@@ -25,6 +26,7 @@ for ( i in 1:nspp){
                     min_sd = min_sd,
                     max_refit = max_refit)
   
+
   fitHOI <- fit_model(dat = dat,
                       form = formHOI,
                       mod_name = model,
@@ -58,3 +60,6 @@ for ( i in 1:nspp){
   fits[[i]] <- list(fit1 = fit1, fitHOI = fitHOI)
   
 }
+
+
+

@@ -8,7 +8,7 @@ start_sd <- 2
 min_sd <- 1
 max_refit <- 6 
 data_file <- 'data/mechanistic_sim_bicultures.rds'
-model <- "mod_bh2_ll"
+model <- "mod_bh3_ll"
 
 fits <- plot <- list()
 
@@ -58,3 +58,5 @@ for ( i in 1:nspp){
   fits[[i]] <- list(fit1 = fit1, fitHOI = fitHOI)
   
 }
+
+

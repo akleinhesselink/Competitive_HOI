@@ -30,7 +30,7 @@ out <- experiments
 mm <- model.matrix(formHOI, experiments)
 
 for( i in 1:nspp) { 
-  out[,i] <- mod_bh2(pars = c(lambdas[i], alphas[i, ], betas[i, ]), y = NA, mm = mm, predict = T)
+  out[,i] <- mod_bh2_ll(pars = c(lambdas[i], alphas[i, ], betas[i, ]), y = NA, mm = mm, predict = T)
 }
 
 names(out)[1:nspp] <- paste0('F', 1:nspp)

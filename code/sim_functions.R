@@ -379,8 +379,8 @@ fit_model <- function(dat, form = form1, mod_name = "mod_bh_ll", start_sd = 3, m
     if( str_detect(mod_name, '3')){ 
       # HOI TYPE 3 
       init <- c(20, 1, 1, 1, 0, 0, 0)
-      lower <- c(1, 0, 0, 0, 0, 0, 0)
-      upper <- c(1e2, 3, 3, 3, 1, 1, 1)
+      lower <- c(1, 0, 0, 0, -0.01, -0.01, -0.01)
+      upper <- c(1e2, 2, 2, 2, 0.05, 0.05, 0.05)
     }else if( str_detect(mod_name, '2')){ 
       # HOI TYPE 2 
       init <- c(20, 1e-30, 1e-30, 1e-30, 1e-30, 1e-30, 1e-30)
@@ -397,7 +397,7 @@ fit_model <- function(dat, form = form1, mod_name = "mod_bh_ll", start_sd = 3, m
       # BASIC  TYPE 3 
       init <- c(20, 1, 1, 1)
       lower <- c(1, 0, 0, 0)
-      upper <- c(1e2, 4, 4, 4)
+      upper <- c(1e3, 4, 4, 4)
     }else if( str_detect(mod_name, '2') ){ 
       # BASIC  TYPE 2 
       init <- c(20, 1e-30, 1e-30, 1e-30)
