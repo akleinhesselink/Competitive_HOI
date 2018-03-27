@@ -122,65 +122,6 @@ plot_Rstar <- function(parms, my_colors){
 }
 
 
-seed_production <- function(x, init_size, R_state, parms, func, TO_fun, TO_pars, ...){ 
-  x <- matrix(x, 1, length(x))
-  State <- c(R_state, x*init_size)
-  parms$K <- TO_fun(parms$r, TO_pars)
-  out <- ode(y=State, func = func, parms = parms, ...)
-  peak_biomass <- apply( out[, c(3:ncol(out)), drop = F], 2, max)
-  seeds_out <- peak_biomass*conversion
-  return(seeds_out)
-}
-
-fitness <- function(x, fun, ...){ 
-  log(fun(x, ...)/x) 
-}
-
-find_N_hat <- function(my_range = c(1e-7, 100), fun, ... ){ 
-  obj_fun <- function(x, ...){ abs(fitness(x, fun, ... )) }
-  optimize(obj_fun, interval = my_range, ... )
-}
-
-find_N_hat2 <- function(my_range = c(1e-7, 100), fun, ... ){ 
-  uniroot(fitness, interval = my_range, fun = fun, ... )
-}
-
-ann_plant_mod <- function(x, form, pars) { 
-  pars <- unlist(pars)
-  mm <- model.matrix(as.formula( form ), x )
-  nt <- ncol(mm)
-  nsp <- ncol( x %>% select(starts_with('N')))
-  
-  lambda <- head( pars, nsp)   
-  tau <- tail(pars, nsp)
-  alphas <- pars[ -which(pars == lambda | pars == tau) ]
-
-  alphas <- matrix( alphas, nsp, nt)
-
-  y <- lambda*((1 + rowSums( sweep(alphas, 2, mm, '*') ))^(tau))    
-  
-  return(y)
-}
-
-fit_ann_plant <- function(data, model, form, focal = 1, my_inits = NULL, ... ){ 
-  
-  temp <- 
-    data %>% 
-    filter_( .dots = paste0( 'focal == "F', focal, '"')) 
-  
-  mm <- model.matrix(form, temp)
-  
-  npar <- ncol(mm)
-
-  if( is.null(my_inits) ){ 
-    par <- c( max(temp$fecundity), -1, rep(1, npar))
-  }else{ 
-    par <- my_inits 
-  }
-
-  optim(par = par, fn = model, y = temp$fecundity, mm = mm, ... )
-}
-
 predict_fit <- function( dat, model, pars, form, foc = 1 ){ 
   mod_name <- deparse(substitute(model))
   form_name <- deparse(substitute(form))
@@ -284,48 +225,6 @@ plot_two_sp <- function( data, focal = 'F1', C1 = 'N1', C2 = 'N2', C3 = 'N3',
     scale_color_discrete(name = paste(C2, 'density'))
 }
 
-mod_bh <- function(pars, y, mm, predict = FALSE){ 
-  
-  if( !length(pars) == ncol(mm) + 2 ){ stop('wrong number of parameters supplied!')}
-  
-  lambda <- pars[1]
-  tau <- pars[2]
-  alphas <- pars[3:(length(pars))]
-  
-  mu <- lambda*(1 + mm%*%alphas)^tau
-  
-  Error <- sum( (log(mu) - log(y) )^2 )
-  
-  if(predict){ 
-    return(mu)
-  }else if(!predict){ 
-    return(Error) 
-  }
-}
-
-
-mod_bh2 <- function( pars, y, mm, predict = F){ 
-  
-  if(!length(pars) == ncol(mm) + 1 ){ stop('wrong number of parameters supplied!')}
-  
-  alphas <- pars[ 2:length(pars) ]
-  lambda <- pars[1]
-  
-  mu <- NA
-  for( i in 1:nrow(mm)){ 
-    mu[i] <- lambda/( 1 + sum(  mm[i, ]^alphas  ) )
-  }
-  
-  Error <- sum( (log(mu) - log(y))^2 ) 
-  
-  if(predict){ 
-    return(mu)
-  }else if(!predict){ 
-    return(Error) 
-  }
-  
-}
-
 mod_bh_ll <- function(pars, y, mm, sd = 1, predict = FALSE){ 
   
   if( !length(pars) == ncol(mm) + 2 ){ stop('wrong number of parameters supplied!')}
@@ -333,23 +232,6 @@ mod_bh_ll <- function(pars, y, mm, sd = 1, predict = FALSE){
   lambda <- pars[1]
   tau <- pars[2]
   alphas <- pars[3:(length(pars))]
-  
-  mu <- lambda*(1 + mm%*%alphas)^tau
-  
-  neg_ll <- sum( - dnorm( log(mu), log(y), sd, log = T) )
-  
-  if(predict){ 
-    return(mu)
-  }else if(!predict){ 
-    return(neg_ll) 
-  }
-}
-
-mod_bh_HOI_ll <- function(pars, y, mm, lambda, tau, alphas, sd = 1, predict = FALSE){ 
-  
-  if( !length(pars) == 1 ){ stop('wrong number of parameters supplied!')}
-  
-  alphas <- c(alphas, pars)
   
   mu <- lambda*(1 + mm%*%alphas)^tau
   
@@ -383,35 +265,17 @@ mod_bh2_ll <- function(pars, y, mm, sd = 1, predict = FALSE){
   }
 }
 
-
-mod_bh2_HOI_ll <- function(pars, y, lambda, alphas, mm, sd = 1, predict = FALSE){ 
-  
-  if( !length(pars) == 1 ){ stop('wrong number of parameters supplied!')}
-  
-  alphas <- c(alphas, pars)
-  
-  mu <- NA
-  for( i in 1:nrow(mm)){ 
-    mu[i] <- lambda/( 1 + sum(  mm[i, ]^alphas  ) )
-  }
-  
-  neg_ll <- sum( - dnorm( log(mu), log(y), sd, log = T) )
-  
-  if(predict){ 
-    return(mu)
-  }else if(!predict){ 
-    return(neg_ll) 
-  }
-}
-
-mod_bh_ll_no_lambda <- function(pars, y, mm, lambda, sd = 1, predict = FALSE){ 
+mod_bh3_ll <- function(pars, y, mm, sd = 1, predict = FALSE){ 
   
   if( !length(pars) == ncol(mm) + 1 ){ stop('wrong number of parameters supplied!')}
   
-  tau <- pars[1]
+  lambda <- pars[1]
   alphas <- pars[2:(length(pars))]
   
-  mu <- lambda*(1 + mm%*%alphas)^tau
+  mu <- NA
+  for( i in 1:nrow(mm)){ 
+    mu[i] <- lambda*exp( - sum(mm[i, ]*alphas) )
+  }
   
   neg_ll <- sum( - dnorm( log(mu), log(y), sd, log = T) )
   
@@ -421,491 +285,6 @@ mod_bh_ll_no_lambda <- function(pars, y, mm, lambda, sd = 1, predict = FALSE){
     return(neg_ll) 
   }
 }
-
- 
-
-fit_both_mods <- function( focal = 1, form1, inits1, lower1, upper1, model, ... ){  
-  mod_name <- deparse(substitute(model))
-  
-  fits <- fit_2_converge(focal = focal, form = form1, my_inits = inits1, lower = lower1, upper = upper1, model, ... )
-  
-  best_fit <- which.min( unlist( lapply( fits$res, function(x)  x$value ) ) )
-  fit1 <- fits$res[[best_fit]]
-  lambda <- fit1$par[1]
-  
-  if(str_detect(mod_name, '2')) { 
-    alpha  <- fit1$par[ 2:length(fit1$par) ]
-    HOI_inits <- c(lambda, alpha, rep(0, length(alpha)))
-    lower  <- c(lower1[1], lower1[-1], lower1[-1])
-    upper  <- c(upper1[1], upper1[-1], upper1[-1]/10)
-    
-  }else{ 
-    tau    <- fit1$par[2]  
-    alpha  <- fit1$par[2:length(fit1$par)]
-    HOI_inits <- c(lambda, tau, alpha, rep(0, length(alpha)))
-    lower  <- c(lower1[1:2], lower1[-c(1:2)], lower1[-c(1:2)])
-    upper  <- c(upper1[1:2], upper1[-c(1:2)], upper1[-c(1:2)]/10)
-    
-  }
-  
-  fits <- fit_2_converge(focal = focal, form = formHOI, my_inits = HOI_inits, lower = lower, upper = upper, model, ... )
-  
-  best_fit <- which.min( unlist( lapply( fits$res, function(x)  x$value ) ) )
-  fitHOI <- fits$res[[best_fit]]
-  
-  return( list(fit1 = fit1, fitHOI = fitHOI))
-  
-}
-
-fit_2_converge <- function(n_seq, start_sd, min_sd, init_alpha, init_tau = NULL, FUN = fit_single_sp, ...){ 
-  FUN_name <- deparse(substitute(FUN))
-  res <- list()
-  inits <- list()
-  
-  sd_grad <- rev( seq(min_sd, start_sd, length.out = n_seq))
-  sd <- sd_grad[1]
-  
-  if(FUN_name == 'fit_single_sp2'){ 
-    res[[1]]  <- FUN(sd = sd, init_alpha = init_alpha, ... )
-  }else if( FUN_name == 'fit_HOI2'){
-    res[[1]]  <- FUN(sd = sd, init_alpha = init_alpha, ... )
-  }else{ 
-    res[[1]] <- FUN(sd = sd, init_tau = init_tau, init_alpha = init_alpha, ... )  
-  }
-  
-  for( i in 2:n_seq) { 
-    sd <- sd_grad[i]
-    inits[[i]] <- res[[i-1]]$par
-    if( FUN_name == 'fit_HOI') { 
-      init_par <- inits[[i]][1]
-      res[[i]] <- FUN(sd = sd, init_par = init_par, init_tau = init_tau, init_alpha = init_alpha, ... )
-    }else if( FUN_name == 'fit_HOI2') { 
-      init_par <- inits[[i]][1]
-      res[[i]] <- FUN(sd = sd, init_par = init_par, init_alpha = init_alpha, ... )
-    }else if( FUN_name == "fit_single_sp"){ 
-      init_tau <- inits[[i]][2]
-      init_alpha <- inits[[i]][3]
-      res[[i]] <- FUN(sd = sd, init_tau = init_tau, init_alpha = init_alpha, ... )
-    }else if( FUN_name == "fit_single_sp2"){ 
-      init_alpha <- inits[[i]][2]
-      res[[i]] <- FUN(sd = sd, init_alpha = init_alpha, ... )
-    }else if( FUN_name == "fit_single_tau"){ 
-      init_tau <- inits[[i]][1]
-      init_alpha <- inits[[i]][ -1]
-      res[[i]] <- FUN(sd = sd, init_tau = init_tau, init_alpha = init_alpha, ... )
-    }
-  }
-  converged <- unlist( lapply( res, function(x) x$convergence == 0 ))
-  sd_grad <- sd_grad[which(converged)]
-  res <- res[which(converged)]
-  
-  return( list( sd_grad = sd_grad, res = res) )
-} 
-
-
-fit_single_sp <- function(data, focal, comp, form, init_lambda = NULL, init_tau = -1, init_alpha = 0,  ... ){ 
-  focal <- paste0( 'F', focal)
-  temp <- data[data$focal == focal, ]
-  
-  if(is.null(init_lambda)){
-    init_lambda <- max(temp$fecundity)
-  }
-  mm <- model.matrix( form, temp )
-  use <- mm[ , comp ] == rowSums(mm)
-  mm <- as.matrix( mm [ use, comp ] )
-  y <- temp$fecundity[use]
-  
-  optim( par = c(init_lambda, 
-                 init_tau, 
-                 init_alpha), 
-         mod_bh_ll, 
-         mm = mm,
-         y = y, 
-         method = 'L-BFGS-B', 
-         lower = c(1, -2, -0.01), 
-         upper = c(1e3, 0, 1e2), ... )
-}
-
-fit_single_tau <- function(data, focal, form, nspp = 3, init_lambda = NULL, init_tau = -1, init_alpha = NULL,  ... ){ 
-  focal <- paste0( 'F', focal)
-  temp <- data[data$focal == focal, ]
-  
-  if(is.null(init_lambda)){
-    init_lambda <- max(temp$fecundity)
-  }
-  if(is.null(init_alpha)){ 
-    init_alpha <- rep(0, nspp)
-  }
-  
-  mm <- model.matrix( form, temp )
-  use <- rowSums(mm[, 1:nspp] == 0) >= (nspp - 1) 
-  mm <- as.matrix( mm [ use,  ] )
-  y <- temp$fecundity[use]
-  
-  optim( par = c(init_tau, init_alpha), 
-         mod_bh_ll_no_lambda, 
-         mm = mm, 
-         y = y, 
-         lambda = init_lambda,  
-         method = 'L-BFGS-B', 
-         lower = c(-2, rep(-0.01, nspp)), 
-         upper = c(0, rep(1e2, nspp)), 
-         ... )
-}
-
-
-fit_HOI <- function(data, focal, comp, form = formHOI, init_par = 0, init_lambda = NULL, init_tau = -1, init_alpha = 1, nspp = 3, ... ){ 
-  focal <- paste0( 'F', focal)
-  temp <- data[data$focal == focal, ]
-  
-  if(is.null(init_lambda)){
-    init_lambda <- max(temp$fecundity)
-  }
-  
-  mm <- model.matrix( form, temp ) 
-  use <- rowSums(mm[, 1:nspp] == 0) > 0 
-  mm <- mm[ use, c(1:nspp, nspp + comp)] 
-  y <- temp$fecundity[use]
-  
-  optim(par = init_par, 
-        mod_bh_HOI_ll, 
-        mm = mm, 
-        y = y, 
-        lambda = init_lambda, 
-        tau = init_tau, 
-        alpha = init_alpha, 
-        method = 'L-BFGS-B', 
-        lower = -0.01, 
-        upper = 3, 
-        ... )
-}
-
-
-
-fit_single_sp2 <- function(data, focal, comp, form, init_lambda = NULL, init_alpha = 0,  model = mod_bh_ll, ... ){ 
-  focal <- paste0( 'F', focal)
-  temp <- data[data$focal == focal, ]
-  
-  if(is.null(init_lambda)){
-    init_lambda <- max(temp$fecundity)
-  }
-  mm <- model.matrix( form, temp )
-  use <- mm[ , comp ] == rowSums(mm)
-  mm <- as.matrix( mm [ use, comp ] )
-  y <- temp$fecundity[use]
-
-  par <- c(init_lambda, init_alpha)
-  lower = c(1, 1e-30)
-  upper = c(1e3, 1e2)
-  
-  optim(par, 
-        model, 
-        mm = mm, 
-        y = y, 
-        method = 'L-BFGS-B', 
-        lower = lower, 
-        upper = upper, 
-        ... )
-}
-
-
-fit_HOI2 <- function(data, focal, comp, form = formHOI, init_par = 0, init_lambda = NULL, init_tau = -1, init_alpha = 1, nspp = 3, ... ){ 
-  focal <- paste0( 'F', focal)
-  temp <- data[data$focal == focal, ]
-  
-  if(is.null(init_lambda)){
-    init_lambda <- max(temp$fecundity)
-  }
-  
-  mm <- model.matrix( form, temp ) 
-  use <- rowSums(mm[, 1:nspp] == 0) > 0 
-  mm <- mm[ use, c(1:nspp, nspp + comp)] 
-  y <- temp$fecundity[use]
-  
-  optim(par = init_par, 
-        mod_bh2_HOI_ll, 
-        mm = mm, 
-        y = y, 
-        lambda = init_lambda, 
-        alpha = init_alpha, 
-        method = 'L-BFGS-B', 
-        lower = 1e-30, 
-        upper = 4, 
-        ... )
-}
-
-
-fit_mod2 <- function(sim_data_file, fit_file, fitted_pars_file) { 
-  
-  results  <- readRDS(sim_data_file)
-  
-  nspp <- length( unique( results$focal ))
-  
-  par_ests <- expand.grid( focal = 1:nspp, comp = 1:nspp, lambda = NA, alpha = NA)
-  
-  for( i in 1:nrow(par_ests)) {
-    temp <- fit_2_converge(n_seq = 20, 
-                           start_sd = 3, 
-                           min_sd = 0.1, 
-                           init_alpha = 0, 
-                           data = results, 
-                           focal = par_ests$focal[i], 
-                           comp  = par_ests$comp[i], 
-                           form = form1, 
-                           FUN = fit_single_sp2,
-                           model = mod_bh2_ll)
-    
-    best_fit <- temp$res[[which.min( unlist( lapply( temp$res, function(x) x$value)))]]
-    
-    if(best_fit$convergence == 0 ) { 
-      par_ests[i, c('lambda', 'alpha')] <- best_fit$par 
-    }
-  }
-  
-  par_ests <- 
-    par_ests %>% 
-    group_by( focal ) %>% 
-    mutate( lambda_hat = mean(lambda)) %>% 
-    gather( alpha_par, alpha_value, alpha) %>% 
-    unite( alpha, alpha_par, focal, comp, sep = '', remove = F) %>% 
-    select( - alpha_par ) %>% 
-    arrange( alpha ) 
-  
-  alpha_est <- matrix( par_ests$alpha_value, nspp, nspp , byrow = T)
-  lambda_est <-  unique(par_ests$lambda_hat)
-  
-  # now fit HOIs ----------------------------------- # 
-  par_ests <- expand.grid( focal = 1:nspp, comp = 1:nspp)
-  par_ests$lambda <- lambda_est
-  
-  par_ests$alpha <- matrix( rep( t(alpha_est), nspp), nspp*nspp, nspp, byrow = T)
-  par_ests$beta  <- NA
-  
-  for(i in 1:nrow(par_ests)){ 
-    
-    temp <- fit_2_converge(n_seq = 20, 
-                           start_sd = 3, 
-                           min_sd = 0.2, 
-                           init_lambda = par_ests$lambda[i],
-                           init_alpha = par_ests$alpha[i,], 
-                           data = results, 
-                           focal = par_ests$focal[i], 
-                           comp  = par_ests$comp[i], 
-                           form = formHOI, 
-                           FUN = fit_HOI2)
-    
-    best_fit <- temp$res[[which.min( unlist( lapply( temp$res, function(x) x$value)))]]
-    
-    if(best_fit$convergence == 0 ) { 
-      par_ests$beta[i] <- best_fit$par 
-    }
-  }
-  
-  beta_est <- matrix(par_ests$beta, nspp, nspp)
-  
-  fits <- data.frame(focal = 1:3, lambda = lambda_est)
-  fits$alpha <- alpha_est
-  fits$beta <- beta_est
-  
-  pred_fit1 <- list()
-  pred_fit2 <- list()
-  
-  for( i in 1:nrow(fits)){ 
-    
-    pred_fit1[[i]] <- predict_fit(pars = unlist(fits[i, c('lambda', 'alpha')]), 
-                                  foc = i, 
-                                  dat = results, 
-                                  model = mod_bh2_ll, 
-                                  form = form1)
-    
-    pred_fit2[[i]] <- predict_fit(pars = unlist(fits[i, c('lambda', 'alpha', 'beta')]), 
-                                  foc = i, 
-                                  dat = results, 
-                                  model = mod_bh2_ll, 
-                                  form = formHOI)
-    
-    
-  }
-  
-  preds <- do.call( rbind, lapply( c(pred_fit1, pred_fit2), function(x) x %>% gather( predicted, pred_fecundity, starts_with('pred'))))
-  
-  figdat <-
-    preds %>% 
-    separate( predicted, c('t1', 'model', 'predicted_sp'), sep = '\\.') %>% 
-    select(-t1, -predicted_sp) %>% 
-    filter( !is.na(pred_fecundity))
-  
-  all_fits <- 
-    left_join(results, figdat, by = c('id', 'focal'))
-  
-  fitted <- 
-    data.frame( species = paste0('N', 1:nspp), 
-                lambda = lambda_est,
-                alpha = alpha_est, 
-                betas = beta_est)  %>%   
-    gather( par, value, -species) %>%
-    mutate( par = str_replace(par, '\\.', str_extract(species, '\\d+'))) %>%
-    mutate( type = 'fitted')
-  
-  ann_plant_fit <- all_fits
-  ann_plant_fitted_pars <- fitted
-  ann_plant_fitted_pars$model <- 'mod_bh2_ll'
-  
-  saveRDS(ann_plant_fit, file = fit_file)
-  saveRDS(ann_plant_fitted_pars, file = fitted_pars_file)
-}
-
-
-fit_mod1 <- function(sim_data_file, fit_file, fitted_pars_file) { 
-  
-  results  <- readRDS(sim_data_file)
-  
-  nspp <- length( unique( results$focal ))
-  
-  par_ests <- expand.grid( focal = 1:nspp, comp = 1:nspp, lambda = NA, tau = NA, alpha = NA)
-  
-  for( i in 1:nrow(par_ests)) {
-    temp <- fit_2_converge(n_seq = 20, 
-                           start_sd = 3, 
-                           min_sd = 0.2, 
-                           init_tau = -1, 
-                           init_alpha = 0, 
-                           data = results, 
-                           focal = par_ests$focal[i], 
-                           comp  = par_ests$comp[i], 
-                           form = form1)
-    
-    best_fit <- temp$res[[which.min( unlist( lapply( temp$res, function(x) x$value)))]]
-    
-    if(best_fit$convergence == 0 ) { 
-      par_ests[i, c('lambda', 'tau', 'alpha')] <- best_fit$par 
-    }
-  }
-  
-  par_ests <- 
-    par_ests %>% 
-    group_by( focal ) %>% 
-    mutate( lambda_hat = mean(lambda), tau_hat = mean(tau)) %>% 
-    gather( alpha_par, alpha_value, alpha) %>% 
-    unite( alpha, alpha_par, focal, comp, sep = '', remove = F) %>% 
-    select( - alpha_par ) %>% 
-    arrange( alpha ) 
-  
-  alpha_est <- matrix( par_ests$alpha_value, nspp, nspp , byrow = T)
-  lambda_est <-  unique(par_ests$lambda_hat)
-  tau_est <- unique( par_ests$tau_hat)
-  
-  fit_pars <- list(NA)
-  for( i in 1:nspp) {
-    temp <- fit_2_converge(n_seq = 20, 
-                           start_sd = 3, 
-                           min_sd = 0.2, 
-                           init_lambda = lambda_est[i],
-                           init_tau = tau_est[i], 
-                           init_alpha = alpha_est[i, ], 
-                           data = results, 
-                           focal = i, 
-                           form = form1, 
-                           FUN = fit_single_tau, 
-                           nspp = nspp)
-    
-    best_fit <- temp$res[[which.min( unlist( lapply( temp$res, function(x) x$value)))]]
-    
-    if(best_fit$convergence == 0 ) { 
-      fit_pars[[i]] <- best_fit$par 
-    }
-  }
-  
-  fit_pars <- do.call(rbind, fit_pars)
-  
-  # now fit HOIs ---------------------------------------------------------------- # 
-  par_ests <- expand.grid( focal = 1:nspp, comp = 1:nspp)
-  par_ests$lambda = lambda_est
-  par_ests$tau = fit_pars[,1]
-  
-  alpha_est <- fit_pars[, 1 + 1:nspp]
-  par_ests$alpha <- matrix( rep( t(alpha_est), nspp), nspp*nspp, nspp, byrow = T)
-  par_ests$beta  <- NA
-  
-  for(i in 1:nrow(par_ests)){ 
-    temp <- fit_2_converge(n_seq = 20, 
-                           start_sd = 3, 
-                           min_sd = 0.2, 
-                           init_lambda = par_ests$lambda[i],
-                           init_tau = par_ests$tau[i],
-                           init_alpha = par_ests$alpha[i,], 
-                           data = results, 
-                           focal = par_ests$focal[i], 
-                           comp  = par_ests$comp[i], 
-                           form = formHOI, 
-                           FUN = fit_HOI)
-    
-    best_fit <- temp$res[[which.min( unlist( lapply( temp$res, function(x) x$value)))]]
-    
-    if(best_fit$convergence == 0 ) { 
-      par_ests$beta[i] <- best_fit$par 
-    }
-    
-  }
-  
-  beta_est <- matrix(par_ests$beta, nspp, nspp)
-  
-  fits <- data.frame(focal = 1:3, lambda = lambda_est, tau = tau_est)
-  fits$alpha <- alpha_est
-  fits$beta <- beta_est
-  
-  pred_fit1 <- list()
-  pred_fit2 <- list()
-  
-  for( i in 1:nrow(fits)){ 
-    
-    pred_fit1[[i]] <- predict_fit(pars = unlist(fits[i, c('lambda', 'tau', 'alpha')]), 
-                                  foc = i, 
-                                  dat = results, 
-                                  model = mod_bh_ll, 
-                                  form = form1)
-    
-    pred_fit2[[i]] <- predict_fit(pars = unlist(fits[i, c('lambda', 'tau', 'alpha', 'beta')]), 
-                                  foc = i, 
-                                  dat = results, 
-                                  model = mod_bh_ll, 
-                                  form = formHOI)
-    
-    
-  }
-  
-  preds <- do.call( rbind, lapply( c(pred_fit1, pred_fit2), function(x) x %>% gather( predicted, pred_fecundity, starts_with('pred'))))
-  
-  figdat <-
-    preds %>% 
-    separate( predicted, c('t1', 'model', 'predicted_sp'), sep = '\\.') %>% 
-    select(-t1, -predicted_sp) %>% 
-    filter( !is.na(pred_fecundity))
-  
-  all_fits <- 
-    left_join(results, figdat, by = c('id', 'focal'))
-  
-  fitted <- 
-    data.frame( species = paste0('N', 1:nspp), 
-                lambda = lambda_est,
-                alpha = alpha_est, 
-                betas = beta_est, 
-                tau = tau_est ) %>%   
-    gather( par, value, lambda:tau) %>%
-    mutate( par = str_replace(par, '\\.', str_extract(species, '\\d+'))) %>%
-    mutate( type = 'fitted')
-  
-  ann_plant_fit <- all_fits
-  ann_plant_fitted_pars <- fitted
-  ann_plant_fitted_pars$model <- 'mod_bh_ll'
-  
-  saveRDS(ann_plant_fit, file = fit_file)
-  saveRDS(ann_plant_fitted_pars, file = fitted_pars_file)
-  
-}
-
-
-
 
 
 compare_parameters <- function(original_pars_file, fitted_pars_file){ 
@@ -997,7 +376,12 @@ fit_model <- function(dat, form = form1, mod_name = "mod_bh_ll", start_sd = 3, m
   form_name <- deparse(substitute(form))
 
   if( str_detect(form_name, 'HOI') ){
-    if( str_detect(mod_name, '2')){ 
+    if( str_detect(mod_name, '3')){ 
+      # HOI TYPE 3 
+      init <- c(20, 1, 1, 1, 0, 0, 0)
+      lower <- c(1, 0, 0, 0, 0, 0, 0)
+      upper <- c(1e2, 3, 3, 3, 1, 1, 1)
+    }else if( str_detect(mod_name, '2')){ 
       # HOI TYPE 2 
       init <- c(20, 1e-30, 1e-30, 1e-30, 1e-30, 1e-30, 1e-30)
       lower <- c(1, 1e-30, 1e-30, 1e-30, 1e-30, 1e-30, 1e-30)
@@ -1009,7 +393,12 @@ fit_model <- function(dat, form = form1, mod_name = "mod_bh_ll", start_sd = 3, m
       upper <- c(1e2, 0, 1e2, 1e2, 1e2, 1, 1, 1)
     }
   }else{
-    if( str_detect(mod_name, '2')){ 
+    if( str_detect(mod_name, '3')){ 
+      # BASIC  TYPE 3 
+      init <- c(20, 1, 1, 1)
+      lower <- c(1, 0, 0, 0)
+      upper <- c(1e2, 4, 4, 4)
+    }else if( str_detect(mod_name, '2') ){ 
       # BASIC  TYPE 2 
       init <- c(20, 1e-30, 1e-30, 1e-30)
       lower <- c(1, 1e-30, 1e-30, 1e-30)
