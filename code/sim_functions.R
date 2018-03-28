@@ -286,6 +286,28 @@ mod_bh3_ll <- function(pars, y, mm, sd = 1, predict = FALSE){
   }
 }
 
+mod_bh4_ll <- function(pars, y, mm, sd = 1, predict = FALSE){ 
+  
+  if( !length(pars) == ncol(mm)*2 + 1 ){ stop('wrong number of parameters supplied!')}
+  
+  lambda <- pars[1]
+  tau <- pars[2:(ncol(mm) + 1)]
+  alphas <- tail(pars, ncol(mm))
+  
+  mu <- NA
+  for( i in 1:nrow(mm)){ 
+    mu[i] <- lambda/( 1 + alphas%*%c(mm[i,]^tau))
+  }
+  
+  neg_ll <- sum( - dnorm( log(mu), log(y), sd, log = T) )
+  
+  if(predict){ 
+    return(mu)
+  }else if(!predict){ 
+    return(neg_ll) 
+  }
+}
+
 
 compare_parameters <- function(original_pars_file, fitted_pars_file){ 
   
@@ -376,7 +398,12 @@ fit_model <- function(dat, form = form1, mod_name = "mod_bh_ll", start_sd = 3, m
   form_name <- deparse(substitute(form))
 
   if( str_detect(form_name, 'HOI') ){
-    if( str_detect(mod_name, '3')){ 
+    if( str_detect(mod_name, '4')){ 
+      # HOI TYPE 4 
+      init <- c(20, rep(1,6), rep(0, 6))
+      lower <- c(1, rep(0,6), rep(0, 6))
+      upper <- c(1e2, rep(2, 12))
+    }else if( str_detect(mod_name, '3')){ 
       # HOI TYPE 3 
       init <- c(20, 1, 1, 1, 0, 0, 0)
       lower <- c(1, 0, 0, 0, -0.01, -0.01, -0.01)
@@ -393,7 +420,12 @@ fit_model <- function(dat, form = form1, mod_name = "mod_bh_ll", start_sd = 3, m
       upper <- c(1e2, 0, 1e2, 1e2, 1e2, 1, 1, 1)
     }
   }else{
-    if( str_detect(mod_name, '3')){ 
+    if( str_detect(mod_name, '4')){ 
+      # BASIC TYPE 4 
+      init <- c(20, rep(1,3), rep(0, 3))
+      lower <- c(1, rep(0,3), rep(0, 3))
+      upper <- c(1e2, rep(2, 6))
+    }else if( str_detect(mod_name, '3')){ 
       # BASIC  TYPE 3 
       init <- c(20, 1, 1, 1)
       lower <- c(1, 0, 0, 0)

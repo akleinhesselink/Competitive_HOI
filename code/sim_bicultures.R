@@ -15,8 +15,8 @@ plot_Rstar(parms, my_colors)
 
 # -----------------------------------------------------
 nspp <- length(parms$K)
-maxdens <- 5
-base <- 2 
+maxdens <- 12
+base <- 1.5 
 
 experiments <- make_experiments(maxdens, base, nspp)
 
