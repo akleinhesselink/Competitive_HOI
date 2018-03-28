@@ -309,11 +309,10 @@ mod_bh4_ll <- function(pars, y, mm, sd = 1, predict = FALSE){
 }
 
 
-compare_parameters <- function(original_pars_file, fitted_pars_file){ 
+compare_parameters <- function(original_file, fitted){ 
   
-  original <- readRDS(original_pars_file)
-  fitted   <- readRDS(fitted_pars_file)
-  
+  original <- readRDS(original_file)
+
   pars_df <- 
     bind_rows(fitted, original ) %>% 
     mutate( par_type = str_extract(par, '[a-z]+')) %>% 

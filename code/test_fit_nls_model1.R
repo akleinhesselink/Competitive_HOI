@@ -3,6 +3,8 @@ rm(list = ls())
 source('code/sim_functions.R')
 source('code/figure_pars.R')
 
+maxiter <- 10
+count <- 0 
 nspp <- 3
 start_sd <- 2
 min_sd <- 1
@@ -10,33 +12,53 @@ max_refit <- 6
 data_file <- 'data/ann_plant_sim1.rds'
 model <- "mod_bh_ll"
 
+basic <- 'fecundity ~ lambda.*( (1 + alpha.[1]*N1 + alpha.[2]*N2 + alpha.[3]*N3)^tau.) '
+HOI <- 'fecundity ~ lambda.*( (1 + alpha.[1]*N1 + alpha.[2]*N2 + alpha.[3]*N3 + betas.[1]*I(N1*N2) + betas.[2]*I(N1*N3) + betas.[3]*I(N2*N3))^tau.) '
 
-basic <- 'fecundity ~ lmbda/(1 + a[1]*N1 + a[2]*N2 + a[3]*N3)'
-HOI <- 'fecundity ~ lmbda/(1 + a[1]*N1 + a[2]*N2 + a[3]*N3 + b[1]*I(N1*N2) + b[2]*I(N1*N3) + b[3]*I(N2*N3))'
-lower_basic <- c(1, 0, 0, 0)
-lower_HOI   <- c(lower_basic, -0.5, -0.5, -0.5)
+lower_basic <- c(1, -1.5, rep(0, 3))
+upper_basic <- c(1e3, -0.5, rep(2, 3))
+lower_HOI   <- c(lower_basic, rep(-0.1, 3))
+upper_HOI   <- c(upper_basic, rep(0.1, 3))
 
 
 fits <- plot <- list()
 
-i <- 1
+
 for ( i in 1:nspp){
 
   focal <- paste0('F', i)
 
   dat <- prep_data(i, dat = readRDS(data_file))
   
-  start_basic <- list(lmbda = max(dat$fecundity), a = rep(0,3))
+  start_basic <- list(lambda. = max(dat$fecundity), tau. = -1.5, alpha. = rep(1,3))
   
-  fit_basic <- nls(basic, 
+  fit_basic <- try(nls(basic, 
                  data = dat, 
                  start = start_basic, 
                  algorithm = 'port', 
-                 lower = lower_basic)
+                 lower = lower_basic, 
+                 upper = upper_basic), silent = T)
+  
+  
+  while( as.character(class(fit_basic)) == 'try-error'){ 
+    
+    if(start_basic$tau. > upper_basic[2]){ stop('tau too high')}
+    
+    start_basic$tau. <- start_basic$tau. + 0.01
+
+    fit_basic <- 
+      try(nls(basic, 
+            data = dat, 
+            start = start_basic, 
+            algorithm = 'port', 
+            lower = lower_basic, 
+            upper = upper_basic), silent = T)
+
+  }
   
   fit_HOI   <- nls(HOI, 
                  data = dat, 
-                 start = list( lmbda = coef(fit_basic)[1], a = coef(fit_basic)[2:4], b = rep(0,3)), 
+                 start = list( lambda. = coef(fit_basic)[1], tau. = coef(fit_basic)[2], alpha. = coef(fit_basic)[3:5], betas. = rep(0,3)), 
                  algorithm = 'port', 
                  lower = lower_HOI)
   
@@ -66,3 +88,16 @@ for ( i in 1:nspp){
   fits[[i]] <- list(basic = fit_basic, HOI = fit_HOI)
 
 }
+
+
+HOI <-  data.frame( species = c('N1', 'N2', 'N3'), 
+                    do.call(rbind, lapply( fits, function(x) coef(x$HOI))))
+
+fitted <- HOI %>% 
+  gather( par, value, - species ) %>% 
+  mutate( par  = str_replace(par, '\\.', (str_extract(species, '\\d+')))) %>% 
+  mutate( type = 'fitted')
+
+compare_parameters('data/ann_plant_pars1.rds', fitted )
+
+

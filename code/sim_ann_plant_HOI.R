@@ -14,12 +14,12 @@ alphas <- matrix( c(1, 0.5, 0.1,
                     0.3, 1, 0.4, 
                     0.1, 0.5, 1), nspp, nspp, byrow = T)
 
-betas <- matrix(c(0.00,  0.1,  -0.01, 
+betas <- matrix(c(0.00,  0.01,  -0.01, 
                   0.00,  0.1,  0.00, 
-                  0.05,  0.00,  0.01), nspp, nspp, byrow = T)
+                  0.05,  -0.01,  0.01), nspp, nspp, byrow = T)
 
 lambdas <- c(24, 32, 41)
-taus <- c(-1.01, -1, -0.9)
+taus <- c(-1, -0.9, -0.7)
 
 # 
 maxdens <- 20
@@ -49,6 +49,12 @@ results <-
 
 results$focal_label <- paste0( 'focal\n', str_replace( results$focal, 'F', 'N'))
 
+data.frame( species = paste0('N', 1:nspp), 
+            lambda = lambdas, 
+            alpha = alphas, 
+            betas = betas, 
+            tau = taus ) 
+  
 ann_plant_pars <- 
   data.frame( species = paste0('N', 1:nspp), 
               lambda = lambdas, 
