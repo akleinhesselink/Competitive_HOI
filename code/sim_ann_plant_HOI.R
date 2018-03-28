@@ -14,7 +14,7 @@ alphas <- matrix( c(1, 0.5, 0.1,
                     0.3, 1, 0.4, 
                     0.1, 0.5, 1), nspp, nspp, byrow = T)
 
-betas <- matrix(c(0.00,  0.00,  0.02, 
+betas <- matrix(c(0.00,  0.1,  -0.01, 
                   0.00,  0.1,  0.00, 
                   0.05,  0.00,  0.01), nspp, nspp, byrow = T)
 
