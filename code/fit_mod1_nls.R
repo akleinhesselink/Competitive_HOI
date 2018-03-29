@@ -111,7 +111,7 @@ dat <-
   dat %>% 
   filter( N1 == 0 , N2 ==0 ) 
 testfit3 <- nls(fecundity ~ lambda*((1 + N3^a[1])^tau), data = dat, start = list(lambda = 10, a = c(1), tau = -1)  )
-dat$pred <- predict(testfit)
+dat$pred <- predict(testfit3)
 dat %>% ggplot(aes( y = fecundity, x = N3)) + 
   geom_point() + 
   geom_line(aes(y = pred), color = 'red')
@@ -155,8 +155,6 @@ dat$pred <- predict(testfit)
 dat %>% ggplot(aes( y = fecundity, x = N3)) + 
   geom_point() + 
   geom_line(aes(y = pred, group = factor(paste(N1,N2))), color = 'red')
-
-
 
 
 dat %>% ggplot(aes( y = fecundity, x = N2)) + 

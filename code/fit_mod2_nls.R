@@ -9,54 +9,68 @@ min_sd <- 1
 max_refit <- 6 
 data_file <- 'data/mechanistic_sim_bicultures.rds'
 
+basic <- 'fecundity ~ lambda./(1 + N1^alpha.[1] + N2^alpha.[2] + N3^alpha.[3])'
+HOI <- 'fecundity ~ lambda./(1 + N1^(alpha.[1] + betas.[1]*N2 + betas.[2]*N3)  + N2^(alpha.[2] + betas.[3]*N1 + betas.[4]*N3) + N3^(alpha.[3] + betas.[5]*N1 + betas.[6]*N2) )'
+
+curve(3^(1/(1 + x)), -2, 10)
+
+lower_basic <- c(1, rep(0, 3))
+upper_basic <- c(1e3, rep(2, 3))
+lower_HOI   <- c(lower_basic, rep(0, 6))
+upper_HOI   <- c(upper_basic, rep(1, 6))
+
+
 fits <- plot <- list()
-i <- 1
+
+i <- 3
 for ( i in 1:nspp){
   
   focal <- paste0('F', i)
   
   dat <- prep_data(i, dat = readRDS(data_file))
   
-  dat <- do.call(rbind, list(dat,dat,dat,dat,dat))
-  dat$y <- dat$fecundity
+  dat <- dat %>% filter(N1 > 0 | N2 > 0 | N3 > 0)
   
-  nls_form1 <- 'y ~ l/(1 + N1^a1 + N2^a2 + N3^a3)'
-  nls_formHOI <- 'y ~ l/(1 + N1^a1 + N2^a2 + N3^a3 + I(N1*N2)^b1 + I(N1*N3)^b2 + I(N2*N3)^b3)'
-         
-  fit1 <- nls(nls_form1, 
+  start_basic <- list(lambda. = max(dat$fecundity), alpha. = rep(0.5,3))
+  
+  fit_basic <- try(nls(basic, 
+                       data = dat, 
+                       start = start_basic, 
+                       algorithm = 'port', 
+                       lower = lower_basic, 
+                       upper = upper_basic), silent = T)
+  
+  
+  while( as.character(class(fit_basic)) == 'try-error'){ 
+    
+    if(start_basic$alpha.[1] > upper_basic[2]){ stop('tau too high')}
+    
+    start_basic$alpha.[1] <- start_basic$alpha.[1] + 0.01
+    
+    fit_basic <- 
+      try(nls(basic, 
               data = dat, 
-              start = c(l = max(dat$y), a1 = 1e-3, a2 = 1e-3, a3 = 1e-3), 
+              start = start_basic, 
               algorithm = 'port', 
-              lower = 1e-3, 
-              upper = c(1e2, 2, 2, 2))
+              lower = lower_basic, 
+              upper = upper_basic), silent = T)
+    
+  }
+  start_HOI <- list( lambda. = coef(fit_basic)[1], 
+                     alpha. = coef(fit_basic)[2:4], 
+                     betas. = c(0,0,0,0,0,0))
+
+  fit_HOI   <- nls(HOI, 
+                   data = dat, 
+                   start = start_HOI, 
+                   algorithm = 'port', 
+                   lower = lower_HOI, 
+                   upper = upper_HOI)
+  fit_basic
+  fit_HOI
   
-  fit1 <- nls(nls_form1, 
-              data = dat, 
-              start = coef(fit1), 
-              algorithm = 'port',
-              lower = 1e-30, 
-              upper = c(1e2, 2,2,2))
-  
-  dat$basic <- predict(fit1)
-  
-  
-  fitHOI <- nls( nls_formHOI, 
-                data = dat, 
-                start = c(coef(fit1), b1 = 0.01, b2 = 0.01, b3 = 0.01), 
-                lower = 1e-10, 
-                upper = c(1e2, rep(1, 6)), 
-                algorithm = 'port', 
-                control  = list(warnOnly = T) )
-  
-  coef(fitHOI)
-  
-  nls.control()
-  
-  fitHOI <- nls(y ~ l*(1 + a1*N1 + a2*N2 + a3*N3 + b1*sqrt(I(N1*N2)) + b2*sqrt(I(N1*N3)) + b3*sqrt(I(N3*N2)))^ta, 
-                data = dat, 
-                start = coef(fitHOI))
-  
-  dat$HOI <- predict(fitHOI)
+  dat$basic <- predict(fit_basic)
+  dat$HOI   <- predict(fit_HOI)
   
   dat <-
     dat %>%
@@ -78,6 +92,7 @@ for ( i in 1:nspp){
     theme(legend.position = c(0.7, 0.75), legend.box.just = 'right')
   
   plot[[i]] <- do.call( function(...) grid.arrange (..., ncol = nspp), list(p1, p2, p3) )
-  fits[[i]] <- list(fit1 = fit1, fitHOI = fitHOI)
+  fits[[i]] <- list(basic = fit_basic, HOI = fit_HOI)
   
 }
+
