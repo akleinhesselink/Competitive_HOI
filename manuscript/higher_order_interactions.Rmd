@@ -118,60 +118,46 @@ The possibility of higher order interactions (HOIs) between species challenges t
 
 Despite the importance of HOIs for advancing ecology in a multi-species world, competitive HOIs have received relatively little theoretical or empirical attention. This extends even to the matter of defining what they are.  
 
-To even begin discussing HOIs, we need to first define competition.  We approach the definition from a phenomenological perspective and define competition as the observed reduction in per-capita population growth rate due to an increase in density of individuals of the same trophic level (cite).  
+To even begin discussing HOIs, we need to first define competition.  We approach the definition from a phenomenological perspective and define competition as the observed reduction in a per-capita population growth rate due to an increase in density of individuals of the same trophic level (cite).  
 
-In figure (1) competition is depicted as arrows showing that density of individual $j$ reduces the per capita population growth rate of species $i$ by some factor $f_i(n_j)$. In figure 1 the dashed arrow shows that species 3 modifies the competitive effect of species two on species one.  We take this kind of interaction modification to be a higher order interaction.  More specifically, an HOI occurs whenever the competitive effect of species $j$ on $i$ depends on the density of another species $k$.    
-
-A more technical definition of HOIs proceeds from the the following general phenomenological model for competition, 
+In figure (1) competition is depicted as arrows showing that density of species $j$ reduces the vital rate of species $i$ by some factor $C_{ij}$. In figure 1 the dashed arrow shows that species $k$ modifies the competitive effect of species $j$ on species $i$.  We take this kind of interaction modification to be a second order competitive interaction, an HOI.  More specifically, an HOI occurs whenever the competitive effect of species $j$ on $i$ depends on the density of another species.    
+A more technical example of HOIs follows from the following phenomenological population growth rate model, 
 
 \vspace{-4em}
 \begin{equation} \label{eq1}
 \begin{split}
-n_{i,t+1} = n_{i,t}\lambda_{i}/f_{i}(\bf{n_{t}}), 
+n_{i,t+1} = n_{i,t}f(C(n_i, n_j, n_k)), 
 \end{split}
 \end{equation}
 
-where $n_{i,t}$ is the density of species $i$ at time $t$, $\lambda_{i}$ gives the per capita population growth rate in the absence of competition, the function $f_i$ gives the factor by which competition reduces population growth rate, and $\bf{n_t}$ is a vector giving the density of each of $n$ species in the community. The net outcome of all competition is given by the function $f_i$ and therefore depends on the density of all species in the community. Nevertheless, competition is still pairwise and does not involve HOIs if the sensitivity of the function $f$ to the density of another competitor species $j$, given by the partial derivative $\frac{\partial f_{i}}{\partial n_{j}}$, does not depend on the density of any other species.  
+where $n_{i,t}$ is the density of species $i$ at time $t$, $f$ is a function that gives the per capita population growth rate as a function of competition experienced $C$, which itself is a function of a competitor densities, $n_i$, $n_j$, and $n_k$. Competition between species $i$ and $j$ is pairwise and does not involve HOIs if the sensitivity of competition, defined as the partial derivative $\frac{\partial C_{i}}{\partial n_{j}}$, does not vary with the density of any other species in the community ($n_k$). In contrast, HOIs occur whenever the sensitivity of competition to the density of a single competitor species changes with the density of one or more other competitor species. 
 
-In contrast, HOIs occur whenever the partial derivative $\frac{\partial f_{i}}{\partial n_{j}}$ depends also on the density of at least one other competitor species. 
+As a specific example, consider defining the competition as a simple linear function of competitor density: $C(n_i,n_j,n_k) = (1 + \alpha_{i,i}n_{i} + \alpha_{i,j}n_{j} + \alpha_{i,k}n_k)$ (cite Hassell). Where $\alpha_{i,j}$ gives the pairwise competitive effect of species $j$ on the species $i$ and the sensitivity of competition to the density of competitor $j$ is given by the partial derivative $\frac{\partial C}{\partial n_{j}} = \alpha_{i,j}$.  
 
-To illustrate our definition, consider defining the competition function $f$ as a simple linear function of competitor density: $f_i(\bf{n_t}) = (1 + \sum \alpha_{i,j}n_{j,t})$ (cite Hassell). Where $\alpha_{i,j}$ gives the pairwise competitive effect of species $j$ on the species $i$ The overall discrete time dynamics for species $i$ are now given by the equation, 
-\vspace{-4em}
-\begin{equation} \label{eq2}
-\begin{split}
-n_{i,t+1} = n_{i,t}\frac{\lambda_i}{(1 + \sum_{j=1}^{n}\alpha_{i,j}n_{j,t})}, 
-\end{split}
-\end{equation}
-
-In the above model, the sensitivity of competition to the density of competitor $j$ is given by the partial derivative $\frac{\partial f_i}{\partial n_{j}} = \alpha_{i,j}$.  
-
-If we relax the assumption that pairwise competition coefficients are fixed and instead allow each to themselves be functions competitor densities, our model now includes the possibility of HOIs.  
-
-As an example, consider a three species community.  We replace $\alpha_{1,2}$ with a simple linear function of $n_3$, $a(n_3) = \alpha_{1,2} + \beta n_3$. Now the competitive effect of $n_{2}$ on $n_{1}$ depends on the density of a third species, 
+If we relax the assumption that pairwise competition coefficients are fixed and instead allow the competition coefficients to depend on other competitor densities, our model now includes the possibility of HOIs.  As an example, we replace $\alpha_{i,j}$ with a simple linear function of $n_k$, $a(n_k) = \alpha_{i,j} + \beta n_k$. Now the competitive effect of $n_{j}$ on $n_{i}$ depends on the density of a third species $n_k$:  
 
 \vspace{-4em}
 \begin{equation} \label{eq3}
 \begin{split}
-f_{1,t+1} = (1 + \alpha_{1,1}n_{1,t} + \alpha_{1,2}n_{2,t} + \beta n_{3,t}n_{2,t} + \alpha_{1,3}n_{3,t}),
+C(\bf{N}) = (1 + \alpha_{i,i}n_{i} + \alpha_{i,j}n_{j} + \beta n_{k}n_{j} + \alpha_{i,k}n_{k}). 
 \end{split}
 \end{equation}
 
-where $\beta$ captures a second order HOI effect of species two and three together. As long as $\beta \neq 0$ we can no longer isolate the pairwise sensitivity of species 2 and must consider also the density of species 3 when defining the partial derivative $\frac{\partial f_i}{\partial n_2}$. The same goes for species 3.  In general, a community of more species could include HOIs of greater order, with a community of $n$ species having HOIs up to the $n-1th$ order possible. 
+In this example, $\beta$ captures a second order HOI effect of species $j$ and $k$ together. As long as $\beta \neq 0$ we can no longer isolate the pairwise effect of species $j$ on species $i$. In general, more diverse communities could contain HOIs of greater order, with a community of $s$ species having HOIs possible up the $s-1th$ order. 
 
-Now that we have defined HOIs we ask whether there are any reason to suspect competitive HOIs exist in nature.
+Now that we have defined HOIs we ask whether there are any reason to suspect competitive HOIs actually exist in nature.
 
 #### HOIs arrising from sequences of pairwise competition
 
-Grilli et al. (2017) recently demonstrated how HOIs can arise from a sequence of competitive events defined only by pairwise competition.  In their model, seedling trees compete to fill a forest gap.  If competition for the gap occurs as a sequence of competitive rounds between pairs of individuals, then the overall chance of a species winning the gap depends on the presence of all other species in the gap and their interactions. That is, the species' chance of winning each round is pairwise, but the species chance of winning the overall tournament depends on higher order interactions.
+Higher order interactions could arise in discrete time models when the time step involves aggregating of a sequence of pairwise competition events. In a recent theoretical analysis, Grilli et al. (2017) provided a concise demonstration of this effect.  In their model, seedling trees compete to fill a forest gap.  If competition for the gap occurs as a sequence of competitive rounds between pairs of individuals, then the overall chance of a species winning the gap depends on the presence of all other species in the gap.  Importantly, the probability that a species wins the gap depends not only on its pairwise interactions with its competitors, but also on the pairwise interactions between those competitors. In effect, a species' chance of winning each round is pairwise, but the species' chance of winning the overall tournament includes higher order interactions.
 
-In the Grilli paper, competition was a set discrete winner-take-all competitive events. The specific idea of having plant competition occur one at a time in the form of tournaments seems unrealistic, however, their model captures an important general way in which competition that is pairwise at a short timescale can produce HOIs when aggregated across longer time periods. As a simple illustration of this idea, consider a two stage population model with juveniles and adults. The probability of transitioning from juvenile to adult is determined by a survival function $s$ and the fecundity of adults is given by $g$.  It seems likely that both $s$ and $g$ could be influenced by pairwise competition. 
+In the Grilli model, competition involved a tournament of discrete winner-take-all competitive events. The idea of having plant competition occur one at a time in this way seems unrealistic. However, their model captures an important general way in which competition that is pairwise at a single time step can produce HOIs when aggregated over more then one time step. As another example we consider a two stage annual plant population model with seedlings $\bf{S}$ and adults $\bf{A}$ (fig 2). The probability of transitioning from seedling to adult in calendar year $t$ is determined by a survival function $p$. The production of seeds by adults is given by a reproduction function $g$. Because the plants are annuals there is no adult survival, and to simplify things we assume that all seeds germinate. Starting from the seedling stage, per capita population growth rate, $f$, is determined by the product of seedling survival and adult per capita seed production, $f = s_{i,t+1}/s_{i,t} = gp$. In our model, both $p$ and $g$ could be reduced by competition from seedlings and adults respectively such that $p(\bf{S_t})$ and $g(\bf{A_t})$, where $S_t$ gives vector of seedling densities, and $A_t$ is a vector of adult densities. 
 
-We can model population growth as 
-
+If we calculated the sensitivity of population growth rate to seedling density, it would include a component coming from the effect of seedlings on survival and a component coming from the effect of adults on reproduction. For example, in a two species community the sensitivity of $f$ to seedling density of species $j$ would be,  
 \vspace{-4em}
 \begin{equation} \label{eq3}
 \begin{split}
-N_{1,t+1} = N_{1,t}r(1 - \alpha_{1,1}N_{1,t} - \alpha_{1,2}N_{2,t} + \beta N_{3,t}N_{2,t} - \alpha_{1,3}N_{3,t}),
+\frac{\partial{f}}{\partial{s_{j}}} = \frac{\partial{p}}{\partial{s_{j}}}g(p(s_{j}))
 \end{split}
 \end{equation}
 
