@@ -3,12 +3,12 @@ library(deSolve)
 source( 'code/LV_functions.R')
 # set parameters ----------------------------------------- # 
 nspp <- 2
-alpha <- matrix(c(0.08, 0.001,
+alpha <- matrix(c(0.08, 0.2,
                   0.00, 0.09), nspp, nspp, byrow = T)
 
-r <- c(0.2, 0.1)
+r <- c(0.1, 0.1)
 parms <- list(r = r, alpha = alpha)
-gen_time <- 2
+gen_time <- 5
 times <- 500
 # ------------------------------------------------------- # 
 N_init <- c(1,1)
@@ -22,8 +22,8 @@ matplot( N_out , type  = 'l')
 
 # run density gradient 
 low <- 0 
-high <- 20
-by <- 2 
+high <- 2
+by <- 0.1
 
 N <- as.matrix( expand.grid( rep(list(seq(low, high, by = by)), nspp) ))
 colnames(N) <- paste0('N', 1:nspp)
@@ -42,7 +42,11 @@ dat <-
 temp <- split(dat, f = dat$species)
 
 form <- make_form(nspp)
-fit <- lapply( temp, fit_lv_discrete, form = form, par_init = c(0.3, 0.01, 0.01), lowers = c(0.01, -1, -1), uppers = c(2, 1, 1))
+fit <- lapply( temp, 
+               fit_lv_discrete, 
+               form = form, 
+               par_init = c(0.3, 0.01, 0.01), 
+               lowers = c(0.01, 0, 0), uppers = c(2, 1, 1))
 
 par_ests <- do.call(rbind, lapply(fit, function(x) x$par))
 r_est <- par_ests[, 1]
@@ -55,7 +59,12 @@ round(alpha_est , 3)
 # now try with HOI's  ---------------------------------- # 
 form <- make_form(nspp, HOI = T)
 
-fit <- lapply( temp, fit_lv_discrete, form = form, par_init = c(0.1, 0, 0, 0), lowers = c(0.01, -1, -1, -1), uppers = c(2, 1, 1, 1))
+fit <- lapply( temp, 
+               fit_lv_discrete, 
+               form = form, 
+               par_init = c(0.1, 0, 0, 0), 
+               lowers = c(0.01, 0, 0, -0.5), 
+               uppers = c(2, 1, 1, 0.5))
 
 par_ests <- do.call(rbind, lapply(fit, function(x) x$par))
 r_est <- par_ests[, 1]
@@ -73,7 +82,7 @@ alpha <- matrix( c(0.01,  0.02, 0.0,
                    0.02,  0.00, 0.02), nspp, nspp, byrow = T)
 
 parms <- list(r = r, alpha = alpha)
-gen_time <- 2
+gen_time <- 4
 times <- 500
 # ------------------------------------------------------- # 
 N_init <- c(2,1,3)
@@ -87,8 +96,8 @@ matplot( N_out , type  = 'l')
 
 # run density gradient 
 low <- 0 
-high <- 50
-by <- 2 
+high <- 5
+by <- 0.1
 
 N <- as.matrix( expand.grid( rep(list(seq(low, high, by = by)), nspp) ))
 colnames(N) <- paste0('N', 1:nspp)
@@ -114,7 +123,7 @@ fit <- lapply( temp,
                fit_lv_discrete, 
                form = form, 
                par_init = c(0.3, 0.01, 0.01, 0.01),
-               lowers = c(0.1, -0.5, -0.5, -0.5), 
+               lowers = c(0.1, 0, 0, 0), 
                uppers = c(1, 0.5, 0.5, 0.5))
 
 par_ests <- do.call(rbind, lapply(fit, function(x) x$par))
@@ -131,7 +140,7 @@ fit <- lapply( temp,
                fit_lv_discrete, 
                form = form, 
                par_init = c(0.3, 0.01, 0.01, 0.01, 0, 0, 0), 
-               lowers = c(0.05, -0.5, -0.5, -0.5, -0.5, -0.5, -0.5), 
+               lowers = c(0.05, 0, 0, 0, -0.5, -0.5, -0.5), 
                uppers = c(1, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5))
 
 par_ests <- do.call(rbind, lapply(fit, function(x) x$par))
@@ -142,4 +151,4 @@ alpha_est <- par_ests[, -1]
 alpha
 round(alpha_est , 5)
 
-form
+
