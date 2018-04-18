@@ -14,10 +14,10 @@ header-includes:
 layout: 12pt
 linkcolor: black
 output:
-  word_document: default
   pdf_document:
     fig_caption: yes
     keep_tex: yes
+  word_document: default
 urlcolor: black
 ---
 
@@ -85,25 +85,13 @@ opts_chunk$set(dev='pdf')
 Abstract
 --------
 
-In most classical models of species competition, the outcome of competition is determined by fixed pairwise competition coefficients.  
+In most classical models of species competition, the outcome of competition is determined by pairwise competition coefficients.  However, almost every community on earth contains many more than two species, and almost every species interacts with more than one other competitor. It may be a mistake to assume that models based upon only pairwise per capita competition adequately describe multi-species communities.   
 
-However, almost every community on earth contains many more than two species, and almost every species interacts with more than one other competitor. 
+Specifically, higher order interactions (HOI) complicate the use of pairwise competition coefficients for any community with three or more species. HOIs occur when pairwise competition coefficients are not fixed and instead depend on the density of other species in the community. The question of when and where HOIs occur is thus critical to extending the insights derived from two species models to natural communities.
 
-It cannot be assumed a priori that models based upon only pairwise per capita competition adequately describe multi-species communities.   
+In this paper we examine how and when HOIs emerge in simple competition models when more than two species compete. We break the origin of HOIs into cases where they result from changes in species densities or sizes that are not captured in the model structure and cases where they emerge due to changes in resource use through time. 
 
-Specifically, higher order interactions (HOI) complicate the use of pairwise competition coefficients for any community with three or more species. 
-
-HOIs occur when pairwise competition coefficients are not fixed and instead depend on the density of other species in the community. 
-
-The question of when and where HOIs occur is thus critical to extending the insights derived from two species models to natural communities.
-
-In this paper we examine how and when HOIs emerge in simple competition models when more than two species compete. 
-
-We break the origin of HOI's into cases where they emerge due to changes in instantaneous interaction coefficients, and cases where they result from changes in species densities or sizes that are not captured in the model structure. 
-
-We conclude that HOI's may be more likely to arise when species densities are away from equilibrium and for interactions between species with longer life cycles.
-
-Clarifying the source of HOI helps us better understand the true nature of competition and the stability of multispecies communities. 
+We conclude that HOIs may be likely to arise when competitors engage in multiple rounds of competition across the life-cycle. In mechanistic models, we suggest that HOIs may also emerge when per capita resource consumption is not fixed, but instead varies over time. Clarifying the source of HOIs in simple analytical and simulation models may help us better understand the true nature of competition and the stability of multispecies communities. 
 
 
 *Key words: competition, coexistence theory*
@@ -111,7 +99,7 @@ Clarifying the source of HOI helps us better understand the true nature of compe
 Introduction
 -------------
 
-Almost every species on earth interacts with a vast number of predators, pathogens and competitors. And the densities of each of these species, are themselves determined by interactions with yet other species in the community. Nonetheless, most classical models in community ecology summarise species interactions with fixed pairwise interaction coeficients. In particular, pairwise competition coefficients have been critical to the development of modern coexistence theory (MCT). A powerful implication arising from the assumption of fixed pairwise competition coefficients is that the outcome of multi-species species competition can be predicted by measuring the outcome of competition between all pairs of species in that community (cite). This assumptions leads to the idea that a general theory of species competitive exclusion and coexistence can be achieved if one could simply map pairwise differences in species' traits and physiology to species pairwise competition coefficients [@kraft_plant_2015; @adler_trait-based_2013]. 
+Almost every species on earth interacts with a vast number of predators, pathogens and competitors. And the densities of each of these species, are themselves determined by interactions with yet other species in the community. Nonetheless, most classical models in community ecology summarize species interactions with fixed pairwise interaction coefficients. In particular, pairwise competition coefficients have been critical to the development of modern coexistence theory (MCT). A powerful implication arising from the assumption of fixed pairwise competition coefficients is that the outcome of multi-species species competition can be predicted by measuring the outcome of competition between all pairs of species in that community (cite). This assumptions leads to the idea that a general theory of species competitive exclusion and coexistence can be achieved if one could simply map pairwise differences in species' traits and physiology to species pairwise competition coefficients [@kraft_plant_2015; @adler_trait-based_2013]. 
 
 The possibility of higher order interactions (HOIs) between species challenges the core assumption of pairwise competition coefficients.  By definition, HOIs mean that pairwise competition coefficients are not themselves fixed, but depend upon the densities of other species in the community. Among other issues that arise in a world of HOIs are classical definitions of coexistence and the niche which rely upon comparing pairwise intraspecific competition coefficients to interspecific competition coefficients (Chesson, etc. etc.).  If HOIs are common, then predicting community assembly in natural multi-species communities might not be achieved by measuring all possible pairwise competitive interactions. Thus, a thorough empirical and theoretical investigation of HOI in natural communities is critical to expanding ecological beyond two species models and increasing its relevance in the natural world.  
 
@@ -119,28 +107,21 @@ The possibility of higher order interactions (HOIs) between species challenges t
 
 Despite the potential importance of HOIs in a multi-species world, competitive HOIs have received relatively little theoretical or empirical attention. This extends even to the matter of defining what they are.  
 
-To even begin discussing HOIs, we need to first define competition.  We approach the definition from a mechanistic perspective first and then a phenomenological perspective.  From a mechanistic perspective, competition occurs when individuals consume the same limiting resources. Increases in consumer densities change the availability of resources which then changes the growth rate of consumers. Thus at its most basic resource competition can be thought of as an indirect effect between individuals mediated by resource concentration (fig 1). Equivalent models apply to any limiting environmental factors, such as shared mutualists and shared predators and pathogens (apparent competition).  
+To even begin discussing HOIs, we need to first define competition.  We approach the definition from a mechanistic perspective first and then a phenomenological perspective.  From a mechanistic perspective, competition occurs when individuals consume the same limiting resources. Increases in consumer densities change the availability of resources which then changes the growth rate of consumers. Thus at its most basic resource competition can be thought of as an indirect effect between individuals mediated by resource concentration. Equivalent models apply to any limiting environmental factors, such as shared mutualists and shared predators and pathogens (apparent competition).  
 
-In contrast, the phenomenological definition of competition dispenses with external environmental factors such as resource concentration and instead focuses on the indirect effects themselves. Phenomenological competition is measured by the reduction in a per-capita population growth rate due to an increase in density of individuals of the same trophic level (cite). This perspective on competition is extremely powerful because it includes all shared resources and other environmental feedbacks into one effect that can be measured empirically. A phenomenological definition of competition also encompasses direct interactions between individuals of the same trophic level, such as hemiparisitism, intra-guild predation, interference competition and allelopathy. 
+In contrast, the phenomenological definition of competition dispenses with external environmental factors such as resource concentration and instead focuses on the indirect effects themselves. Phenomenological competition is measured as the reduction in a per-capita population growth rate due to an increase in density of individuals of the same trophic level (cite). This perspective on competition is extremely powerful because it includes all shared resources and other environmental feedbacks into one effect that can be measured empirically. A phenomenological definition of competition also encompasses direct interactions between individuals of the same trophic level, such as hemiparisitism, intra-guild predation, interference competition and allelopathy. 
 
-We contrast mechanistic and phenomenological approaches to competition because they have fundamentally different implications for HOIs. In a mechanistic model, it is quite hard to even define HOIs.  If one knows the resource consumption rates of each species, and the value of those resources to each species' population growth rate, then you can calculate the indirect effect of each species on each other and the stability and trajectory of multi-species communities. HOIs are a non-issue because they are implicit in the model. 
+We contrast mechanistic and phenomenological approaches to competition because they have fundamentally different implications for HOIs. In a mechanistic model, it is quite hard to define HOIs.  If one knows the resource consumption rates of each species, and the value of those resources to each species' population growth rate, then you can calculate the indirect effects of each species on each other and the stability and trajectory of multi-species communities. HOIs are a non-issue because they are implicit in the model. 
 
-However, in a phenomenological model, the structure and stability of the community depends on the effects of species densities on other species population growth rates and in this case HOIs have a clear definition. In figure 2, competitive effects are depicted as arrows showing that density of species 2 reduces the vital rate of species 1 by some factor $\alpha_{12}$. The dashed arrow shows that species 3 modifies the competitive effect of species 2 on 1. We take this kind of interaction modification to be an HOI, specifically a second order competitive interaction.  More generally, pairwise interactions occur when the effect of species $j$ on species $i$ depends only on the density of species $j$ and HOIs occur whenever the effect of species $j$ on species $i$ depends also on the density of any other species than $j$.    
+However, in a phenomenological model, the structure and stability of the community depends on the effects of species densities on other species population growth rates and in this case HOIs have a clear definition. In figure 1, competitive effects are depicted as arrows showing that density of species two reduces the vital rate of species one by some factor $\alpha_{12}$. The dashed arrow shows that species three modifies the competitive effect of species two on one. We take this kind of interaction modification to be an HOI, specifically a second order competitive interaction.  More generally, pairwise interactions occur when the effect of species $j$ on species $i$ depends only on the density of species $j$ and HOIs occur whenever the effect of species $j$ on species $i$ depends also on the density of species other than $j$.    
 
-\begin{figure}[!ht]
-  \centering
-      \includegraphics[width=6in]{../figures/HOI_1.png}
-  \caption{}
-  \label{fig:comp_network}
-\end{figure}
+![Three species competitive network. Competitive interactions between species are depicted with the blue arrows. The effect of species two on one can be described by some function $\alpha_{12}$. Higher order interactions occur when the function $alpha_{12}$ is modified by the density of another species not involved in the interaction. In this case, we show a HOI as a dashed line from species three modifying the effect of two on one.](../figures/HOI_1.png)
 
 As further illustration of our definition of HOIs we start with a general model for species phenomenological competition,   
 
-\vspace{-4em}
+\vspace{-1em}
 \begin{equation} \label{eq1}
-\begin{split}
 n_{i,t+1} = n_{i,t}f(C), 
-\end{split}
 \end{equation}
 
 where $n_{i,t}$ is the density of species $i$ at time $t$, $f$ is a function that gives the per capita population growth rate as a function of total competition experienced $C_i$. Competition between species $i$, $j$ and $k$ is pairwise and does not involve HOIs if each species contributes linearly to competition such that $C = \sum\alpha_{i,j}(n_j)$, where $\alpha_{i,j}$ is a function of competitor density $n_j$. In contrast, HOIs occur whenever overall competition $C$ cannot be broken down into additive pairwise components. 
@@ -153,7 +134,7 @@ Now that we have defined HOIs, we explore a variety of mechanistic and phenomeno
 
 #### HOIs arrising from sequences of pairwise competition
 
-HOIs could arise in discrete time models when the time step involves aggregating of a sequence of pairwise competition events. In a recent theoretical analysis, Grilli et al. (2017) provided a concise demonstration of this effect.  In their model, seedling trees compete to fill a forest gap.  If competition for the gap occurs as a sequence of competitive rounds between pairs of individuals then HOIs naturally emerge.  This counterintuitive result occurs because the probability that a species wins the gap depends not only on its direct pairwise interactions, but also on the pairwise interactions between its competitors. In effect, which competitor the species interacts with in round two of the tournament depends on those competitors interactions in round one. Because of these indirect effects, we cannot express the gap filling tournament with a single set of pairwise competition coefficients, we need to include HOIs in the model.
+HOIs could arise in discrete time models when the time step involves aggregating of a sequence of pairwise competition events. In a recent theoretical analysis, Grilli et al. (2017) provided a concise demonstration of this effect.  In their model, seedling trees compete to fill a forest gap.  If competition for the gap occurs as a sequence of competitive rounds between pairs of individuals then HOIs naturally emerge.  This counter intuitive result occurs because the probability that a species wins the gap depends not only on its direct pairwise interactions, but also on the pairwise interactions between its competitors. In effect, which competitor the species interacts with in round two of the tournament depends on those competitors interactions in round one. Because of these indirect effects, we cannot express the gap filling tournament with a single set of pairwise competition coefficients, we need to include HOIs in the model.
 
 In the Grilli model, competition involved a tournament of discrete winner-take-all competitive events. The idea of having plant competition occur one at a time may perhaps seem unrealistic. However, their model captures a general process that could apply to many types of models. As another example we consider an annual plant population that follows a two stage model. Seeds germinate and survive into adults with probability $p$: $a = n_{t}p$, where $a$ is adult density at an intermediate time within the growing season, and $n_{t}$ is the initial seed density at the time $t$. After that, adults produce the next generation of seeds via a fecundity rate $f$: $n_{t+1} = af$. Because the plants are annuals there is no adult survival. 
 
@@ -161,32 +142,24 @@ We can introduce competition by making fecundity of species $i$ a function of ad
 
 Now we consider a two species community with initial seed densities for species one and two of $n_1$ and $n_2$ and calculate the per capita seed production of species 1 over the time step $t$ to $t+1$,  
 
-\vspace{-4em}
+\vspace{-1em}
 \begin{equation} \label{eq2}
-\begin{split}
 \frac{n_{1,t+1}}{n_{1,t}} = p_1( n_{1,t}, n_{2,t} )f_1( a_{1,u}, a_{2,u} ) 
-\end{split}
 \end{equation}
 
-In the model above, adult density is an intermediate state variable that is both the product of competition during the first part of the growing season but also contributes to competition during the reproductive phase. 
+In the model above, adult density is an intermediate state variable that is both the product of competition during the first part of the growing season but also contributes to competition during the reproductive phase. Re-writing to eliminate the intermediate phase, 
 
-Re-writing to eliminate the intermediate phase, 
-
-\vspace{-4em}
+\vspace{-1em}
 \begin{equation} \label{eq3}
-\begin{split}
 \frac{n_{1,t+1}}{n_{1,t}} = p_1( n_{1,t}, n_{2,t} )f_1( n_{1,t}p_1( n_{1,t}, n_{2,t} ), n_{2,t}p_2( n_{1,t}, n_{2,t} ) ) 
-\end{split}
 \end{equation}
 
-This equation shows that the effect of $2$ on $1$ cannot be fully captured by pairwise effects of two on one because it will also depend on the initial density of one and how strongly one reduces the survival of two. This is apparent when considering that the fecundity function $f_i$ will change depending on the density of both competitors.  
+This equation shows that the effect of two on one cannot be fully captured by pairwise effects. It also depends on the initial density of one and how strongly one reduces the survival of two. This is apparent when considering the arguments to the fecundity function $f_i$ contains the density of both competitors multiplied by their survival functions.  
 
-Aggregating the survival and reproduction phases of the lifecycle and the competitive effects on each, results in a quite complicated equation involving numerous polynomial terms of $n_{1,t}$ and $n_{2,t}$ including their product.  
+Aggregating the survival and reproduction phases of the life-cycle and the competitive effects on each, results in a complicated equation involving numerous polynomial terms of $n_{1,t}$ and $n_{2,t}$ and HOI terms.  
 
 One way of interpreting the above model is to consider it a case where there is a distinct survival niche and a distinct fecundity niche.  The survival niche is encoded by the matrix $\alpha_ij$ whereas the fecundity niche is encoded by $\beta_ij$. Most plant populations encompass some kind of stage structure and it seems likely that competitive effects between individuals probably vary depending on the stage structure.  
-
 *I'd like to do some more work on this.  I think having an example where we show how HOIs emerge analytically. Specifically if we could show analytically how the two stages of competition given by the $\alpha$ and $\beta$ in a two stage lifecycle model contribute to HOIs that would be really useful.  My hunch is that HOI terms cancel out in some circumstances which is why we can successfully model populations without HOI terms in a lot of cases.  The problem is that the expression for HOIs will depend very much on how we account for competition in the two lifestage transitions.  Unfortunately, I wasted a lot of time trying to analyze the above and have become a bit stuck!*
-
 
 #### HOIs arrising from mechanistic resource competition models
 
@@ -196,79 +169,102 @@ Because experimental data evaluating HOIs at the demographic level is lacking, w
 
 #### Resource mechanistic model
 
-Our mechanistic model is inspired by California annual plant communities growing in a Mediterranean climate.  In this environment, rainfall starts in the winter and gradually declines through the spring while temperature and evaporative demand increases.  Plants germinate in the winter and begin to flower in spring.  By summer, most plants have completed flowering and produce seeds and die.  Our resource model tracks a single pool of generic soil resources, possibly water or perhaps mobile inorganic nutrients.  The resource supply rate spikes in early spring and then goes to zero as the spring progresses.  Thus the pool of resources is exemplified by non-equilibrium pulse dyanmics and never reaches an equilibrium.  
+Our mechanistic model is inspired by California annual plant communities growing in a Mediterranean climate.  In this environment, rainfall starts in the winter and gradually declines through the spring while temperature and evaporation demand increases.  Plants germinate in the winter and begin to flower in spring.  By summer, most plants have completed flowering and produce seeds and die.  In our model we track a single pool of generic soil resources, perhaps water or mobile inorganic nutrients.  The resource supply rate spikes in early spring and then goes to zero as the spring progresses.  Thus the pool of resources is exemplified by non-equilibrium pulse dynamics and never reaches an equilibrium.  
 
-In our model, rates of plant growth depend on resource availability. As spring progresses, plants grow larger but resource supply diminishes.  Eventually plants reach a point where their resource uptake rate cannot keep up with respiration and maintanence costs.  At this point, we assume that plants have evolved a development switch of some kind that allows them to convert their biomass into seed mass. At this point the adult plants die and stop taking up resources.  
+In our model, rates of plant growth depend on resource availability. As spring progresses, plants grow larger but resource supply diminishes.  Eventually plants reach a point where their resource uptake rates cannot keep up with respiration and maintenance costs.  At this point, we assume that plants have evolved a developmental switch which triggers them to stop producing vegetative biomass and start producing seeds. We simplify this by assuming that all biomass is converted to seed biomass at a fixed rate instantaneously. At this point the adult plants die and stop taking up resources.  
 
-The model is expressed as a set of coupled differential equations, 
+The model is expressed as a set of differential equations, 
 
-\vspace{-4em}
+\vspace{-1em}
 \begin{equation} \label{eq4}
-\begin{split}
-\frac{dR}{dt} = S(t) - \epsilon R - \sum_{i = 1}^nB_{i}f(R,r, K)
-\end{split}
+\frac{dR}{dt} = S(t) - \epsilon R - \sum_{i = 1}^mB_{i}f(R,r, K)
 \end{equation}
 
-Where $R(t)$ gives the resource availability at time $t$, $S$ gives the resource supply rate and $\epsilon$ gives the abiotic loss of resources to evaporation and leaching. The final term expresses the loss of resources due to uptake by the annual plants.  We sum over each of the $n$ species in the community. Annual plant biomass of species $i$ at time $t$ is given by $B$ and the uptake rate is a function $f_i$ of total resource availability.
+where $R(t)$ gives the resource availability at time $t$, $S$ gives the resource supply rate at time $t$ and $\epsilon$ gives the abiotic loss of resources to evaporation and leaching. The final term expresses the loss of resources due to uptake by plants.  We sum over each of the $m$ species in the community to get total uptake. Annual plant biomass of species $i$ at time $t$ is given by $B$ and the uptake rate is a function $f_i$ of total resource availability.
 
-Growth of each species depends on resource availabilty,  
+Growth of each species depends on resource availability,  
 
-\vspace{-4em}
+\vspace{-1em}
 \begin{equation} \label{eq5}
-\begin{split}
 \frac{dB_{i}}{dt} = B_{i}(qf_i(R) - m)
-\end{split}
 \end{equation}
 
 Where, $B_i$ is the total biomass of species $i$, $q$ is a resource conversion factor, $m$ is a per biomass respiration and tissue loss rate, and as in the first equation, $f_i$ is the resource uptake rate.  
 
-In this model, the growth of each species stops when $qf_i(R) = m$ meaning that biomass gained is equal to biomass lost to respiration and maintanence.  Tat this point, the optimal behavior of the plant is to stop trying to grow, convert stored resources to seed mass and then senesce. We impose this behavior on the model by setting biomass at time $z$ ($B(z)$) to zero when $m$ matches resource uptake and conversion: $qf_i(R(z)) = m$. 
+In this model, the growth of each species stops when $qf_i(R) = m$ meaning that biomass gained is equal to biomass lost to respiration and maintenance.  Because the summer drought will only further reduce resource concentrations, the optimal behavior of the plant at this point is to stop growing and convert stored resources to seed mass. We impose this behavior on the model by setting biomass at time $z$ ($B(z)$) to zero when $m$ matches resource uptake and conversion: $qf_i(R(z)) = m$. 
 
-So far we have described a model run in continuous time within a single generation. For this model we denoted rates of change of biomass and resources within the season in terms of very small time intervals $t$. By contrast, we keep track of total population size of each generation at a discrete annual time scale $\tau$.  To calculate the total population size of each species at time step $tau+1$ we take each species' maximum vegetative biomass during the growing season, multiply that by a conversion factor $c$ to get a seed mass, and then multiply that by a constant seed per gram ratio, $\mu$.  Thus,     
+So far we have described a model run in continuous time within a single generation. For this model we denote rates of change of biomass and resources within the season in terms of very small time intervals $t$. By contrast, we keep track of total population size of each generation at a discrete annual time scale $\tau$.  To calculate the total population size of each species at time step $tau+1$ we take each species' maximum vegetative biomass during the growing season, multiply that by a conversion factor $c$ to get a seed mass, and then multiply that by a constant seed per gram ratio, $\mu$.  Thus,     
 
-\vspace{-4em}
+\vspace{-1em}
 \begin{equation} \label{eq6}
-\begin{split}
-N_{i,\tau+1} = \mu c(\max B_i)_{\tau}
-\end{split}
+n_{i,\tau+1} = \mu c(\max B_i)_{\tau}, 
 \end{equation}
 
-Finally different species are likely to have different rates of resource uptake.  For purposes of illustration we assume some kind of trade-off between rate of resource uptake at high resource availability and rate of resource uptake at low resource availability. This means that species which dominate early in the season when resource availability is high will also flower and stop growing earlier in the growing season. In contrast, species that grow slower early in the growing season are able to persist later into the season when resource availability is low. 
+where $n_{i,\tau+1}$ is the number of seeds produced. 
+
+Finally different species are likely to have different rates of resource uptake.  In our simulations we assume a trade-off between rate of resource uptake at high resource availability and rate of resource uptake at low resource availability. This means that species which dominate early in the season when resource availability is high will also flower and stop growing earlier in the growing season. In contrast, species that grow slower early in the growing season are able to persist later into the season when resource availability is low. 
 
 We enforce this trade-off between species by giving each species $i$ a unique resource uptake function $f_i$ that depends on two species specific parameters $r_i$ and $K_i$, 
 
-\vspace{-4em}
+\vspace{-1em}
 \begin{equation} \label{eq7}
-\begin{split}
 f_i(R, r_i, K_i) = r_iR/(K_i + R)
-\end{split}
 \end{equation}
 
-In our simulation we ran a three species community with the three species exhibiting the resource uptake dynamics shown in figure . 
+We simulate a three species community with an early, middle and late season species.  Their resource uptake curves following $f_1$, $f_2$ and $f_3$ are shown in the figure below. 
 
+![Resource curves for three simulated species.  Species one has a resource uptake advantage when resource availability is high whereas species three has a resource uptake advantage when resource availability is low.](../figures/resource_uptake.png)
 
-This leads to a 
+This results in distinct growth phenology for each of the three species, with species one being the earliest and species three being the latest. 
+
+![Example time series showing draw down of resources during the course of the simulation, upper panel, and growth of each of the species, lower panel.  Species one grows rapidly early in the season, but senesces early as well. Species three grows slowsly early in the season but grows for a longer period of time. Each species reaches its peak biomass at a different time, at which point we assume all vegetative biomass is converted to seed mass, and resource uptake by that species stops.](../figures/example_timeseries.png)
+
+#### Response surface experiment
+
+Using the model described above we simulated a response surface experiment where individuals of each of the three species are grown against increasing densities of one other species ('monocultures'), or grown against all possible combinations of densities of two other competitors ('bicultures').  We do not simulate the three species cases. 
+
+After simulating all of the competitor combinations in our experiment, we then calculate the per capita reproductive output of the focal species and attempt to fit phenomenological competition models to our simulated data. 
 
 #### Phenomenological annual plant model 
 
-Annual plant demography and competition can be modeled using a system of difference equations relating annual plant density in year $t$ to density in year $t+1$, 
+We model annual plant competition in terms of per capita reproductive output as a function of density of competitors ($n_{j,tau}$).  We use a standard functional form for phenomenological competition that has been used a  number empirical studies of annual plant competition [@kraft_plant_2015],  
 
-\vspace{-4em}
-\begin{equation} \label{eq1}
-\begin{split}
-n_{1,t+1} = n_{1,t}\lambda_i (1 + \alpha_{1,1}n_{1,t} + \alpha_{1,2}n_{2,t} + \alpha_{1,3}n_{3,t})^{\tau_1}, 
-\end{split}
+\vspace{-1em}
+\begin{equation} \label{eq8}
+\frac{ n_{i,t+1} }{ n_{i,t} } = \lambda_{i} (1 + \alpha_{i,i} n_{i,t} + \alpha_{i,j} n_{j,t} + \alpha_{i,k} n_{k,t} )^{ \tau_i },
 \end{equation}
 
-where $\tau_{i} < 0$, $\lambda_i > 1$, and the entries in the competition matrix $\alpha_{ij} > 0$. $\lambda_i$ denotes maximum per capita reproductive output. $\tau_i$ is a species specific parameter controling the how steep fecundity declines with competition.  To simplify the model, we assume all adult plants die (i.e. are annuals) and we assume that all seeds germinate. Such a phenomenological model has been widely used to model annual plant communities [@kraft_plant_2015].  In this example we consider competition between three species denoted with the subscripts on each parameter.  
+where $\tau_{i} < 0$, $\lambda_i > 1$ and $\alpha_{ij} > 0$. In this model, $\lambda_i$ denotes maximum per capita reproductive output, $\alpha_{ij}$ is the per capita competitive effect of species $j$ on $i$ and   $\tau_i$ is a species specific parameter controlling the how steep fecundity declines with competition in general. To simplify the interpretation of the model, we assume that there is no seed mortality between years and all seeds germinate. We refer to this functional form as "Beverton-Holt". 
 
+An alternative formulation of phenomenological competition includes competition coefficients acting as exponents on each species' density instead, 
 
+\vspace{-1em}
+\begin{equation} \label{eq9}
+\frac{ n_{i,t+1} }{ n_{i,t} } = \lambda_i (1 + n_{i,t}^{\alpha_{i,i}} + n_{j,t}^{\alpha_{i,j}} + n_{k,t}^{\alpha_{i,k}})^{\tau_i}
+\end{equation}
+
+where the parameters $\alpha_{i,j}$ indicate an exponential reduction in per capita seed production of species $i$ with increased density of species $j$. We refer to this model as the "competition model version 2". 
+
+To fit the above models we fix maximum per capita fecundity $\lambda_i$ as the value of fecundity in simulations where species $i$ is grown without competitors. We then fit the other parameters ($\alpha_{ij}$ and $\tau$) using non-linear model fitting functions, 'nls' in the R statistical program.  
 
 #### Assessing higher order interactions
 
+In order to assess the importance of HOIs, we re-fit the models with the structure above with HOI terms. So for the Beverton-Holt competition model we add all second order HOIs between competitors $i$ and $j$ as $\beta_{i,(ij)}N_iN_j$. We also test models with quadratic terms for each competitor $j$ as, $\gamma_{i,j}N_j^2$.  
 
 Results
 -------
+When grown against only one other competitor, the per capita fecundity of each species declines as competitor density increases. 
+
+![Simulated per capita seed production of each species in response to increasing density of each competitor. Points show the simulated per capita seed production of each focal species. Each row shows the response of a single focal species, whereas each column shows the effect of a single competitor species. Plots along the diagonal show intra-specific competition.  The dashed line shows the best fit line from the Beverton Holt model and the dotted line shows the best fit from the "type2" model described above ](../figures/basic_fits.png)
+
+However we see some important differences in how species respond to pairwise competition: species three is only partially limited by the earlier flowering species--as the density of species increases, the per capita of a solitary individual of species three approaches a lower bound that is greater than zero.  This makes sense because the earlier phenology of species one means that it can never completely eliminate the late season resources that species three uses. 
+
+The dashed line in the figure above is the best fit line from the Beverton Holt model fit to each species per capita seed production separately. The model fits the seed production data for species one and two well. It also appears to capture the intraspecific competitive effect of species three on itself.  However, the interspecific effects on species three are not well fit by the model. In contrast, using the type2 functional form for competition improves the model fit for species three considerably. 
+
+
+
+*Jonathan, I'm going to write up the HOI results next.*
+
 
 Discussion
 -----------
