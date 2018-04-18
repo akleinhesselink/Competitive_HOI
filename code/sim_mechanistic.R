@@ -3,7 +3,7 @@ par(mfrow = c(1,1))
 
 source('code/sim_functions.R')
 source('code/figure_pars.R')
-
+source('code/figure_pars.R')
 results_file <- 'data/mechanistic_sim.rds'
 
 # parameterize model --------------------------------------------------------------------------------------------------- 
@@ -48,18 +48,25 @@ results2 <- merge(experiments, results, by = c('id')) %>%
   spread( competitor, density, fill = 0) %>% 
   ungroup()
 
-results2$focal_label <- paste0( 'focal\n', str_replace( results2$focal, 'F', 'N'))
-
-results2 %>%
-  filter( comp_n  < 2 ) %>% 
-  gather( competitor, density, starts_with('N')) %>% 
-  filter( comp_n == 0 | density > 0 ) %>%
-  ggplot(aes( x = density, y = fecundity, color = competitor) ) + 
-  geom_point(alpha = 1) + 
-  geom_line(alpha = 0.5) + 
-  scale_color_discrete(guide = F) + 
-  facet_grid(focal_label ~ competitor)
+results2$focal_label <- str_replace( results2$focal, 'F', 'species ')
 
 saveRDS(results2, file = results_file )
 
 
+density_plot <- 
+  results2 %>%
+  filter( comp_n  < 2 ) %>% 
+  gather( competitor, density, starts_with('N')) %>% 
+  mutate( competitor_label = str_replace(competitor, 'N', 'competitor ')) %>%
+  filter( comp_n == 0 | density > 0 ) %>%
+  ggplot(aes( x = density, y = fecundity, color = focal) ) + 
+  geom_point(alpha = 1) + 
+  geom_line(alpha = 0.5) + 
+  scale_color_discrete(guide = F) + 
+  my_theme + 
+  facet_grid(focal_label ~ competitor_label, switch = 'both') + 
+  ylab( 'Per capita seed production') + 
+  xlab( 'Competitor density')
+
+
+ggsave(density_plot, filename = 'figures/density_plot.png', width = 6, height = 6)

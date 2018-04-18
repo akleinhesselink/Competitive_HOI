@@ -76,16 +76,32 @@ run_multi_gen <- function(seedlings, t, parms, tol){
   return( population) 
 }
 
-plot_timeseries <- function(x, parms, ... ){ 
-  par(mfrow = c(2,1), mai=c(0.8,0.8,0.2,0.4))
-  nspp <- ncol(x) - 2
-  with(parms, {
-    flowering_times <- x[apply( x[, c(3:(2+nspp)), drop = F ], 2, find_phenology), 1]
-    plot( x[,1], x[,2], type = 'l', ylim = c(0,max(x[,2])), ylab = 'Soil moisture', xlab = 'day')
-    abline( h = Rstar(r=r, K = K, m = m, q = q), lty = 2, ...)
-    matplot(x = x[,1], x[, c(3:(2+nspp))], type = 'l', xlab = 'day', ylab = 'biomass', lty = 1, ...)
-  })
-  legend(5, -0.1, legend = paste('species', 1:nspp), cex = 1, xpd = T, lty = 1, bg = NA, box.col = NA, yjust = 0, ...)
+plot_timeseries <- function(out, fname = 'figures/example_timeseries.png'){ 
+  library(gridExtra)
+  
+  temp <- 
+    data.frame(out) %>% 
+    gather( var, val, X1:X4) %>% 
+    mutate( species = var ) %>% 
+    mutate( species = factor( species, labels = c('Resource', '1', '2', '3') ))
+  
+  resource_plot <- 
+    ggplot( temp %>% filter( species == 'Resource'), aes( x = time, y = val )) + 
+    geom_line() + 
+    my_theme + 
+    ylab( 'Resource') + 
+    theme(axis.title.x = element_blank())
+  
+  biomass_plot  <- ggplot( temp %>% filter( species != 'Resource'), aes( x = time, y = val, color = species)) + 
+    geom_line() + 
+    my_theme + 
+    ylab( 'Biomass') + 
+    xlab( 'day') + 
+    scale_color_manual(values = my_colors) + 
+    theme(legend.position = c(0.75, 0.5), legend.background = element_rect(colour = 1, size = 0.2))
+  
+  
+  grid.arrange( resource_plot, biomass_plot) 
 }
 
 plot_transpiration <- function(parms, my_colors ){
@@ -93,11 +109,32 @@ plot_transpiration <- function(parms, my_colors ){
   par(mfrow =c(1,1))  
   nspp <- length(parms$r)
   with(parms, {
-    plot(R/500, f(R, r=r[1], K = K[1]), type = 'l', ylab = 'Transpiration rate (mm water per g per day)', xlab = 'Soil moisture content (%)')
+    plot(R/500, f(R, r=r[1], K = K[1]), type = 'l', ylab = 'Resource uptake rate (units of R per g per day)', xlab = 'Soil resource content (%)')
     lapply(1:nspp, function(x,...){ points(R/500, f(R, r=r[x+1], K = K[x+1]), type ='l', col = my_colors[x+1])})
     legend( 'bottom', legend = paste('species', 1:nspp), col = my_colors[1:nspp], cex = 1, xpd = T,  lty = 1, bg = NA, box.col = NA)
   })
 }
+
+plot_resource_uptake <- function(parms, R = 0:500){ 
+  
+  curves <- data.frame(R = R,  mapply(x = as.list(parms$r), y = as.list(parms$K), FUN = function(x, y) { f(R = R, x, y) }) )
+  
+  curves <- 
+    curves %>% 
+    gather( species, uptake, starts_with('X')) %>% 
+    mutate( species = factor(species, labels = c('1', '2', '3')))
+  
+  curves %>% 
+    ggplot(aes( x = R, y = uptake, color = species )) + 
+    geom_line() + 
+    my_theme +
+    ylab( 'Resource uptake rate \n per g per day') + 
+    xlab( 'Resource') + 
+    scale_color_manual(values = my_colors) + 
+    theme(legend.position = c(0.75, 0.25), legend.background = element_rect(color = 1, size = 0.25))
+  
+}
+
 
 plot_growth_rate <- function(parms, my_colors){
   # plot relative growth rate curves 
