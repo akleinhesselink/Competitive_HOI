@@ -536,3 +536,15 @@ predict_fit <- function(pars, dat, mod_name, form = form1){
 }
 
 
+fit_nls <- function(data, form, init_vals, ...){
+  
+  temp <- 
+    data %>% 
+    filter(comp_n < 2)  %>%
+    mutate( y = fecundity) 
+  
+  test_fit <- nls(form, data = temp, start = init_vals, ... )
+  
+  return(test_fit ) 
+  
+} 
