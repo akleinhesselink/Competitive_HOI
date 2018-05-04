@@ -1,7 +1,7 @@
 rm(list = ls())
 
 dBdt <- function(B, R, q, u, m) { 
-  q*B*(u*R - m )
+  B*(q*u*R - m )
 }
 
 dRdt <- function(R, B1, B2, u){ 
@@ -26,12 +26,12 @@ grow <- function(t, state, parms ){
   })
 }
   
-root <- function(t, state, parms) with(parms, { state[1]*u - m } )
+root <- function(t, state, parms) with(parms, { c(state[1]*q*u[1] - m[1], state[1]*q*u[2] - m[2]) } )
 
 event <- function(t, state, parms) {
   with(parms, {
-    B1_term <- state[1]*u[1] - m[1] < 0.0001
-    B2_term <- state[1]*u[2] - m[2] < 0.0001 
+    B1_term <- state[1]*q*u[1] - m[1] < 1e-7 
+    B2_term <- state[1]*q*u[2] - m[2] < 1e-7
     
     
     if(B1_term){ 
@@ -51,9 +51,7 @@ library(deSolve)
 R_init <- 500
 B_init <- c(1, 2)
 
-parms <- list( S = 0, 
-               epsilon = 1e-10, 
-               u = c(0.00101, 0.001), 
+parms <- list(u = c(0.00101, 0.001), 
                m = c(0.089, 0.001), q = 0.5)
 
 state <- c(R_init, B_init)
@@ -97,15 +95,15 @@ results <- data.frame(B_init, results )
 
 plot( results$X2[1:19 ], type = 'l' )
 
+library(tidyverse)
+library(stringr)
+
 results %>% 
   filter( B1 == 0 ) %>% 
   ggplot( aes( x = B2, y = X3)) + 
   geom_point() + 
-  geom_abline(aes(intercept = 246.5, slope = 1 ))
+  geom_abline(aes(intercept = 243.5, slope = 1 ))
 
-
-library(tidyverse)
-library(stringr)
 
 results <- 
   results %>% 
@@ -138,20 +136,38 @@ init_pars2 <- list( alpha. = c(1, 1), beta. = 0, tau. = 1)
 init_pars3 <- list( alpha. = c(1, 1), beta. = c(0,0), tau. = 1)
 init_parsB <- list( alpha. = c(1, 1), tau. = 1)
 
-fit_1 <- nls(form1, data = results %>% filter( species == 'Y1'), start = init_pars1, algorithm = 'port', lower = c(0, 0, 0), upper = c(5, 5, 2))
-fit_2 <- nls(form1, data = results %>% filter( species == 'Y2'), start = init_pars1, algorithm = 'port', lower = c(0, 0, 0), upper = c(5, 5, 2))
+upper1 <- c(10, 10, 2)
+lower1 <- c(0, 0, 0)
+upper_HOI_1 <- c(10, 10, 3, 2)
+lower_HOI_1 <- c(0, 0, 0, 0, 0)
+upper_HOI_2 <- c(10, 10, 3, 3, 2)
+lower_HOI_2 <- c(0, 0, 0, 0, 0, 0)
+
+fit_1 <- nls(form1, data = results %>% filter( species == 'Y1'), start = init_pars1, algorithm = 'port', lower = lower1, upper = upper1)
+fit_2 <- nls(form1, data = results %>% filter( species == 'Y2'), start = init_pars1, algorithm = 'port', lower = lower1, upper = upper1)
 
 fit_1
 fit_2
 
-fit_1_HOI <- nls(form2, data = results %>% filter( species == 'Y1'), start = init_pars2, algorithm = 'port', lower = c(0, 0, 0), upper = c(5, 5, 2))
-fit_2_HOI <- nls(form2, data = results %>% filter( species == 'Y2'), start = init_pars2, algorithm = 'port', lower = c(0, 0, 0), upper = c(5, 5, 2))
+fit_1_HOI <- nls(form2, data = results %>% filter( species == 'Y1'), start = init_pars2, algorithm = 'port', lower = lower_HOI_1, upper = upper_HOI_1)
+fit_2_HOI <- nls(form2, data = results %>% filter( species == 'Y2'), start = init_pars2, algorithm = 'port', lower = lower_HOI_1, upper = upper_HOI_1)
 
 fit_1_HOI
 fit_2_HOI
 
-fit_1_HOI2 <- nls(form3, data = results %>% filter( species == 'Y1'), start = init_pars3, algorithm = 'port', lower = c(0, 0, 0), upper = c(5, 5, 2))
-fit_2_HOI2 <- nls(form3, data = results %>% filter( species == 'Y2'), start = init_pars3, algorithm = 'port', lower = c(0, 0, 0), upper = c(5, 5, 2))
+fit_1_HOI2 <- nls(form3, 
+                  data = results %>% filter( species == 'Y1'), 
+                  start = init_pars3, 
+                  algorithm = 'port', 
+                  lower = lower_HOI_2, 
+                  upper = upper_HOI_2)
+
+fit_2_HOI2 <- nls(form3, 
+                  data = results %>% filter( species == 'Y2'), 
+                  start = init_pars3, 
+                  algorithm = 'port', 
+                  lower = lower_HOI_2, 
+                  upper = upper_HOI_2)
 
 fit_1_B <- nls(formB, data = results %>% filter( species == 'Y1'), start = init_parsB, algorithm = 'port', lower = c(0, 0, 0), upper = c(5, 5, 2))
 fit_2_B <- nls(formB, data = results %>% filter( species == 'Y2'), start = init_parsB, algorithm = 'port', lower = c(0, 0, 0), upper = c(5, 5, 2))
@@ -207,3 +223,4 @@ cond <- cond %>%
 cond %>% 
   ggplot( aes( x = B, y = R)) + 
   geom_segment(aes(x = B, xend = B + dBdt, y = R, yend = R + dRdt), arrow = arrow(length = unit(3, 'pt')))
+
