@@ -189,7 +189,7 @@ where, $B_i$ is the total biomass of species $i$, $R$ is the resource availabili
 
 where $S(t)$ is the resource supply at time $t$. We sum over each of the species in the community to get total uptake. 
 
-In our simulation, we assume that resource availability at the start of the growing season is high and gradually is reduced through uptake by plants and we set $S(t)$ to zero. As resource availaibity decreases and plant biomass increases, the growth of plants stops when $quR = m$.  Because the summer drought will only further reduce resource concentrations, the optimal behavior of the plant at this point is to stop growing and convert stored resources to seed mass. We impose this behavior on the model by setting biomass at time $z$ ($B(z)$) to zero when $m$ matches resource uptake and conversion: $qf_i(R(z)) = m$. 
+In our simulation, we assume that resource availability at the start of the growing season is high and gradually is reduced through uptake by plants and we set $S(t)$ to zero. As resource availaibity decreases and plant biomass increases, the growth of plants stops when resource uptake and conversion into new biomass equals the tissue loss and respiration rate: $quR = m$.  Because the summer drought will only further reduce resource concentrations, the optimal behavior of the plant at this point is to stop growing and convert stored resources to seed mass. We impose this behavior on the model by setting biomass to zero at this point. 
 
 So far we have described a model run in continuous time within a single generation. For this model we denote rates of change of biomass and resources within the season in terms of very small time intervals $t$. By contrast, we keep track of total population size of each generation at a discrete annual time scale $\tau$.  To calculate the total population size of each species at time step $tau+1$ we take each species' maximum vegetative biomass during the growing season, multiply that by a conversion factor $c$ to get a seed mass, and then multiply that by a constant seed per gram ratio, $\mu$.  Thus,     
 
@@ -200,9 +200,9 @@ n_{i,\tau+1} = \mu c(\max B_i)_{\tau},
 
 where $n_{i,\tau+1}$ is the number of seeds produced. 
 
-Finally different species are likely to have different rates of resource uptake and respiration and tissue loss. We simulate a two species community with an early and late season species. 
+Different species are likely to have different rates of resource uptake and respiration and tissue loss. We simulate a two species community with an early and late season species. 
 
-In our simulations, we assume a trade-off between rate of resource uptake $u$ and tissue loss $m$. This results in distinct growth phenology for each species, with species with higher $u$ growing faster earlier in the season but senescing later. 
+In our simulations, we assume a trade-off between rate of resource uptake $u$ and tissue loss $m$. This parallels a general trade-off in plant functional traits for high resource aquisition vs. low rates of tissue loss and replacement.  In our model, this trade-off can result in distinct growth phenology for each species, with one species (high $u$, high $m$) growing faster earlier in the season but senescing early, and another species (low $u$, low $m$) growing slow early but senescing late.   
 
 ![Example time series showing two species competing a pool of shared resources.  Species one grows rapidly early in the season, but senesces early as well. Species two grows slower early in the season but grows for a longer period of time. Each species reaches its peak biomass at a different time, at which point we assume all vegetative biomass is converted to seed mass, and resource uptake by that species stops.](../figures/example_timeseries.png)
 
@@ -212,29 +212,16 @@ Using the model described above we simulated a response surface experiment where
 
 #### Phenomenological annual plant model 
 
-We model annual plant competition in terms of per capita reproductive output as a function of density of competitors ($n_{j,tau}$).  We use a standard functional form for phenomenological competition that has been used a  number empirical studies of annual plant competition [@kraft_plant_2015],  
+We model annual plant competition in terms of per capita reproductive output as a function of density of competitors at the start of the growing season ($n_{j,tau}$).  We use a standard functional form for phenomenological competition that has been used a  number empirical studies of annual plant competition [@kraft_plant_2015],  
 
 \vspace{-1em}
 \begin{equation} \label{eq8}
-\frac{ n_{i,t+1} }{ n_{i,t} } = \lambda_{i} (1 + \alpha_{i,i} n_{i,t} + \alpha_{i,j} n_{j,t} + \alpha_{i,k} n_{k,t} )^{ \tau_i },
+\frac{ n_{i,\tau+1} }{ n_{i,\tau} } = \lambda_{i}/(1 + \alpha_{i,i} n_{i,\tau} + \alpha_{i,j} n_{j,\tau})^{ \eta_i },
 \end{equation}
 
-where $\tau_{i} < 0$, $\lambda_i > 1$ and $\alpha_{ij} > 0$. In this model, $\lambda_i$ denotes maximum per capita reproductive output, $\alpha_{ij}$ is the per capita competitive effect of species $j$ on $i$ and   $\tau_i$ is a species specific parameter controlling the how steep fecundity declines with competition in general. To simplify the interpretation of the model, we assume that there is no seed mortality between years and all seeds germinate. We refer to this functional form as "Beverton-Holt". 
+where $\eta_{i} > 0$, $\lambda_i > 0$ and $\alpha_{ij} > 0$. In this model, $\lambda_i$ denotes maximum per capita reproductive output, $\alpha_{ij}$ is the per capita competitive effect of species $j$ on $i$ and   $\eta_i$ is a species specific parameter controlling the how steep fecundity declines with competition in general. To simplify the interpretation of the model, we assume that there is no seed mortality between years and all seeds germinate. We refer to this functional form as the "Beverton-Holt" model. 
 
-An alternative formulation of phenomenological competition includes competition coefficients acting as exponents on each species' density instead, 
-
-\vspace{-1em}
-\begin{equation} \label{eq9}
-\frac{ n_{i,t+1} }{ n_{i,t} } = \lambda_i (1 + n_{i,t}^{\alpha_{i,i}} + n_{j,t}^{\alpha_{i,j}} + n_{k,t}^{\alpha_{i,k}})^{\tau_i}
-\end{equation}
-
-where the parameters $\alpha_{i,j}$ indicate an exponential reduction in per capita seed production of species $i$ with increased density of species $j$. We refer to this model as the "competition model version 2". 
-
-To fit the above models we fix maximum per capita fecundity $\lambda_i$ as the value of fecundity in simulations where species $i$ is grown without competitors. We then fit the other parameters ($\alpha_{ij}$ and $\tau$) using non-linear model fitting functions, 'nls' in the R statistical program.  
-
-#### Assessing higher order interactions
-
-In order to assess the importance of HOIs, we re-fit the models with the structure above with HOI terms. So for the Beverton-Holt competition model we add all second order HOIs between competitors $i$ and $j$ as $\beta_{i,(ij)}N_iN_j$. We also test models with quadratic terms for each competitor $j$ as, $\gamma_{i,j}N_j^2$.  
+In order to assess the importance of HOIs, we can include various higher order terms into the basic Beverton-Holt functional form. In the two species case this includes a single interaction term between species one and two: $\beta_{i,(ij)}N_iN_j$. We also test models with quadratic terms for each competitor $j$ as, $\gamma_{i,j}N_j^2$.  
 
 Results
 -------
