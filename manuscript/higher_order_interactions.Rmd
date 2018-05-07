@@ -171,27 +171,25 @@ Because experimental data evaluating HOIs at the demographic level is lacking, w
 
 Our mechanistic model is inspired by California annual plant communities growing in a Mediterranean climate.  In this environment, rainfall starts in the winter and gradually declines through the spring while temperature and evaporation demand increases.  Plants germinate in the winter and begin to flower in spring.  By summer, most plants have completed flowering and produce seeds and die.  In our model we track a single pool of generic soil resources, perhaps water or mobile inorganic nutrients.  The resource supply rate spikes in early spring and then goes to zero as the spring progresses.  Thus the pool of resources is exemplified by non-equilibrium pulse dynamics and never reaches an equilibrium.  
 
-In our model, rates of plant growth depend on resource availability. As spring progresses, plants grow larger but resource supply diminishes.  Eventually plants reach a point where their resource uptake rates cannot keep up with respiration and maintenance costs.  At this point, we assume that plants have evolved a developmental switch which triggers them to stop producing vegetative biomass and start producing seeds. We simplify this by assuming that all biomass is converted to seed biomass at a fixed rate instantaneously. At this point the adult plants die and stop taking up resources.  
-
-The model is expressed as a set of differential equations, 
-
-\vspace{-1em}
-\begin{equation} \label{eq4}
-\frac{dR}{dt} = S(t) - \epsilon R - \sum_{i = 1}^mB_{i}f(R,r, K)
-\end{equation}
-
-where $R(t)$ gives the resource availability at time $t$, $S$ gives the resource supply rate at time $t$ and $\epsilon$ gives the abiotic loss of resources to evaporation and leaching. The final term expresses the loss of resources due to uptake by plants.  We sum over each of the $m$ species in the community to get total uptake. Annual plant biomass of species $i$ at time $t$ is given by $B$ and the uptake rate is a function $f_i$ of total resource availability.
+In our model, rates of plant growth depend on resource availability. As spring progresses, plants grow larger but resource supply diminishes.  Eventually plants reach a point where their resource uptake rates cannot keep up with respiration and maintenance costs.  At this point, we assume that plants stop producing vegetative biomass and start producing seeds. We simplify this by assuming that all biomass is converted to seed biomass at a fixed rate instantaneously. At this point the adult plants die and stop taking up resources.  
 
 Growth of each species depends on resource availability,  
 
 \vspace{-1em}
 \begin{equation} \label{eq5}
-\frac{dB_{i}}{dt} = B_{i}(qf_i(R) - m)
+\frac{dB_{i}}{dt} = B_{i}(q_iu_iR - m_i)
 \end{equation}
 
-Where, $B_i$ is the total biomass of species $i$, $q$ is a resource conversion factor, $m$ is a per biomass respiration and tissue loss rate, and as in the first equation, $f_i$ is the resource uptake rate.  
+where, $B_i$ is the total biomass of species $i$, $R$ is the resource availability, $u$ is a resource uptake rate, $q$ is a resource conversion factor, $m$ is a per biomass respiration and tissue loss rate. Resource availability decreases due to uptake by plant biomass, 
 
-In this model, the growth of each species stops when $qf_i(R) = m$ meaning that biomass gained is equal to biomass lost to respiration and maintenance.  Because the summer drought will only further reduce resource concentrations, the optimal behavior of the plant at this point is to stop growing and convert stored resources to seed mass. We impose this behavior on the model by setting biomass at time $z$ ($B(z)$) to zero when $m$ matches resource uptake and conversion: $qf_i(R(z)) = m$. 
+\vspace{-1em}
+\begin{equation} \label{eq4}
+\frac{dR}{dt} = S(t) - \sum{B_{i}u_{i}R}
+\end{equation}
+
+where $S(t)$ is the resource supply at time $t$. We sum over each of the species in the community to get total uptake. 
+
+In our simulation, we assume that resource availability at the start of the growing season is high and gradually is reduced through uptake by plants and we set $S(t)$ to zero. As resource availaibity decreases and plant biomass increases, the growth of plants stops when $quR = m$.  Because the summer drought will only further reduce resource concentrations, the optimal behavior of the plant at this point is to stop growing and convert stored resources to seed mass. We impose this behavior on the model by setting biomass at time $z$ ($B(z)$) to zero when $m$ matches resource uptake and conversion: $qf_i(R(z)) = m$. 
 
 So far we have described a model run in continuous time within a single generation. For this model we denote rates of change of biomass and resources within the season in terms of very small time intervals $t$. By contrast, we keep track of total population size of each generation at a discrete annual time scale $\tau$.  To calculate the total population size of each species at time step $tau+1$ we take each species' maximum vegetative biomass during the growing season, multiply that by a conversion factor $c$ to get a seed mass, and then multiply that by a constant seed per gram ratio, $\mu$.  Thus,     
 
@@ -202,28 +200,15 @@ n_{i,\tau+1} = \mu c(\max B_i)_{\tau},
 
 where $n_{i,\tau+1}$ is the number of seeds produced. 
 
-Finally different species are likely to have different rates of resource uptake.  In our simulations we assume a trade-off between rate of resource uptake at high resource availability and rate of resource uptake at low resource availability. This means that species which dominate early in the season when resource availability is high will also flower and stop growing earlier in the growing season. In contrast, species that grow slower early in the growing season are able to persist later into the season when resource availability is low. 
+Finally different species are likely to have different rates of resource uptake and respiration and tissue loss. We simulate a two species community with an early and late season species. 
 
-We enforce this trade-off between species by giving each species $i$ a unique resource uptake function $f_i$ that depends on two species specific parameters $r_i$ and $K_i$, 
+In our simulations, we assume a trade-off between rate of resource uptake $u$ and tissue loss $m$. This results in distinct growth phenology for each species, with species with higher $u$ growing faster earlier in the season but senescing later. 
 
-\vspace{-1em}
-\begin{equation} \label{eq7}
-f_i(R, r_i, K_i) = r_iR/(K_i + R)
-\end{equation}
-
-We simulate a three species community with an early, middle and late season species.  Their resource uptake curves following $f_1$, $f_2$ and $f_3$ are shown in the figure below. 
-
-![Resource curves for three simulated species.  Species one has a resource uptake advantage when resource availability is high whereas species three has a resource uptake advantage when resource availability is low.](../figures/resource_uptake.png)
-
-This results in distinct growth phenology for each of the three species, with species one being the earliest and species three being the latest. 
-
-![Example time series showing draw down of resources during the course of the simulation, upper panel, and growth of each of the species, lower panel.  Species one grows rapidly early in the season, but senesces early as well. Species three grows slowsly early in the season but grows for a longer period of time. Each species reaches its peak biomass at a different time, at which point we assume all vegetative biomass is converted to seed mass, and resource uptake by that species stops.](../figures/example_timeseries.png)
+![Example time series showing two species competing a pool of shared resources.  Species one grows rapidly early in the season, but senesces early as well. Species two grows slower early in the season but grows for a longer period of time. Each species reaches its peak biomass at a different time, at which point we assume all vegetative biomass is converted to seed mass, and resource uptake by that species stops.](../figures/example_timeseries.png)
 
 #### Response surface experiment
 
-Using the model described above we simulated a response surface experiment where individuals of each of the three species are grown against increasing densities of one other species ('monocultures'), or grown against all possible combinations of densities of two other competitors ('bicultures').  We do not simulate the three species cases. 
-
-After simulating all of the competitor combinations in our experiment, we then calculate the per capita reproductive output of the focal species and attempt to fit phenomenological competition models to our simulated data. 
+Using the model described above we simulated a response surface experiment where individuals of each of the two species are grown against increasing densities of inter- or intraspecific competitors. We then calculate the per capita reproductive output of the focal species and fit phenomenological competition models to our simulated data. 
 
 #### Phenomenological annual plant model 
 
