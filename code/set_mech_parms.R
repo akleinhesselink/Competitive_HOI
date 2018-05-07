@@ -30,7 +30,7 @@ plot_growth_rate(parms, my_colors)
 plot_Rstar(parms, my_colors)
 
 # plot time series and save 
-seedlings <- c(1,1,1)
+seedlings <- c(1,0,1)
 seedlings <- as.numeric(seedlings)
 State <- c(parms$soil_m, seedlings*parms$seedling_mass)
 out <- ode(y=State, times = seq( 1, parms$times, 0.1), func = grow, parms = parms, events = list(func = event, root = TRUE), rootfun = root)

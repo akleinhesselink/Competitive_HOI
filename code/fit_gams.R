@@ -1,30 +1,11 @@
 rm(list = ls())
 
+library(mgcv)
+
 source('code/sim_functions.R')
 source('code/figure_pars.R')
 
 data_file <- 'data/mechanistic_sim_bicultures.rds'
-
-basic <- 'y ~ lambda/(1 + alpha.[1]*N1 + alpha.[2]*N2 + alpha.[3]*N3)^tau. '
-basic2 <- 'y ~ lambda/(1 + alpha.[1]*N1 + alpha.[2]*N2 + alpha.[3]*N3 + 
-                            beta.[1]*I(N1^2) + beta.[2]*I(N2^2) +beta.[3]*I(N3^2))^tau. '
-
-basic3 <- 'y ~ beta.[1] + lambda/(1 + alpha.[1]*N1 + alpha.[2]*N2 + alpha.[3]*N3)^tau. '
-
-
-basic2_HOI <- 'y ~ lambda/(1 + alpha.[1]*N1 + alpha.[2]*N2 + alpha.[3]*N3 + 
-                            beta.[1]*I(N1^2) + beta.[2]*I(N2^2) +beta.[3]*I(N3^2) + 
-                           gamma.[1]*I(N1*N2) + gamma.[2]*I(N1*N3) + gamma.[3]*I(N2*N3))^tau. '
-
-
-basic_HOI <- 'y ~ lambda/(1 + alpha.[1]*N1 + alpha.[2]*N2 + alpha.[3]*N3 +
-                              beta.[1]*I(N1*N2) + beta.[2]*I(N1*N3) + beta.[3]*I(N2*N3))^tau. '
-
-
-
-type2 <- 'y ~ lambda/(1 + N1^(alpha.[1]) + N2^(alpha.[2]) + N3^(alpha.[3]))^(tau.)'
-type2_HOI <- 'y ~ lambda/(1 + N1^(alpha.[1]) + N2^(alpha.[2]) + N3^(alpha.[3]) + beta.[1]*I(N2*N3))^(tau.)'
-
 
 mydat <- readRDS(data_file)
 
@@ -32,202 +13,90 @@ mydat <-
   mydat %>% 
   select(- focal_label) %>% 
   group_by( focal ) %>% 
-  mutate( lambda = max(fecundity))
+  mutate( lambda = max(fecundity), 
+          y = log(lambda/fecundity)) 
 
-
-test1 <- fit_nls( mydat %>% filter( focal == 'F2', comp_n < 2), 
-         form = basic, 
-         init_vals = list(tau. = 1, alpha. = rep(1, 3)), 
-         lower = 0, 
-         upper = 100, 
-         algorithm = 'port')
-
-test1
-basic2
-
-test2 <- fit_nls( mydat %>% filter( focal == 'F3', comp_n < 2), 
-                  form = basic2, 
-                  init_vals = list(tau. = 1, alpha. = rep(1,3), beta. = c(0,0,0)), 
-                  lower = c(0, -1, -1, -90, 0, 0, 0), 
-                  upper = 90, 
-                  algorithm = 'port')
-test2
-
-
-test2 <- fit_nls( mydat %>% filter( focal == 'F3', comp_n < 2), 
-                  form = basic3, 
-                  init_vals = list(tau. = 1, alpha. = rep(1,3), beta. = c(0)), 
-                  lower = c(0, 0, 0, 0, -10), 
-                  upper = 90, 
-                  algorithm = 'port')
-test2
-
-
-test2 <- fit_nls( mydat %>% filter( focal == 'F3', comp_n < 2), 
-                  form = type2, 
-                  init_vals = list(tau. = 1, alpha. = rep(1,3)), 
-                  lower = 0, 
-                  upper = 4, 
-                  algorithm = 'port')
-test2
-
-test2 <- fit_nls( mydat %>% filter( focal == 'F3', comp_n < 3), 
-                  form = type2_HOI, 
-                  init_vals = list(tau. = 1, alpha. = rep(1,3), beta. = 0 ), 
-                  lower = 0, 
-                  upper = 4, 
-                  algorithm = 'port')
-
-basic_HOI
-
-library(mgcv)
-
-test <- mydat %>% 
-  filter( focal == 'F3', comp_n < 3) %>% 
-  mutate( y = lambda/fecundity )
-
-m1 <- gam( y ~ N1 + N2 + N3, data = test)
-m2 <- gam( y ~ N1 + N2 + N3 + I(N1^2) + I(N2^2) + I(N3^2), data = test)
-m3 <- gam( y ~ N1 + N2 + N3 + 
-             I(N1^2) + I(N2^2) + I(N3^2) + 
-             te(I(N1*N2)) + te(I(N1*N3)) + te(I(N2*N3)), data = test)
-
-anova(m1, m2, m3)
-plot( m3)
-summary(m3)
-
-plot(test$y, predict(m3))
-
-
-
-
-test3 <- fit_nls( mydat %>% filter( focal == 'F3', comp_n < 3), 
-                  form = basic_HOI, 
-                  init_vals = list(tau. = 1, alpha. = rep(0,3), beta. = c(0,0,0)), 
-                  lower = 0, 
-                  upper = 4, 
-                  algorithm = 'port')
-test1
-test2
-test3
+gam <- as.formula( 'y ~ te(N1) + te(N2) + te(N3)')
+gam_2 <- update( gam, . ~ . + te(I(N1^2)) + te(I(N2^2)) + te(I(N3^2)))
+gam_HOI <- update(gam, . ~ . + te(I(N1*N2)) + te(I(N1*N3)) + te(I(N2*N3)))
 
 mydat <- split(mydat , mydat$focal)
 
+fit_gam <- function( data, form, max_comp = 3){ 
+  
+  temp <- 
+    data %>% 
+    filter( comp_n < max_comp ) 
+  
+  gam( form, data = temp )
+    
+}
+
 fits1 <- lapply(mydat, 
-                FUN = fit_nls, 
-                form = basic, 
-                init_vals = init_vals1, 
-                lower = lower1, 
-                upper = upper1, 
-                algorithm = 'port')
+                FUN = fit_gam, 
+                form = gam)
 
 fits2 <- lapply(mydat, 
-                FUN = fit_nls, 
-                form = type2, 
-                init_vals = init_vals2, 
-                lower = lower2, 
-                upper = upper2, 
-                algorithm = 'port')
+                FUN = fit_gam, 
+                form = gam_2)
 
-fits1_HOI <- lapply( mydat, 
-        FUN = fit_nls, 
-        form = basic_HOI, 
-        init_vals = init_vals1_HOI, 
-        lower = lower1_HOI, 
-        upper = upper1_HOI, 
-        algorithm = 'port')
+fitsHOI <- lapply(mydat, 
+                FUN = fit_gam, 
+                form = gam_HOI)
 
 
-init_vals2_HOI <- list(tau. = -1, alpha. = c(rep(3,3)), beta. = rep(1e-3,3))
-type2_HOI <- "y ~ lambda*(1 + N1^alpha.[1] + N2^alpha.[2] + N3^alpha.[3] + 
-                              I(N1*N2)^beta.[1] + I(N1*N3)^beta.[2] + I(N2*N3)^beta.[3])^(tau.)"
-
-type2_HOI2 <- "y ~ lambda*(1 + N1^alpha.[1] + N2^alpha.[2] + N3^alpha.[3] + 
-                              beta.[1]*I(N1*N2) + beta.[2]*I(N1*N3) + beta.[3]*I(N2*N3))^(tau.)"
-
-fit_nls(mydat[[3]], form = type2_HOI, 
-        init_vals = init_vals2_HOI, 
-        max_comp = 3,
-        lower = c(lower2, c(1e-3, 1e-3, 1e-3)),
-        upper = c(upper2, c(2, 1, 1)),
-        algorithm = 'port')
-
-fit_nls(mydat[[3]], form = type2_HOI2, 
-        init_vals = init_vals2_HOI, 
-        max_comp = 3,
-        lower = c(lower2, c(1e-3, 1e-3, 1e-3)),
-        upper = c(upper2, c(1, 1, 1)),
-        algorithm = 'port')
-
-hybrid_HOI <- 'y ~ lambda*((1 + alpha.[1]*N1 + alpha.[2]*N2 + alpha.[3]*N3)^tau. + beta.[1]*I(N1*N2) + beta.[2]*I(N1*N3) + beta.[3]*I(N2*N3))'
-
-fit_nls(mydat[[2]], form = hybrid_HOI, 
-        init_vals = init_vals1_HOI, 
-        max_comp = 3, 
-        lower = c(lower1, c(-1, -1, -1)), 
-        upper = c(upper1, c(1, 1, 1)), 
-        algorithm = 'port')
-
-
-fit_nls(mydat[[3]], form = hybrid_HOI, 
-        init_vals = init_vals1_HOI, 
-        max_comp = 3, 
-        lower = c(lower1, c(-1, -1, -1)), 
-        upper = c(upper1, c(1, 1, 1)), 
-        algorithm = 'port')
-
-
-mydat[[3]] %>% 
-  filter( comp_n < 3) %>% 
-  filter( N3 == 0 )
+test <- mydat$F3
+fit <- fit_gam(test, form = gam_HOI)
 
 
 mydat <- mapply(fits1, mydat, FUN = function(x, y) {y$pred_1 <- predict( x, y); return(y) }, SIMPLIFY = F )
 mydat <- mapply(fits2, mydat, FUN = function(x, y) {y$pred_2 <- predict( x, y); return(y) }, SIMPLIFY = F )
-mydat <- mapply(fits1_HOI, mydat, FUN = function(x, y) {y$pred_1_HOI <- predict( x, y); return(y) }, SIMPLIFY = F )
+mydat <- mapply(fitsHOI, mydat, FUN = function(x, y) {y$pred_HOI <- predict( x, y); return(y) }, SIMPLIFY = F )
 
 mydat <- do.call(rbind, mydat)
 
-mydat <- 
+temp <- 
   mydat %>% 
-  rename( 'obs' = fecundity) %>% 
-  select(-lambda)
+  rename( 'obs' = y) %>% 
+  gather( type, y, obs:pred_HOI) %>% 
+  mutate( y = lambda/exp(y)) %>% 
+  select( -lambda )
 
-temp <- mydat 
+temp %>% head
 
 temp$focal_label <- str_replace(temp$focal, 'F', 'species ')
 
-monocultures <- 
-  temp %>%
-  filter( comp_n  < 2 ) %>% 
-  gather( competitor, density, starts_with('N')) %>% 
+temp %>% head
+
+test <- temp %>% 
+  spread( type, y) %>% 
+  gather( type, y_pred, starts_with('pred')) %>% 
+  filter( comp_n < 2) %>% 
+  gather( competitor, density, starts_with('N')) %>%   
   mutate( competitor_label = str_replace(competitor, 'N', 'competitor ')) %>%
   filter( comp_n == 0 | density > 0 )
 
-monocultures %>% head
-
-monoculture_fit_plot <- 
-  monocultures %>%
+test %>% 
   ggplot(aes( x = density, y = obs, color = focal) ) + 
   geom_point(alpha = 1) + 
-  #geom_line(aes(y=pred_1), linetype = 2, alpha = 0.5) +
-  #geom_line(aes(y=pred_2), linetype = 3, alpha = 0.5) + 
-  geom_line(aes(y=pred_1_HOI), linetype = 4) + 
+  facet_grid(focal_label ~ competitor_label, switch = 'both')  + 
   scale_color_manual(values = my_colors, guide = F) + 
   my_theme + 
-  facet_grid(focal_label ~ competitor_label, switch = 'both') + 
-  ylab( 'Per capita seed production') + 
-  xlab( 'Competitor density')
+  geom_line(aes( x = density, y = y_pred, linetype = type, group = type ))
 
-monoculture_fit_plot
 
 bicultures <- 
-  temp %>%
+  temp %>% 
+  spread( type, y) %>% 
+  gather( type, y_pred, starts_with('pred')) %>% 
   filter( comp_n  < 3 ) %>% 
   gather( competitor, density, starts_with('N')) %>% 
   mutate( competitor_label = str_replace(competitor, 'N', 'competitor ')) %>%
   filter( comp_n == 0 | density > 0 )
 
+bicultures %>% 
+  filter( density %in% c(max(density), min(density), median(density))) %>% 
+  ggplot( aes( x = density, y = obs)) + geom_point() + facet_wrap(focal_label ~ competitor_label) 
 
 contour_data <- 
   bicultures %>% 
