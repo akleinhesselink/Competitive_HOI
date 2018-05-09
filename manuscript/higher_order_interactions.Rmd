@@ -60,7 +60,7 @@ opts_chunk$set(dev='pdf')
 
 \textbf{\large{Where do higher order interactions come from?}}
 
-\textsc{\small{Andrew R. Kleinhesselink\footnote{Corresponding author: arklein@ucla.edu}\textsuperscript{1}, Nathan Kraft\textsuperscript{1}, Jonathan M. Levine\textsuperscript{2}}}
+\textsc{\small{Andrew R. Kleinhesselink\footnote{Corresponding author: arklein@ucla.edu}\textsuperscript{1}, Jonathan M. Levine\textsuperscript{2}, Nathan Kraft\textsuperscript{1}}
 
 
 \textit{\small{\textsuperscript{1}Department of Ecology and Evolutionary Biology, University of California, Los Angeles 621 Charles E. Young Drive South Los Angeles, CA 90095 USA}} \\
@@ -169,27 +169,46 @@ Because experimental data evaluating HOIs at the demographic level is lacking, w
 
 #### Resource mechanistic model
 
-Our mechanistic model is inspired by California annual plant communities growing in a Mediterranean climate.  In this environment, rainfall starts in the winter and gradually declines through the spring while temperature and evaporation demand increases.  Plants germinate in the winter and begin to flower in spring.  By summer, most plants have completed flowering and produce seeds and die.  In our model we track a single pool of generic soil resources, perhaps water or mobile inorganic nutrients.  The resource supply rate spikes in early spring and then goes to zero as the spring progresses.  Thus the pool of resources is exemplified by non-equilibrium pulse dynamics and never reaches an equilibrium.  
+Our mechanistic model is inspired by California annual plant communities growing in a Mediterranean climate.  In this environment, rainfall starts in the winter and gradually declines through the spring while temperature and evaporative demand increase.  Plants germinate in the winter and begin to flower in spring.  By summer, most plants have completed flowering and produce seeds and die.  In our model we track a single pool of generic soil resources, perhaps water or mobile inorganic nutrients.  The resource supply rate spikes in early spring and then goes to zero as the spring progresses.  Thus the pool of resources is exemplified by non-equilibrium pulse dynamics and never reaches an equilibrium.  
 
 In our model, rates of plant growth depend on resource availability. As spring progresses, plants grow larger but resource supply diminishes.  Eventually plants reach a point where their resource uptake rates cannot keep up with respiration and maintenance costs.  At this point, we assume that plants stop producing vegetative biomass and start producing seeds. We simplify this by assuming that all biomass is converted to seed biomass at a fixed rate instantaneously. At this point the adult plants die and stop taking up resources.  
+
+The model is expressed as a set of differential equations, 
+
+\vspace{-1em}
+\begin{equation} \label{eq4}
+\frac{dR}{dt} = S(t) - \sum_{i = 1}^mB_{i}f(R,r, K)
+\end{equation}
+
+where $R(t)$ gives the resource availability at time $t$, and $S$ gives the resource supply rate at time $t$. The final term expresses the loss of resources due to uptake by plants.  We sum over each of the $m$ species in the community to get total uptake. Annual plant biomass of species $i$ at time $t$ is given by $B$ and the uptake rate is a function $f_i$ of total resource availability. We simulate a Mediterranean climate by setting initial resource availaibility high setting the resource supply rate $S(t)$ to zero.
 
 Growth of each species depends on resource availability,  
 
 \vspace{-1em}
 \begin{equation} \label{eq5}
-\frac{dB_{i}}{dt} = B_{i}(q_iu_iR - m_i)
+\frac{dB_{i}}{dt} = B_{i}(qf_i(R) - m)
 \end{equation}
 
-where, $B_i$ is the total biomass of species $i$, $R$ is the resource availability, $u$ is a resource uptake rate, $q$ is a resource conversion factor, $m$ is a per biomass respiration and tissue loss rate. Resource availability decreases due to uptake by plant biomass, 
+Where, $B_i$ is the total biomass of species $i$, $q$ is a resource conversion factor, $m$ is a per biomass respiration and tissue loss rate, and as in the first equation, $f_i$ is the resource uptake rate.  
+
+In this model, the growth of each species stops when $qf_i(R) = m$ meaning that biomass gained is equal to biomass lost to respiration and maintenance.  Because the summer drought will only further reduce resource concentrations, the optimal behavior of the plant at this point is to stop growing and convert stored resources to seed mass. We impose this behavior on the model by setting biomass at time $z$ ($B(z)$) to zero when $m$ matches resource uptake and conversion: $qf_i(R(z)) = m$. 
+
+Different species are likely to have different rates of resource uptake, respiration and tissue loss rates.  In our simulations we assume a trade-off between rates of resource uptake at high resource availability and rates of resource uptake at low resource availability. This means that species which dominate early in the season when resource availability is high will stop growing earlier in the season as resource availibility declines. In contrast, species that grow slower early in the growing season are able to persist later into the season when resource availability is low. 
+
+We enforce this trade-off between species by giving each species $i$ a unique resource uptake function $f_i$ that depends on two species specific parameters $r_i$ and $K_i$, 
 
 \vspace{-1em}
-\begin{equation} \label{eq4}
-\frac{dR}{dt} = S(t) - \sum{B_{i}u_{i}R}
+\begin{equation} \label{eq7}
+f_i(R, r_i, K_i) = r_iR/(K_i + R)
 \end{equation}
 
-where $S(t)$ is the resource supply at time $t$. We sum over each of the species in the community to get total uptake. 
+Example resource uptake curves for a fast growing early season species and a slower growing late season species (resource uptake fig). 
 
-In our simulation, we assume that resource availability at the start of the growing season is high and gradually is reduced through uptake by plants and we set $S(t)$ to zero. As resource availaibity decreases and plant biomass increases, the growth of plants stops when resource uptake and conversion into new biomass equals the tissue loss and respiration rate: $quR = m$.  Because the summer drought will only further reduce resource concentrations, the optimal behavior of the plant at this point is to stop growing and convert stored resources to seed mass. We impose this behavior on the model by setting biomass to zero at this point. 
+![Resource curves for three simulated species.  Species one has a resource uptake advantage when resource availability is high whereas species three has a resource uptake advantage when resource availability is low.](../figures/resource_uptake.png)
+
+The unique resource uptake curves for species one and two result in species one growing faster earlier in the season but also flowering and senescing earlier.  Species two grows slower early in the season but is able to grow later into the season (growth phenology fig). 
+
+![Example time series showing draw down of resources during the course of the simulation, upper panel, and growth of each of the species, lower panel.  Species one grows rapidly early in the season, but senesces early as well. Species two grows slowsly early in the season but grows for a longer period of time. Each species reaches its peak biomass at a different time, at which point we assume all vegetative biomass is converted to seed mass, and resource uptake by that species stops.](../figures/example_timeseries.png)
 
 So far we have described a model run in continuous time within a single generation. For this model we denote rates of change of biomass and resources within the season in terms of very small time intervals $t$. By contrast, we keep track of total population size of each generation at a discrete annual time scale $\tau$.  To calculate the total population size of each species at time step $tau+1$ we take each species' maximum vegetative biomass during the growing season, multiply that by a conversion factor $c$ to get a seed mass, and then multiply that by a constant seed per gram ratio, $\mu$.  Thus,     
 
@@ -198,13 +217,9 @@ So far we have described a model run in continuous time within a single generati
 n_{i,\tau+1} = \mu c(\max B_i)_{\tau}, 
 \end{equation}
 
-where $n_{i,\tau+1}$ is the number of seeds produced. 
+where $n_{i,\tau+1}$ is the number of seeds produced. To simplify the interpretation of the model, we assume that there is no seed mortality between years and all seeds germinate. 
 
-Different species are likely to have different rates of resource uptake and respiration and tissue loss. We simulate a two species community with an early and late season species. 
-
-In our simulations, we assume a trade-off between rate of resource uptake $u$ and tissue loss $m$. This parallels a general trade-off in plant functional traits for high resource aquisition vs. low rates of tissue loss and replacement.  In our model, this trade-off can result in distinct growth phenology for each species, with one species (high $u$, high $m$) growing faster earlier in the season but senescing early, and another species (low $u$, low $m$) growing slow early but senescing late.   
-
-![Example time series showing two species competing a pool of shared resources.  Species one grows rapidly early in the season, but senesces early as well. Species two grows slower early in the season but grows for a longer period of time. Each species reaches its peak biomass at a different time, at which point we assume all vegetative biomass is converted to seed mass, and resource uptake by that species stops.](../figures/example_timeseries.png)
+We simulate these dynamics using the ordinary differential equation solvers package $\tt{desolve}$ in the statistical program R.  Simulation parameters and code to run the simulations are given in the supporting information. 
 
 #### Response surface experiment
 
@@ -215,31 +230,61 @@ Using the model described above we simulated a response surface experiment where
 We model annual plant competition in terms of per capita reproductive output as a function of density of competitors at the start of the growing season ($n_{j,tau}$).  We use a standard functional form for phenomenological competition that has been used a  number empirical studies of annual plant competition [@kraft_plant_2015],  
 
 \vspace{-1em}
-\begin{equation} \label{eq8}
+\begin{equation} \label{eqBeverton}
 \frac{ n_{i,\tau+1} }{ n_{i,\tau} } = \lambda_{i}/(1 + \alpha_{i,i} n_{i,\tau} + \alpha_{i,j} n_{j,\tau})^{ \eta_i },
 \end{equation}
 
-where $\eta_{i} > 0$, $\lambda_i > 0$ and $\alpha_{ij} > 0$. In this model, $\lambda_i$ denotes maximum per capita reproductive output, $\alpha_{ij}$ is the per capita competitive effect of species $j$ on $i$ and   $\eta_i$ is a species specific parameter controlling the how steep fecundity declines with competition in general. To simplify the interpretation of the model, we assume that there is no seed mortality between years and all seeds germinate. We refer to this functional form as the "Beverton-Holt" model. 
+where $\eta_{i} > 0$ and $\lambda_i > 0$. In this model, $\lambda_i$ denotes maximum per capita reproductive output, $\alpha_{ij}$ is the per capita competitive effect of species $j$ on $i$ and   $\eta_i$ is a species specific parameter controlling the how steep fecundity declines with competition in general. We refer to this functional form as the Beverton-Holt model. 
 
-In order to assess the importance of HOIs, we can include various higher order terms into the basic Beverton-Holt functional form. In the two species case this includes a single interaction term between species one and two: $\beta_{i,(ij)}N_iN_j$. We also test models with quadratic terms for each competitor $j$ as, $\gamma_{i,j}N_j^2$.  
+In order to assess the importance of HOIs, we can include various higher order terms in the basic Beverton-Holt functional form. In the two species case this includes a single interaction term between densities of species one and two and and quadratic terms for the densities of each competitor. 
+
+\vspace{-1em}
+\begin{equation} \label{eqHOI}
+\frac{ n_{i,\tau+1} }{ n_{i,\tau} } = \lambda_{i}/(1 + \alpha_{i,i} n_{i,\tau} + \alpha_{i,j} n_{j,\tau} + \beta_{i,(ij)}n_in_j + \gamma_{i, i}n_i^2 + \gamma_{i, j}n_j^2)^{ \eta_i },
+\end{equation}
+
+We fit these non-linear competition models using the $\tt{nls}$ function in the statistical language R. We calculate $\lambda_{i}$ for each species as the per capita fecundity in the absence of any competitors, and set this as a fixed parameter in the model. We further constrain each of the fitted parameters to be positive. 
 
 Results
 -------
-When grown against only one other competitor, the per capita fecundity of each species declines as competitor density increases. 
+The Beverton-Holt functional form (eq. is a good fit for the effects of both inter and intraspecific competition on species 1 (fig below). Adding HOI terms does not appear to improve the model fit for species one. In contrast, the basic does not fit the response of species two as well but adding HOI terms improves the model fit. 
 
-![Simulated per capita seed production of each species in response to increasing density of each competitor. Points show the simulated per capita seed production of each focal species. Each row shows the response of a single focal species, whereas each column shows the effect of a single competitor species. Plots along the diagonal show intra-specific competition.  The dashed line shows the best fit line from the Beverton Holt model and the dotted line shows the best fit from the "type2" model described above ](../figures/basic_fits.png)
+![Simulated per capita seed production of each species in response to increasing intraspecific density.  Colored lines show three different levels of interspecific density. Left side shows the response of species 1 and the right shows the response of species 2. The dashed line shows the best fit line from the Beverton Holt model and the dotted line shows the best fit from the HOI model described above includeing quadratic terms ](../figures/both_fits.png)
 
-However we see some important differences in how species respond to pairwise competition: species three is only partially limited by the earlier flowering species--as the density of species increases, the per capita of a solitary individual of species three approaches a lower bound that is greater than zero.  This makes sense because the earlier phenology of species one means that it can never completely eliminate the late season resources that species three uses. 
+Examining the fitted parameters for each of the models we can clearly see the importance of the HOI terms for the competitive effects on species two. 
 
-The dashed line in the figure above is the best fit line from the Beverton Holt model fit to each species per capita seed production separately. The model fits the seed production data for species one and two well. It also appears to capture the intraspecific competitive effect of species three on itself.  However, the interspecific effects on species three are not well fit by the model. In contrast, using the type2 functional form for competition improves the model fit for species three considerably. 
+```{r echo = FALSE, results = 'asis'}
 
+library(knitr)
+load( '../data/fits_df.rda')
+kable(fits_df, digits = 3, caption = 'Fitted competition parameters and residiual squared error for the basic model and the model containing higher order interaction terms')
 
+```
 
-*Jonathan, I'm going to write up the HOI results next.*
-
+Including the HOI terms improves the residual squared error for both species one and two in a similar amount.  However, we can see that the estimated HOI term for species two, $\beta$, is substantially greater than the estimated pairwise competition coefficients $\alpha$. We can also see that adding the HOI terms changes the estimates for the other terms in the model. In the basic model, species one and species two appear to have stronger intraspecific competition parameters than interspecific.  But for species two, the estimates for the $\alpha's$ change greatly in the model containing HOI's and in fact the estimated intraspecific effect goes to zero (keeping in mind that the parameters are constrained to be $>0$). 
 
 Discussion
 -----------
+
+It is clear from the above example that a relatively simple resource consumption model may require HOI terms in order to be approximated by a phenomenological model.  However, this is not simply a case of additional higher order terms making for a better appriximation of a non-linear function. In fact, we can approximate the effects of competition on species one quite well without resorting to HOIs. It is only for species two that we need to include HOIs to approximate the effects of competition. 
+
+We believe this has to do with the temporal nature of competition in this system. While species one is active, species two is also always active. The effects of initial competitor density on species one are relatively simple and the Beverton-Holt model does a good job approximating the effects of competition. 
+
+However, for species two the competitive environment can be split up into two segments: the first part of the growing season over which it interacts with species one, from time $t=0$ up until time $t=z$, and the part of the growing season where it only interacts with itself, time $t=z$ until time $t=f$. Approximating its response to initial competitor density requires 
+
+However the amount that species two is able to grow on these resources depends on its total biomass at this point which depends on the initial density of both species and the the intraspecific effects of two on itself. 
+
+
+
+Predicting the biomass of species two at this point and thus its total growth over the course of the season requires thinking through a rather convoluted set of direct and indirect effects.  First the size of species two at the point when species one flowers, requires knowing the starting density of species one and two. This is equivalent to basic pairwise effects and in fact we can fit basic pairwise effects up to this point (new fig).
+
+From this point on the s growth of species two after one flowers depends on the size it reaches at this point. The longer it takes to flower the larger species two is able to grow by the time of flowering. This in turn will increase its net growth rate through the second part of the season. Thus we see a negative HOI in this model. In other words, increasing the initial density of species two has a greater competitive effect when species one is also present. 
+
+This system is characterized by a seasonal pulse of resource availability and the lack of an equilibrium between species biomass and resource concentrations in the environment.  In contrast, the competitive dynamics of resource mechanistic models can be reduced to linear phenomenological models at equilibrium, a technique that has been widely used to understand the viability and stability of competitive coexistence (cite Meszena, Kleinhesselink, Tilman).  
+
+We believe that it is likely that many ecological systems are
+However, if iterated across many seasons, the abundances of species one and two in the model above will reach some kind of equilibrium, either competitive exclusion or coexistence. 
+
 
 Conclusion
 ----------
