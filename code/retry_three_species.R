@@ -114,7 +114,7 @@ results <-
 results <- 
   results %>% 
   gather( species, y, Y1, Y2, Y3)  %>% 
-  mutate( y = y + rnorm(1, 0, 0.01)) %>% # add noise to help with convergence 
+  mutate( y = y + rnorm(1, 0, 0.001)) %>% # add noise to help with convergence 
   mutate( B1 = ifelse( str_extract(species, '\\d+') == 1 & B1 > 0, B1 - 1, B1)) %>% 
   mutate( B2 = ifelse( str_extract(species, '\\d+') == 2 & B2 > 0, B2 - 1, B2)) %>% 
   mutate( B3 = ifelse( str_extract(species, '\\d+') == 3 & B3 > 0, B3 - 1, B3)) %>% 
@@ -236,8 +236,9 @@ fit_1_HOI_2 <- nls(form3,
                    data = results %>% filter( species == 'Y1', n_comp < 3), 
                    start = init_pars, 
                    algorithm = 'port', 
-                   lower = c(rep(0,3), c(-1,0,0), c(0,0,0), 0), 
+                   lower = c(rep(0,3), c(-1,-1,0), c(-1,0,0), 0), 
                    upper = 100)
+
 
 fit_2_HOI_2 <- nls(form3, 
                    data = results %>% filter( species == 'Y2', n_comp < 3), 
@@ -326,48 +327,47 @@ results <- do.call(rbind, results_list)
 test <- 
   results %>% 
   ungroup() %>% 
-  gather( fit, y_pred, basic, HOI) %>% 
-  select( species, B1:B3, y, fit, y_pred)
+  gather( model, y_pred, basic, HOI) %>% 
+  select( species, B1:B3, y, model, y_pred)
+
+my_theme1 <- my_theme + theme(legend.position = c(0.5, 0.9), legend.justification = c(0,1)) 
 
 gg_112 <- 
   test %>% 
   filter( species == 'Y1', B2 %in% c(0, 1, 8), B3 == 0) %>% 
   ggplot( aes( x = B1, y = y, color = as.factor( B2) )) + 
   geom_point() + 
-  geom_line( aes( x = B1, y = y_pred, linetype = fit)) + 
+  geom_line( aes( x = B1, y = y_pred, linetype = model)) + 
   ylab( 'Fecundity of 1') + 
   xlab( 'Density of 1') + 
   scale_linetype_manual(values = c(2,3), guide = F) + 
-  theme_bw() + 
-  theme(panel.grid = element_blank(), legend.position = c(0.8, 0.7)) + 
-  scale_color_discrete('Density of 2')
+  scale_color_discrete('Density of 2') + 
+  my_theme1
 
 gg_113 <- 
   test %>% 
   filter( species == 'Y1', B3 %in% c(0, 1, 8), B2 == 0) %>% 
   ggplot( aes( x = B1, y = y, color = as.factor( B3) )) + 
   geom_point() + 
-  geom_line( aes( x = B1, y = y_pred, linetype = fit)) + 
+  geom_line( aes( x = B1, y = y_pred, linetype = model)) + 
   ylab( '') + 
   xlab( 'Density of 1') + 
   scale_linetype_manual(values = c(2,3), guide = F) + 
-  theme_bw() + 
-  theme(panel.grid = element_blank(), legend.position = c(0.8, 0.7)) + 
-  scale_color_discrete('Density of 3')
+  scale_color_discrete('Density of 3') + 
+  my_theme1
 
 gg_123 <- 
   test %>% 
   filter( species == 'Y1', B3 %in% c(0, 1, 8), B1 == 0) %>% 
   ggplot( aes( x = B2, y = y, color = as.factor( B3) )) + 
   geom_point() + 
-  geom_line( aes( x = B2, y = y_pred, linetype = fit)) + 
+  geom_line( aes( x = B2, y = y_pred, linetype = model)) + 
   ylab( '') + 
   xlab( 'Density of 2') + 
   scale_linetype_manual(values = c(2,3)) + 
-  theme_bw() + 
-  theme(panel.grid = element_blank(), legend.position = c(0.8, 0.7)) + 
-  scale_color_discrete('Density of 3')
-
+  guides( color = guide_legend(order = 1), linetype = guide_legend(order = 2)) + 
+  scale_color_discrete('Density of 3') + 
+  my_theme1
 
 species_1_fits <- grid.arrange(gg_112, gg_113, gg_123, ncol = 3)
 
@@ -376,90 +376,86 @@ gg_221 <-
   filter( species == 'Y2', B1 %in% c(0, 1, 8), B3 == 0) %>% 
   ggplot( aes( x = B2, y = y, color = as.factor( B1) )) + 
   geom_point() + 
-  geom_line( aes( x = B2, y = y_pred, linetype = fit)) + 
+  geom_line( aes( x = B2, y = y_pred, linetype = model)) + 
   ylab( 'Fecundity of 2') + 
   xlab( 'Density of 2') + 
   scale_linetype_manual(values = c(2,3), guide = F) + 
-  theme_bw() + 
-  theme(panel.grid = element_blank(), legend.position = c(0.8, 0.7)) + 
-  scale_color_discrete('Density of 1')
+  scale_color_discrete('Density of 1') + 
+  my_theme1
+
 
 gg_223 <- 
   test %>% 
   filter( species == 'Y2', B3 %in% c(0, 1, 8), B1 == 0) %>% 
   ggplot( aes( x = B2, y = y, color = as.factor( B3) )) + 
   geom_point() + 
-  geom_line( aes( x = B2, y = y_pred, linetype = fit)) + 
+  geom_line( aes( x = B2, y = y_pred, linetype = model)) + 
   ylab( '') + 
   xlab( 'Density of 2') + 
   scale_linetype_manual(values = c(2,3), guide = F) + 
-  theme_bw() + 
-  theme(panel.grid = element_blank(), legend.position = c(0.8, 0.7)) + 
-  scale_color_discrete('Density of 3')
+  scale_color_discrete('Density of 3') + 
+  my_theme1
 
 gg_213 <- 
   test %>% 
   filter( species == 'Y2', B3 %in% c(0, 1, 8), B2 == 0) %>% 
   ggplot( aes( x = B1, y = y, color = as.factor( B3) )) + 
   geom_point() + 
-  geom_line( aes( x = B1, y = y_pred, linetype = fit)) + 
+  geom_line( aes( x = B1, y = y_pred, linetype = model)) + 
   ylab( '') + 
   xlab( 'Density of 1') + 
   scale_linetype_manual(values = c(2,3)) + 
-  theme_bw() + 
-  theme(panel.grid = element_blank(), legend.position = c(0.8, 0.7)) + 
-  scale_color_discrete('Density of 3')
+  guides( color = guide_legend(order = 1), linetype = guide_legend(order = 2)) + 
+  scale_color_discrete('Density of 3') + 
+  my_theme1
 
 species_2_fits <- grid.arrange(gg_221, gg_223, gg_213, ncol = 3)
-
 
 gg_331 <- 
   test %>% 
   filter( species == 'Y3', B1 %in% c(0, 1, 8), B2 == 0) %>% 
   ggplot( aes( x = B3, y = y, color = as.factor( B1) )) + 
   geom_point() + 
-  geom_line( aes( x = B3, y = y_pred, linetype = fit)) + 
+  geom_line( aes( x = B3, y = y_pred, linetype = model)) + 
   ylab( 'Fecundity of 3') + 
   xlab( 'Density of 3') + 
   scale_linetype_manual(values = c(2,3), guide = F) + 
-  theme_bw() + 
-  theme(panel.grid = element_blank(), legend.position = c(0.8, 0.7)) + 
-  scale_color_discrete('Density of 1')
+  scale_color_discrete('Density of 1') + 
+  my_theme1
 
 gg_332 <- 
   test %>% 
   filter( species == 'Y3', B2 %in% c(0, 1, 8), B1 == 0) %>% 
   ggplot( aes( x = B3, y = y, color = as.factor(B2) )) + 
   geom_point() + 
-  geom_line( aes( x = B3, y = y_pred, linetype = fit)) + 
+  geom_line( aes( x = B3, y = y_pred, linetype = model)) + 
   ylab( '') + 
   xlab( 'Density of 3') + 
   scale_linetype_manual(values = c(2,3), guide = F) + 
-  theme_bw() + 
-  theme(panel.grid = element_blank(), legend.position = c(0.8, 0.7)) + 
-  scale_color_discrete('Density of 2')
+  scale_color_discrete('Density of 2') + 
+  my_theme1
 
 gg_312 <- 
   test %>% 
   filter( species == 'Y3', B2 %in% c(0, 1, 8), B3 == 0) %>% 
   ggplot( aes( x = B1, y = y, color = as.factor( B2) )) + 
   geom_point() + 
-  geom_line( aes( x = B1, y = y_pred, linetype = fit)) + 
+  geom_line( aes( x = B1, y = y_pred, linetype = model)) + 
   ylab( '') + 
   xlab( 'Density of 1') + 
   scale_linetype_manual(values = c(2,3)) + 
-  theme_bw() + 
-  theme(panel.grid = element_blank(), legend.position = c(0.8, 0.7)) + 
   guides( color = guide_legend(order = 1), linetype = guide_legend(order = 2)) + 
-  scale_color_discrete('Density of 2')
+  scale_color_discrete('Density of 2') + 
+  my_theme1
 
 
 species_3_fits <- grid.arrange(gg_331, gg_332, gg_312, ncol = 3)
 
-ggsave(species_1_fits, file = 'figures/species_1_fits_three_species.png', width = 7, height = 4)
-ggsave(species_2_fits, file = 'figures/species_2_fits_three_species.png', width = 7, height = 4)
-ggsave(species_3_fits, file = 'figures/species_3_fits_three_species.png', width = 7, height = 4)
+ggsave(species_1_fits, file = 'figures/species_1_fits_three_species.png', width = 7.5, height = 4)
+ggsave(species_2_fits, file = 'figures/species_2_fits_three_species.png', width = 7.5, height = 4)
+ggsave(species_3_fits, file = 'figures/species_3_fits_three_species.png', width = 7.5, height = 4)
 
+saveRDS(test, 'data/simulation_data.rds')
 
 
 fits_df <- data.frame( species = c('1', '2', '3') , 
