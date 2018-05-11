@@ -1,0 +1,35 @@
+---
+title: "table_1"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+```
+
+```{r echo = FALSE, results = 'asis'}
+
+library(knitr)
+library(tidyverse)
+load( '../data/fits_df.rda')
+fits_df <- 
+  fits_df %>% 
+  select(species, model, starts_with('alpha.'), starts_with('gamma.'),
+         starts_with('beta.'), residual_error)
+
+fits_df <- fits_df %>% rename('$N_1$' = alpha.1,
+                              '$N_2$' = alpha.2, 
+                              '$N_3$' = alpha.3, 
+                              '$N_1^2$' = gamma.1,
+                              '$N_2^2$' = gamma.2,
+                              '$N_3^2$' = gamma.3, 
+                              '$N_1N_2$' = beta.1,
+                              '$N_1N_3$' = beta.2,
+                              '$N_2N_3$' = beta.3,
+                              'error' = residual_error)
+
+options(knitr.kable.NA = '-')
+
+kable(fits_df, digits = 2, caption = 'Table 1. Fitted HOI parameters and residiual squared error for the basic model and the model containing higher order interaction terms')
+
+```
