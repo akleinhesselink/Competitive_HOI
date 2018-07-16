@@ -23,19 +23,22 @@ parms <- list( r = r, K = K, m =m , p = c(rep(pulse, rainy), rep(0, times - rain
 save(parms, file = parms_file)
 rm( list = names(parms) )
 
-resource_curves <- plot_resource_uptake(parms)
+resource_curves <- plot_resource_uptake(parms, spec_labs = c('1', '2', '3'))
+resource_curves
 ggsave(filename = 'figures/resource_uptake.png', resource_curves, height = 3, width = 4)
 
 plot_growth_rate(parms, my_colors)
+
 plot_Rstar(parms, my_colors)
 
 # plot time series and save 
-seedlings <- c(1,0,1)
+seedlings <- c(1,1,1)
 seedlings <- as.numeric(seedlings)
 State <- c(parms$soil_m, seedlings*parms$seedling_mass)
 out <- ode(y=State, times = seq( 1, parms$times, 0.1), func = grow, parms = parms, events = list(func = event, root = TRUE), rootfun = root)
 
-ts_plot <- plot_timeseries(out)
+ts_plot <- plot_timeseries(out, sp_labs = c('Resource', '1', '2', '3'))
+
 ggsave( ts_plot, filename = 'figures/example_timeseries.png', height = 4, width = 4)
 
 # -----------------------------------------------------

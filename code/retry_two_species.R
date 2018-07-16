@@ -15,7 +15,7 @@ grow <- function(u, State, parms, ...){
     R  <- State[1]                             # resource first
     B  <- State[2:length(State)]               # biomass for each species
     dB <- dBdu(u, B, R, r, K, q, m)
-    dR <- dRdu(u, B, R, r, K, p, epsilon)
+    dR <- dRdu(u, B, R, r, K)
     return( list( c(dR, dB))) } )
 }
 

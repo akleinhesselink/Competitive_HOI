@@ -76,14 +76,14 @@ run_multi_gen <- function(seedlings, t, parms, tol){
   return( population) 
 }
 
-plot_timeseries <- function(out, fname = 'figures/example_timeseries.png'){ 
+plot_timeseries <- function(out, sp_labs = c('Resource', '1','2'), fname = 'figures/example_timeseries.png'){ 
   library(gridExtra)
   
   temp <- 
     data.frame(out) %>% 
-    gather( var, val, X1:X4) %>% 
+    gather( var, val, starts_with('X')) %>% 
     mutate( species = var ) %>% 
-    mutate( species = factor( species, labels = c('Resource', '1', '2', '3') ))
+    mutate( species = factor( species, labels = sp_labs ))
   
   resource_plot <- 
     ggplot( temp %>% filter( species == 'Resource'), aes( x = time, y = val )) + 
@@ -115,14 +115,14 @@ plot_transpiration <- function(parms, my_colors ){
   })
 }
 
-plot_resource_uptake <- function(parms, R = 0:500){ 
+plot_resource_uptake <- function(parms, R = 0:500, spec_labs = c('1','2')){ 
   
   curves <- data.frame(R = R,  mapply(x = as.list(parms$r), y = as.list(parms$K), FUN = function(x, y) { f(R = R, x, y) }) )
   
   curves <- 
     curves %>% 
     gather( species, uptake, starts_with('X')) %>% 
-    mutate( species = factor(species, labels = c('1', '2', '3')))
+    mutate( species = factor(species, labels = spec_labs))
   
   curves %>% 
     ggplot(aes( x = R, y = uptake, color = species )) + 
@@ -134,6 +134,8 @@ plot_resource_uptake <- function(parms, R = 0:500){
     theme(legend.position = c(0.75, 0.25), legend.background = element_rect(color = 1, size = 0.25))
   
 }
+
+
 
 
 plot_growth_rate <- function(parms, my_colors){

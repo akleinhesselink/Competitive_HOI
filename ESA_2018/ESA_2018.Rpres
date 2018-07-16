@@ -1,0 +1,26 @@
+
+Higher-order interactions in mechanistic competition models
+========================================================
+author: Andrew Kleinhesselink
+date: 2018-08-06
+autosize: true
+
+Higher-order interactions (HOIs)
+========================================================
+
+![test](../manuscript/fig_1.png)
+
+
+Slide With Code
+========================================================
+
+```{r}
+summary(cars)
+```
+
+Slide With Plot
+========================================================
+
+```{r, echo=FALSE}
+plot(cars)
+```

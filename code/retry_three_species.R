@@ -451,11 +451,27 @@ gg_312 <-
 
 species_3_fits <- grid.arrange(gg_331, gg_332, gg_312, ncol = 3)
 
+gg_123 + ylab('Fecundity of 1') + guides( linetype = F) + annotate(geom = 'text', label = 'a', x = 0, y = 70)
+
+ggsave( grid.arrange( gg_123 + ylab('Fecundity of 1') + 
+                        guides( linetype = F) + 
+                        annotate(geom = 'text', label = 'a', x = 0, y = 70), 
+              gg_213 + 
+                ylab('Fecundity of 2') + 
+                guides( linetype = F) + 
+                annotate(geom = 'text', label = 'b', x = 0, y = 90), 
+              gg_312 + ylab('Fecundity of 3') + 
+                annotate(geom = 'text', label = 'c', x = 0, y = 110), 
+              ncol = 3, nrow = 1), 
+        file = 'figures/threeway_fits.png', width = 7.5, height = 4)
+
 ggsave(species_1_fits, file = 'figures/species_1_fits_three_species.png', width = 7.5, height = 4)
 ggsave(species_2_fits, file = 'figures/species_2_fits_three_species.png', width = 7.5, height = 4)
 ggsave(species_3_fits, file = 'figures/species_3_fits_three_species.png', width = 7.5, height = 4)
 
 saveRDS(test, 'data/simulation_data.rds')
+
+
 
 
 fits_df <- data.frame( species = c('1', '2', '3') , 
