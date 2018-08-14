@@ -6,6 +6,18 @@ library(stringr)
 source('code/sim_functions.R')
 source('code/figure_pars.R')
 
+# graphics themes ------------------------------------------------ # 
+
+ESA_theme <- 
+  my_theme + 
+  theme( axis.title = element_text(size = 18), 
+         legend.text = element_text(size = 14), 
+         legend.title = element_text(size = 18), 
+         strip.text = element_text(size = 18), 
+         axis.text = element_text(size = 14))
+
+# Functions ------------------------------------------------------ #
+
 f <- function(R, r, K){ r*R/(K + R) }              # resource (water) uptake rate. Saturates at r
 dBdu <- function(u, B, R, r, K, q, m) { B*(q*f(R, r, K) - m)}  # growth as a function of biomass and resource uptake
 dRdu <- function(u, B, R, r, K) { - sum(B*f(R,r, K)) } # resource (water)
@@ -45,8 +57,10 @@ R <- seq(0, 500, length.out = 1000)
 parms <- list( r = r, K = K, m =m , p = c(rep(pulse, rainy), rep(0, times - rainy)), epsilon = epsilon, q = q, soil_m = soil_m, conversion = conversion, seedling_mass = seedling_mass, R = R, times = times)
 
 resource_curves <- plot_resource_uptake(parms, spec_labs = c('1', '2', '3'))
-resource_curves
-ggsave(filename = 'figures/resource_uptake.png', resource_curves, height = 3, width = 4)
+
+resource_curves <- resource_curves + ESA_theme  + theme(legend.position = c(0.8, 0.3)) + ylab('Resource uptake rate')
+
+ggsave(filename = 'ESA_2018/resource_uptake.png', resource_curves, height = 5.5, width = 6)
 
 R_init <- 200 
 seeds_init <- c(1,1, 1)
@@ -58,9 +72,11 @@ plot(test)
 out <- ode(state, times = 1:200, func = grow, parms = parms, 
            rootfun = root, event = list(func = event, root = T), method = 'radau')
 
-ts_plot <- plot_timeseries(out, sp_labs = c('Resource', '1', '2', '3'))
+ts_plot <- plot_timeseries(out, sp_labs = c('Resource', '1', '2', '3'), mytheme = ESA_theme + theme(legend.position = c(0.8, 0.5), axis.title = element_text(size = 24)))
 
-ggsave( ts_plot, filename = 'figures/example_timeseries.png', height = 5.5, width = 8)
+ts_plot
+
+ggsave( ts_plot, filename = 'ESA_2018/example_timeseries.png', height = 6, width = 6)
 
 # Run response surface experiments --------------------------- # 
 
@@ -151,13 +167,7 @@ pw_comp_gg <-
   xlab( 'Density') + 
   my_theme
 
-ESA_theme <- 
-  my_theme + 
-  theme( axis.title = element_text(size = 18), 
-       legend.text = element_text(size = 14), 
-       legend.title = element_text(size = 18), 
-       strip.text = element_text(size = 18), 
-       axis.text = element_text(size = 14))
+
 
 ggsave(pw_comp_gg + ESA_theme, filename = 'ESA_2018/pairwise_comp_no_line.png', width = 10, height = 5.5)
 
@@ -229,11 +239,13 @@ pw_comp_pred_gg <-
   scale_color_manual(values = my_colors[1:3]) + 
   ylab( 'Per Capita Fecundity') + 
   xlab( 'Density') + 
-  my_theme
+  my_theme + 
+  ESA_theme + 
+  theme( legend.position = c(0.89, 0.8) )
 
 pw_comp_pred_gg
 
-ggsave(pw_comp_pred_gg + ESA_theme, filename = 'ESA_2018/pairwise_comp_with_line.png', width = 10, height = 5.5)
+ggsave(pw_comp_pred_gg, filename = 'ESA_2018/pairwise_comp_with_line.png', width = 10, height = 5.5)
 
 # try prediction on two species communities
 
@@ -411,6 +423,143 @@ deviance(nls2_HOI)
 
 
 
+
+MSE_lab = expression( (MSE[multi] - MSE[single])/MSE[multi])
+
+
+two_sp_df %>% 
+  filter( Fit == 'pairwise', n_comp > 0 ) %>% 
+  select( -time , -c(X2:X4), - c(lambda:tau.3)) %>% 
+  mutate( species_lab = factor(species, labels = c('Species 1', 'Species 2', 'Species 3'))) %>% 
+  group_by( species_lab, n_comp, Fit ) %>% 
+  summarise( MSE_pw = mean( (y - pred)^2 )) %>% 
+  ungroup( ) %>% 
+  mutate( n_comp = paste0( 'n_comp_', n_comp))   %>% 
+  spread (n_comp, MSE_pw) %>% 
+  mutate( rel_MSE = (n_comp_2 - n_comp_1) / n_comp_1 ) %>% 
+  ggplot( aes( x = species_lab , y = rel_MSE, fill = species_lab) ) + 
+    geom_bar(stat = 'identity') + 
+    ylim( 0, 30) + 
+    ylab( MSE_lab) + 
+    ggtitle('Increase in mean squared error') + 
+    scale_fill_manual(values = my_colors[1:3], guide = F ) + 
+    my_theme + 
+    ESA_theme + 
+    theme( axis.title.x = element_blank(), 
+           title = element_text(size = 18))
+
+
+MSE_plot <- 
+  two_sp_df %>% 
+  #filter( species == 'Y1') %>%
+  filter( Fit == 'pairwise', n_comp > 0 ) %>% 
+  select( -time , -c(X2:X4), - c(lambda:tau.3)) %>% 
+  mutate( intra = (B1 > 0  & species == 'Y1' | (B2 > 0 & species == 'Y2') | (B3 > 0 & species == 'Y3')))  %>% 
+  group_by( species, intra, HOI ) %>% 
+  summarise( MSE = mean( (pred - y)^2 ) ) %>% 
+  spread( HOI, MSE) %>% 
+  mutate( MSE_change = (`1` - `0`)  ) %>% 
+  ungroup() %>% 
+  mutate( intra_lab = factor( intra, labels = c('interspecific', 'intraspecific'))) %>% 
+  mutate( species_lab = factor( species, labels = c('Species 1', 'Species 2', 'Species 3'))) %>% 
+  filter( intra_lab == 'interspecific') %>% 
+  ggplot( aes( x = species_lab, y = MSE_change, color = species )) + 
+  geom_bar( stat = 'identity', position = 'dodge') + 
+  scale_fill_grey( 'HOI type' ) + 
+  scale_color_manual(values = my_colors[1:3])  + 
+  ylab( 'Increase in mean squared error') + 
+  xlab( 'Species') + 
+  my_theme + 
+  ESA_theme + 
+  theme(axis.title.x = element_blank(), axis.text.x = element_text( size = 20)) + 
+  guides( color = F, fill = F)
+
+MSE_plot
+
+error_y_lab <- formula( HOI~effect~(obs. - pred.))
+
+mean_error_plot <- 
+  two_sp_df %>% 
+  #filter( species == 'Y1') %>%
+  filter( Fit == 'pairwise', n_comp > 0 ) %>% 
+  select( -time , -c(X2:X4), - c(lambda:tau.3)) %>% 
+  mutate( intra = (B1 > 0  & species == 'Y1' | (B2 > 0 & species == 'Y2') | (B3 > 0 & species == 'Y3')))  %>% 
+  group_by( species, intra, HOI ) %>% 
+  summarise( ME = mean( (y - pred) ) ) %>% 
+  spread( HOI, ME) %>% 
+  ungroup() %>% 
+  mutate( intra_lab = factor( intra, labels = c('interspecific', 'intraspecific'))) %>% 
+  mutate( species_lab = factor( species, labels = c('Species 1', 'Species 2', 'Species 3'))) %>% 
+  filter( intra_lab == 'interspecific') %>% 
+  ggplot( aes( x = species_lab, y = `1`, color = species )) + 
+  geom_bar( stat = 'identity', position = 'dodge') + 
+  scale_fill_grey( 'HOI type' ) + 
+  scale_color_manual(values = my_colors[1:3]) + 
+  ylab( error_y_lab) + 
+  xlab( 'Species') + 
+  my_theme + 
+  ESA_theme + 
+  theme(axis.title.x = element_blank(), axis.text.x = element_text( size = 20)) + 
+  guides( color = F)
+
+mean_error_plot + theme(axis.text.x = element_text(size = 20))
+
+error_plots <- grid.arrange(MSE_plot, mean_error_plot, nrow = 1, widths = c(0.49, 0.51))
+ggsave( error_plots, filename = 'ESA_2018/error_plots.png', width = 10, height = 5.5)
+
+
+
+
+HOI_shape_df <- 
+  two_sp_df %>% 
+  #filter( species == 'Y1') %>%
+  filter( Fit == 'pairwise', n_comp > 0 ) %>% 
+  select( -time , -c(X2:X4), - c(lambda:tau.3)) %>% 
+  mutate( intra = (B1 > 0  & species == 'Y1' | (B2 > 0 & species == 'Y2') | (B3 > 0 & species == 'Y3'))) %>% 
+  mutate( HOI = y  - pred) 
+  
+HOI_shape_df %>% 
+  filter( species == 'Y1') %>% 
+  filter( intra == F) %>% 
+  ggplot(aes(x = B2, y = B3, z = HOI, fill = HOI )) + 
+  geom_contour() + 
+  geom_raster(interpolate = T) + 
+  scale_fill_gradient2(low = 'blue', mid = 'white', high = 'red')
+
+HOI_shape_df %>% 
+  filter( species == 'Y2') %>% 
+  filter( intra == F) %>% 
+  filter(B1 > 0 , B3 > 0) %>%
+  ggplot(aes(x = B1, y = B3, fill = HOI )) + 
+  geom_raster() + 
+  scale_fill_gradient2(low = 'blue', mid = 'white', high = 'red')
+
+HOI_shape_df %>% 
+  filter( species == 'Y3') %>% 
+  filter( intra == F) %>% 
+  filter(B1 > 0 , B2 > 0) %>%
+  ggplot(aes(x = B1, y = B2, fill = HOI )) + 
+  geom_raster(interpolate = F) + 
+  scale_fill_gradient2(low = 'blue', mid = 'white', high = 'red')
+
+HOI_shape_df %>% 
+  filter( species == 'Y3') %>% 
+  filter( intra == F) %>% 
+  mutate( B1B2 = B1*B2) %>% 
+  ggplot(aes(x = B1B2, y = HOI)) + 
+  geom_point()
+
+HOI_shape_df %>% 
+  filter( species == 'Y2') %>% 
+  filter( intra == F) %>% 
+  filter( B2 == 0) %>% 
+  mutate( B3B1 = B3*B1) %>% 
+  ggplot(aes(x = B3B1, y = HOI)) + 
+  geom_point()
+
+
+
+
 p1 <- 
   two_sp_df %>% 
   mutate( lambda_plot  = ifelse (y == lambda, T, F)) %>% 
@@ -459,7 +608,9 @@ p3 <-
   ESA_theme + 
   theme(legend.title = element_text(size = 14 )) + 
   guides( color = guide_legend(order = 1)) +
-  theme(legend.position = c(0.7, 0.7), axis.title.y = element_blank())
+  theme(legend.position = c(0.7, 0.7), axis.title.y = element_blank()
+        
+p3$data %>% tail 
 
 
 p3_test <- 
