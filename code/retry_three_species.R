@@ -10,6 +10,11 @@ f <- function(R, r, K){ r*R/(K + R) }              # resource (water) uptake rat
 dBdu <- function(u, B, R, r, K, q, m) { B*(q*f(R, r, K) - m)}  # growth as a function of biomass and resource uptake
 dRdu <- function(u, B, R, r, K) { - sum(B*f(R,r, K)) } # resource (water)
 
+dBdudR <- function(R, K, r, q) { K*q*r/(K + R)^2 } # partial derivative of per capita growth with respect to resource concentration
+dRdudB <- function(R, K, r){ -r*R/(K + R) } # partial derivative of resource change with respect to biomass
+
+dBdB <- function(R, K1, r1, K2, r2, q) { dBdudR(R, K1, r1, q)*dRdudB(R, K2, r2) } 
+
 grow <- function(u, State, parms, ...){
   with(parms , {
     R  <- State[1]                             # resource first
@@ -38,7 +43,7 @@ r <- c(4.2, 2.6, 2.1) # max uptake rates mm of water per g of plant per day
 K <- c(150, 30, 0.5)      # resource half-saturation constant, soil moisture in mm water per 500 mm soil when plant growth is half max  
 m <- 0.09                # tissue respiration and loss rate g per g per day 
 q <- 0.07                 # photosynthetic water use efficiency g of carbon gain per mm of water
-epsilon <- 0.01         # rate of water evaporation and runoff mm per mm per day
+epsilon <- 0.1         # rate of water evaporation and runoff mm per mm per day
 seedling_mass <- c(0.005) # seed/seedling mass in g 
 conversion <- 0.1        # proportion live biomass converted to seed mass 
 R <- seq(0, 500, length.out = 1000)
@@ -104,6 +109,9 @@ results <- do.call( rbind, lapply( out, function(x) apply( x, 2, max )))
 results <- data.frame(B_init, results )
 results
 
+pheno <- do.call(rbind, lapply( out, function(x) apply( x, 2, which.max)))
+pheno <- data.frame( B_init, pheno )
+
 results <- 
   results %>% 
   mutate( Y1 = parms$conversion*X2/parms$seedling_mass/B1, 
@@ -121,6 +129,12 @@ results <-
   mutate( n_comp = (B1 > 0) + (B2 > 0) + (B3 > 0) ) %>% 
   filter( n_comp < 3)
 
+# add HOI column to data 
+
+results <- results %>% 
+  mutate( HOI = ifelse( n_comp > 1, 1, 0) )
+
+
 results <- results %>% 
   filter( !is.na(y))
 
@@ -132,8 +146,21 @@ formL <- 'y ~ beta0 + alpha.[1]*B1 + alpha.[2]*B2 + alpha.[3]*B3'
 formL_HOI <- 'y ~ beta0 + alpha.[1]*B1 + alpha.[2]*B2 + alpha.[3]*B3 + gamma.[1]*I(B1^2) + gamma.[2]*I(B2^2) + gamma.[3]*I(B3^2) + beta.[1]*I(B1*B2) + beta.[2]*I(B1*B3) + beta.[3]*I(B2*B3)'
 
 form1 <- 'y ~ lambda/(1 + alpha.[1]*B1 + alpha.[2]*B2 + alpha.[3]*B3)^tau.'
-form2 <- 'y ~ lambda/(1 + alpha.[1]*B1 + alpha.[2]*B2 + alpha.[3]*B3 + gamma.[1]*I(B1^2) + gamma.[2]*I(B2^2) + gamma.[3]*I(B3^2))^tau.'
-form3 <- 'y ~ lambda/(1 + alpha.[1]*B1 + alpha.[2]*B2 + alpha.[3]*B3 + gamma.[1]*I(B1^2) + gamma.[2]*I(B2^2) + gamma.[3]*I(B3^2) + beta.[1]*I(B1*B2) + beta.[2]*I(B1*B3) + beta.[3]*I(B2*B3))^tau.'
+
+form2 <- 'y ~ lambda/(1 + alpha.[1]*B1 + alpha.[2]*B2 + alpha.[3]*B3 + 
+                      gamma.[1]*I(B1^2) + gamma.[2]*I(B2^2) + gamma.[3]*I(B3^2))^tau.'
+
+form3 <- 'y ~ lambda/(1 + alpha.[1]*B1 + alpha.[2]*B2 + alpha.[3]*B3 + 
+                          gamma.[1]*I(B1^2) + gamma.[2]*I(B2^2) + gamma.[3]*I(B3^2) + 
+                          beta.[1]*I(B1*B2) + beta.[2]*I(B1*B3) + beta.[3]*I(B2*B3))^tau.'
+
+
+form_MS_1 <- 'y ~ lambda*exp(-alpha.[1]*B1 + -alpha.[2]*B2 + - alpha.[3]*B3)'
+
+form_1_special <- 'y ~ lambda/(1 + (alpha.[1]*B1)^tau.[1] + (alpha.[2]*B2)^tau.[2] + (alpha.[3]*B3)^tau.[3])'
+form_HOI_special <- 'y ~ lambda/(1 + (alpha.[1]*B1)^tau.[1] + (alpha.[2]*B2)^tau.[2] + (alpha.[3]*B3)^tau.[3] + 
+                      (beta.[1]*I(B1*B2))^tau.[4] + (beta.[2]*I(B1*B3))^tau.[5] + (beta.[3]*I(B2*B3))^tau.[6])'
+
 
 init_pars1 <- list( alpha. = c(1, 1, 1), tau. = 1)
 init_pars2 <- list( alpha. = c(1, 1, 1), gamma. = c(0,0, 0), tau. = 1)
@@ -142,15 +169,19 @@ init_pars3 <- list( alpha. = c(1, 1, 1), gamma. = c(0,0, 0), beta. = c(0,0,0), t
 upper1 <- c(10, 10, 10, 5)
 lower1 <- c(0, 0, 0, 0)
 
+
 fit_1_L <- nls(formL, 
                data = results %>% filter( species == 'Y1', n_comp < 3), 
                start = list(beta0 = 10, alpha. = c(-1,-1,-1)))
+
 fit_2_L <- nls(formL, 
                data = results %>% filter( species == 'Y2', n_comp < 3), 
                start = list(beta0 = 10, alpha. = c(-1,-1,-1)))
 fit_3_L <- nls(formL, 
                data = results %>% filter( species == 'Y3', n_comp < 3), 
                start = list(beta0 = 10, alpha. = c(-1,-1,-1)))
+
+
 
 fit_1_L_HOI <- nls(formL_HOI, 
                    data = results %>% filter( species == 'Y1'), 
@@ -170,6 +201,238 @@ fit_3_L_HOI <- nls(formL_HOI,
                                 alpha. = c(1,1,1), 
                                 gamma. = c(0,0,0), 
                                 beta. = c(0,0,0)))
+
+
+# fit BH with only one competitor at a time 
+
+small_results <- results %>% filter( (B1 == 0 | B1 > 4),  (B2 == 0 | B2 > 4), (B3 == 0 | B3 > 4) )
+
+fit_3_simple <- nls(y ~ lambda/( 1 + alpha.[1]*B3)^tau., 
+                    data = results %>% filter( species == 'Y3', n_comp < 2, B1 == 0 , B2 == 0 ), 
+                    start = list(alpha. = 1, tau. = 1))
+
+plot( eval( fit_3_simple$data )$y , predict( fit_3_simple )  )
+fit_3_simple
+
+fit_1_simple <- nls(form1, 
+                    data = small_results %>% filter( species == 'Y1', n_comp < 2 ), 
+                    start = init_pars1, 
+                    algorithm = 'port', 
+                    lower = lower1, 
+                    upper = upper1)
+
+plot( eval( fit_1_simple$data )$y , predict( fit_1_simple )  )
+
+fit_2_simple <- nls(form1, 
+                    data = small_results %>% filter( species == 'Y2', n_comp < 2 ), 
+                    start = init_pars1, 
+                    algorithm = 'port', 
+                    lower = lower1, 
+                    upper = upper1)
+
+plot( eval( fit_2_simple$data )$y , predict( fit_2_simple )  )
+
+
+fit_3_simple <- nls(form1, 
+                    data = small_results %>% filter( species == 'Y3', n_comp < 2 ), 
+                    start = init_pars1, 
+                    algorithm = 'port', 
+                    lower = lower1, 
+                    upper = upper1)
+
+plot( eval( fit_3_simple$data )$y, predict( fit_3_simple )  )
+
+# fit Mayfield Stouffer model with one competitor at a time 
+
+fit_1_MS <- nls(form_MS_1, 
+                    data = results %>% filter( species == 'Y1', n_comp < 2 ), 
+                    start = list(alpha. = c(0.1, 0.1, 0.1)), 
+                    algorithm = 'port', 
+                    lower = 0, 
+                    upper = 10)
+fit_1_MS
+plot( eval( fit_1_MS$data )$y, predict( fit_1_MS )  )
+abline(0,1)
+
+
+fit_3_MS <- nls(form_MS_1, 
+                data = results %>% filter( species == 'Y3', n_comp < 2 ), 
+                start = list(alpha. = c(0.1, 0.1, 0.1)), 
+                algorithm = 'port', 
+                lower = 0, 
+                upper = 10)
+fit_3_MS
+plot( eval( fit_3_MS$data )$y, predict( fit_3_MS )  )
+abline(0,1)
+
+
+
+# try Hassel model with varying exponents on each competitive term 
+form_1_exp <- 'y ~ lambda/(1 + (alpha.[1]*B2)^tau.[1] + (alpha.[2]*B3)^tau.[2])'
+form_1_exp_HOI <- 'y ~ lambda/(1 + (alpha.[1]*B2)^tau.[1] + (alpha.[2]*B3)^tau.[2] + beta.*HOI)'
+
+fit_1_exp <- nls(form_1_exp, 
+             data = results %>% filter( species == 'Y1', n_comp < 3, B1 == 0), 
+             start = list(alpha. = c(1,1), tau. = c(1,1)), 
+             algorithm = 'port', 
+             lower = 0, 
+             upper = 2)
+
+fit_1_exp_HOI <- nls(form_1_exp_HOI, 
+                 data = results %>% filter( species == 'Y1', n_comp < 3, B1 == 0), 
+                 start = list(alpha. = c(1,1), tau. = c(1,1), beta. = 1), 
+                 algorithm = 'port', 
+                 lower = 0, 
+                 upper = 2)
+fit_1_exp
+fit_1_exp_HOI
+
+form_2_exp <- 'y ~ lambda/(1 + (alpha.[1]*B1)^tau.[1] + (alpha.[2]*B3)^tau.[2])'
+form_2_exp_HOI <- 'y ~ lambda/(1 + (alpha.[1]*B1)^tau.[1] + (alpha.[2]*B3)^tau.[2] + beta.*HOI)'
+
+fit_2_exp <- nls(form_2_exp, 
+                     data = results %>% filter( species == 'Y2', n_comp < 3, B2 == 0), 
+                     start = list(alpha. = c(1,1), tau. = c(1,1)), 
+                     algorithm = 'port', 
+                     lower = 0, 
+                     upper = 2)
+
+fit_2_exp_HOI <- nls(form_2_exp_HOI, 
+                 data = results %>% filter( species == 'Y2', n_comp < 3, B2 == 0), 
+                 start = list(alpha. = c(1,1), tau. = c(1,1), beta. = 1), 
+                 algorithm = 'port', 
+                 lower = 0, 
+                 upper = 2)
+
+fit_2_exp
+fit_2_exp_HOI
+
+form_3_exp <- 'y ~ lambda/(1 + (alpha.[1]*B1)^tau.[1] + (alpha.[2]*B2)^tau.[2])'
+form_3_exp_HOI <- 'y ~ lambda/(1 + (alpha.[1]*B1)^tau.[1] + (alpha.[2]*B2)^tau.[2] + beta.*HOI)'
+
+fit_3_exp <- nls(form_3_exp, 
+                 data = results %>% filter( species == 'Y3', n_comp < 3, B3 == 0), 
+                 start = list(alpha. = c(1,1), tau. = c(1,1)), 
+                 algorithm = 'port', 
+                 lower = 0, 
+                 upper = 2)
+
+fit_3_exp_HOI <- nls(form_3_exp_HOI, 
+                 data = results %>% filter( species == 'Y3', n_comp < 3, B3 == 0), 
+                 start = list(alpha. = c(1,1), tau. = c(1,1), beta. = -0.5), 
+                 algorithm = 'port', 
+                 lower = c(0,1,0,0, -2), 
+                 upper = c(2,5,1,1,  -1e-6))
+fit_3_exp_HOI
+fit_3_exp
+
+plot(eval(fit_3_exp_HOI$data)$y, predict(fit_3_exp_HOI))
+abline(0,1)
+
+plot( eval(fit_3_exp_HOI$data)$B1*eval(fit_3_exp_HOI$data)$B2 , resid(fit_3_exp_HOI))
+
+
+form_3_exp_HOI2 <- 'y ~ lambda/(1 + (alpha.[1]*B1)^tau.[1] + (alpha.[2]*B2)^tau.[2] + beta.[1]*HOI + beta.[2]*(I(B1*B2))^0.8 )'
+
+fit_3_exp_HOI2 <- nls(form_3_exp_HOI2, 
+                     data = results %>% filter( species == 'Y3', n_comp < 3, B3 == 0), 
+                     start = list(alpha. = c(1,1), tau. = c(1,1), beta. = c(-0.5, -0.5)), 
+                     algorithm = 'port', 
+                     lower = c(0,1,0,0, -40, -2), 
+                     upper = c(2,5,1,1, -1e-6, -1e-6))
+
+
+fit_3_exp
+fit_3_exp_HOI
+fit_3_exp_HOI2
+
+plot(eval(fit_3_exp_HOI2$data)$B1*eval(fit_3_exp_HOI2$data)$B2,  resid(fit_3_exp_HOI2))
+
+
+
+fit_3_df <- data.frame( eval(fit_3_exp$data), basic_mod =  predict( fit_3_exp), HOI_mod = predict(fit_3_exp_HOI))
+
+
+fit_3_df %>% 
+  ggplot( aes( x = B1, y = y, color = factor(B2)) ) + 
+  geom_point() + 
+  geom_line( aes(y = basic_mod)) + 
+  geom_line( aes( y = HOI_mod), linetype = 2)
+
+########## Standard HASSEL model below 
+
+# species 1 as focal
+# 2 and 3 as competitors
+
+form1_simple <- 'y ~ lambda/(1 + alpha.[1]*B2 + alpha.[2]*B3)^tau.' 
+form1_simple_HOI <- 'y ~ lambda/(1 + alpha.[1]*B2 + alpha.[2]*B3 + beta.[1]*HOI)^tau.'
+
+fit_1 <- nls(form1_simple, 
+             data = results %>% filter( species == 'Y1', n_comp < 3, B1 == 0), 
+             start = list(alpha. = c(1,1), tau. = 1 ), 
+             algorithm = 'port', 
+             lower = 0, 
+             upper = 2)
+
+fit_1_HOI <- nls(form1_simple_HOI, 
+             data = results %>% filter( species == 'Y1', n_comp < 3, B1 == 0), 
+             start = list(alpha. = c(1,1), beta. = 1, tau. = 1 ), 
+             algorithm = 'port', 
+             lower = 0, 
+             upper = 2)
+fit_1
+fit_1_HOI
+
+# species 2 as focal
+# 1 and 3 as competitors
+
+form2_simple <- 'y ~ lambda/(1 + alpha.[1]*B1 + alpha.[2]*B3)^tau.' 
+form2_simple_HOI <- 'y ~ lambda/(1 + alpha.[1]*B1 + alpha.[2]*B3 + beta.[1]*HOI)^tau.'
+
+fit_2 <- nls(form2_simple, 
+             data = results %>% filter( species == 'Y2', n_comp < 3, B2 == 0), 
+             start = list(alpha. = c(1,1), tau. = 1 ), 
+             algorithm = 'port', 
+             lower = 0, 
+             upper = 2)
+
+fit_2_HOI <- nls(form2_simple_HOI, 
+                 data = results %>% filter( species == 'Y2', n_comp < 3, B2 == 0), 
+                 start = list(alpha. = c(1,1), beta. = 1, tau. = 1 ), 
+                 algorithm = 'port', 
+                 lower = 0, 
+                 upper = 2)
+fit_2
+fit_2_HOI
+
+
+# species 3 as focal
+# 1 and 2 as competitors
+
+
+form3_simple <- 'y ~ lambda/(1 + alpha.[1]*B1 + alpha.[2]*B2)^tau.' 
+form3_simple_HOI <- 'y ~ lambda/(1 + alpha.[1]*B1 + alpha.[2]*B2 + beta.[1]*HOI)^tau.'
+
+fit_3 <- nls(form3_simple, 
+             data = results %>% filter( species == 'Y3', n_comp < 3, B3 == 0), 
+             start = list(alpha. = c(1,1), tau. = 1 ), 
+             algorithm = 'port', 
+             lower = 0, 
+             upper = 100)
+fit_3
+
+fit_3_HOI <- nls(form3_simple_HOI, 
+                 data = results %>% filter( species == 'Y3', n_comp < 3, B3 == 0), 
+                 start = list(alpha. = c(1,1), beta. = 1, tau. = 1 ), 
+                 algorithm = 'port', 
+                 lower = 0, 
+                 upper = 100)
+fit_3
+fit_3_HOI
+
+
+
+
 
 fit_1 <- nls(form1, 
              data = results %>% filter( species == 'Y1', n_comp < 3), 
@@ -191,6 +454,9 @@ fit_3 <- nls(form1,
              algorithm = 'port', 
              lower = 0, 
              upper = 100)
+
+
+
 
 fit_1_HOI_1 <- nls(form2, 
                    data = results %>% filter( species == 'Y1', n_comp < 3, B1 > 0), 

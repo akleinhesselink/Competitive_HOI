@@ -66,7 +66,7 @@ state <- c(R_init, B_init)
 out <- ode(state, times = 1:100, func = grow, parms = parms )
 matplot(out[, -c(1:2)], type = 'l', lty = c(1,1))
 
-out <- ode(state, times = seq(1, 100, by = 0.2), func = grow, parms = parms, 
+out <- ode(state, times = seq(1, 100, by = 0.1), func = grow, parms = parms, 
            rootfun = root, event = list(func = event, root = T), method = 'radau')
 matplot(out[, -c(1:2)], type = 'l', lty = c(1,1))
 
@@ -88,6 +88,7 @@ ts_plot <-
 ts_plot
 
 B_init <- expand.grid( B1 = c(0, seq(1, 10, by = 1)), B2 = c(0, seq(1, 10, by = 1)))
+B_init <- expand.grid( B1 = c(0, seq(1, 20000, by = 1000)), B2 = 0 )
 B_init <- B_init[-1,]
 
 out <- list() 
@@ -97,19 +98,32 @@ for( i in 1:nrow(B_init)){
   state[2] <- B_init[i,1]
   state[3] <- B_init[i,2]
   
-  out[[i]] <- ode(state, times = seq(1,200, length = 500), func = grow, parms = parms, 
+  out[[i]] <- ode(state, times = seq(1, 100, by = 0.01), func = grow, parms = parms, 
              rootfun = root, event = list(func = event, root = T), method = 'radau')
 }
+B_init
+
+test_case <- apply( out[[1]], 2, max)
+test_case
+plot(out[[1]])
 
 results <- do.call( rbind, lapply( out, function(x) apply( x, 2, max )))
 
+
+plot(B_init$B1, results[,3])
+abline(0,1)
+
 results <- data.frame(B_init, results )
+
+
 
 
 results <- 
   results %>% 
   mutate( Y1 = X2/B1, Y2 = X3/B2) %>% 
   select( - X1)
+
+
 
 results <- 
   results %>% 
@@ -267,36 +281,4 @@ ggsave(species_2_fit, file = 'figures/species_2_fit.png', width = 6, height = 5)
 
 
 
-
-results %>% 
-  filter( species == 'Y2') %>% 
-  ggplot( aes( x = y, y = pred1)) + 
-  geom_point() + 
-  geom_point( aes( y = pred_HOI2), color = 2)
-
-
-
-
-
-p2 <- results %>% 
-  group_by( species ) %>% 
-  do(gg = ggplot( data = ., aes(x = B1, y = B2, z = lambda/y )) + 
-       stat_contour() )
-
-
-p2$gg[[1]]
-p2$gg[[2]]
-
-
-cond <- expand.grid(B = seq(0, 400, by = 50), R = seq(0, 400, by = 50))
-parms
-
-cond <- cond %>% 
-  mutate(dBdt = dBdt(B, R, 0.5, 0.001, 0.08), 
-         dRdt = dRdt(R, B1 = B, B2 = 0, u = c(0.001, 0)))
-
-
-cond %>% 
-  ggplot( aes( x = B, y = R)) + 
-  geom_segment(aes(x = B, xend = B + dBdt, y = R, yend = R + dRdt), arrow = arrow(length = unit(3, 'pt')))
 
