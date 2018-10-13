@@ -400,31 +400,66 @@ pw_comp_pred_gg <-
 pw_comp_pred_gg
 
 
-ggsave(pw_comp_pred_gg, filename = 'figures/pairwise_comp_with_line.png', width = 7, height = 4)
+pw_comp_pred_gg2 <- 
+  pw_comp_df %>% 
+  filter( n_comp == 0 | density > 0) %>% 
+  filter( density < 15, Model == 2) %>% 
+  ggplot( aes( x = density, y = y, color = Competitor)) + 
+  geom_point() + 
+  geom_line(aes( y = pred ), alpha = 0.5) + 
+  facet_grid(~species_lab) + 
+  scale_color_manual(values = my_colors[1:3]) +
+  ylab( 'Per Capita Fecundity') + 
+  xlab( 'Competitor Density') + 
+  my_theme + 
+  journal_theme + 
+  guides(color = guide_legend(order = 1)) + 
+  theme( legend.position = c(0.25, 0.66), 
+         strip.text = element_text(hjust = 0.1), 
+         legend.background = element_rect(fill = NA), 
+         legend.key = element_rect(fill = NA), 
+         legend.title.align = c(0.5))
+
+
+
+ggsave(pw_comp_pred_gg, filename = 'figures/appendix_pairwise_comp_with_line.png', width = 7, height = 4)
+ggsave(pw_comp_pred_gg2, filename = 'figures/pairwise_comp_with_line.png', width = 7, height = 4)
+
+
 
 # try prediction on two species communities
 
 two_sp_df <- results %>% 
   ungroup() %>%
   filter( n_comp < 3) %>% 
-  mutate( species_lab = factor(species, labels = c('a)                      Early', 'b)                      Mid', 'c)                      Late')))
+  mutate( species_lab = factor(species, labels = c('a)              Early Species', 'b)                   Mid  Species', 'c)                  Late  Species')))
 
 
-two_sp_df$pred_y <- NA
-two_sp_df$pred_y[two_sp_df$species == 'Y1'] <- predict(nls1, newdata = two_sp_df[two_sp_df$species == 'Y1' ,] )
-two_sp_df$pred_y[two_sp_df$species == 'Y2'] <- predict(nls2, newdata = two_sp_df[two_sp_df$species == 'Y2' ,] )
-two_sp_df$pred_y[two_sp_df$species == 'Y3'] <- predict(nls3, newdata = two_sp_df[two_sp_df$species == 'Y3' ,] )
+two_sp_df$m2 <- NA
+two_sp_df$m2[two_sp_df$species == 'Y1'] <- predict(nls1, newdata = two_sp_df[two_sp_df$species == 'Y1' ,] )
+two_sp_df$m2[two_sp_df$species == 'Y2'] <- predict(nls2, newdata = two_sp_df[two_sp_df$species == 'Y2' ,] )
+two_sp_df$m2[two_sp_df$species == 'Y3'] <- predict(nls3, newdata = two_sp_df[two_sp_df$species == 'Y3' ,] )
+
+two_sp_df$m1 <- NA
+two_sp_df$m1[two_sp_df$species == 'Y1'] <- predict(nls_0_1, newdata = two_sp_df[two_sp_df$species == 'Y1' ,] )
+two_sp_df$m1[two_sp_df$species == 'Y2'] <- predict(nls_0_2, newdata = two_sp_df[two_sp_df$species == 'Y2' ,] )
+two_sp_df$m1[two_sp_df$species == 'Y3'] <- predict(nls_0_3, newdata = two_sp_df[two_sp_df$species == 'Y3' ,] )
+
+two_sp_df <- 
+  two_sp_df %>% 
+  gather( mod_type, pred_y, m1:m2 )
 
 p1 <- 
   two_sp_df %>% 
+  filter( mod_type == 'm2') %>% 
   filter( B2 < 15, B3 < 15) %>% 
   mutate( lambda_plot  = ifelse (y == lambda, T, F)) %>% 
   filter( species == 'Y1' , B1 == 0 ) %>% 
   filter( B3 %in% c(0, 2, 8)) %>% 
-  ggplot( aes( x = B2, y = y, color = factor(B3) ) ) + 
+  ggplot( aes( x = B2, y = y, color = factor(B3) )) + 
   geom_point() + 
-  scale_color_manual(values = c('gray', 'darkgray', 'black'), 'Late Species') + 
-  xlab('Density Mid Species') + 
+  scale_color_manual(values = c('gray', 'darkgray', 'black'), 'Late Species Density') + 
+  xlab('Mid Species Density') + 
   ylab( 'Per Capita Fecundity') + 
   facet_wrap(~ species_lab) + 
   my_theme + 
@@ -435,14 +470,15 @@ p1 <-
 
 p2 <- 
   two_sp_df %>% 
+  filter( mod_type == 'm2') %>% 
   filter( B1 < 15, B3 < 15) %>% 
   mutate( lambda_plot  = ifelse (y == lambda, T, F)) %>% 
   filter( species == 'Y2' , B2 == 0 ) %>% 
   filter( B3 %in% c(0, 2, 8)) %>% 
   ggplot( aes( x = B1, y = y, color = factor(B3) ) ) + 
   geom_point() + 
-  scale_color_manual(values = c('gray', 'darkgray', 'black'), 'Late Species') + 
-  xlab('Density Early Species') + 
+  scale_color_manual(values = c('gray', 'darkgray', 'black'), 'Late Species Density') + 
+  xlab('Early Species Density') + 
   ylab( 'Fecundity') + 
   facet_wrap(~ species_lab) + 
   my_theme + 
@@ -454,14 +490,15 @@ p2 <-
 
 p3 <- 
   two_sp_df %>% 
+  filter( mod_type == 'm2') %>% 
   filter( B1 < 15, B2 < 15) %>% 
   mutate( lambda_plot  = ifelse (y == lambda, T, F)) %>% 
   filter( species == 'Y3' , B3 == 0 ) %>% 
   filter( B2 %in% c(0, 2, 8)) %>% 
   ggplot( aes( x = B1, y = y, color = factor(B2) ) ) + 
   geom_point() + 
-  scale_color_manual(values = c('gray', 'darkgray', 'black'), 'Mid Species') + 
-  xlab('Density Early Species') + 
+  scale_color_manual(values = c('gray', 'darkgray', 'black'), 'Mid Species Density') + 
+  xlab('Early Species Density') + 
   ylab( 'Fecundity') + 
   facet_wrap(~ species_lab) + 
   my_theme + 
@@ -483,7 +520,6 @@ p2_line <- p2 + geom_line(aes( y = pred_y), alpha = 0.5)
 p3_line <- p3 + geom_line(aes( y = pred_y), alpha = 0.5)
 
 n_comp2_pairwise_fit <- grid.arrange(p1_line, p2_line, p3_line, nrow = 1, widths = c(0.32, 0.3, 0.3))
-
 
 ggsave(n_comp2_pairwise_fit, filename = 'figures/two_sp_comp_pw_line.png', width = 10, height = 5.5)
 
@@ -590,15 +626,14 @@ MSE_plot <-
   select( -time , -c(X2:X4), -lambda) %>%
   filter( (B1 == 0  & species == 'Y1') | (B2 == 0 & species == 'Y2') | (B3 == 0 & species == 'Y3') )  %>% 
   filter( n_comp > 0 ) %>% 
-  group_by(species, HOI) %>% 
+  group_by(species, mod_type, HOI) %>%
   summarise( MSE = sqrt(mean( (pred_y - y)^2)) ) %>%
   spread( HOI, MSE) %>% 
   mutate( MSE_change = (`1` - `0`)  ) %>% 
   ungroup() %>% 
   mutate( species_lab = factor( species, labels = c('Early', 'Mid', 'Late'))) %>% 
-  ggplot( aes( x = species_lab, y = MSE_change, color = species_lab)) + 
-  geom_bar( stat = 'identity', fill = 'gray') +
-  scale_color_manual(values = my_colors[1:3])  + 
+  ggplot( aes( x = species_lab, y = MSE_change, fill = mod_type)) + 
+  geom_bar( stat = 'identity', position = 'dodge') +
   ylab( 'Increase in root mean squared error') + 
   xlab( 'Species') + 
   my_theme + 
@@ -606,8 +641,6 @@ MSE_plot <-
   theme(axis.text.x = element_text( size = 10), axis.title.x = element_text(size = 12)) + 
   guides( color = F)  + 
   annotate( geom = 'text', 0.6, 2.7, label = 'a)', size = 5)
-
-
 
 # MSE_plot <- 
 #   two_sp_df %>% 
@@ -640,14 +673,14 @@ mean_error_plot <-
   select( -time , -c(X2:X4), -lambda) %>%
   filter( (B1 == 0  & species == 'Y1') | (B2 == 0 & species == 'Y2') | (B3 == 0 & species == 'Y3') )  %>% 
   filter( n_comp > 0 ) %>% 
-  group_by(species, HOI) %>% 
+  group_by(species, HOI, mod_type) %>% 
   summarise( ME = mean( (y - pred_y) ) ) %>%
   spread( HOI, ME) %>% 
   mutate( ME_change = (`1` - `0`)  ) %>% 
   ungroup() %>% 
   mutate( species_lab = factor( species, labels = c('Early', 'Mid', 'Late'))) %>% 
-  ggplot( aes( x = species_lab, y = ME_change, color = species_lab)) + 
-  geom_bar( stat = 'identity', fill = 'gray') +
+  ggplot( aes( x = species_lab, y = ME_change, fill = mod_type)) + 
+  geom_bar( stat = 'identity', position = position_dodge()) +
   scale_color_manual(values = my_colors[1:3])  + 
   ylab( error_y_lab) + 
   xlab( 'Species') + 
