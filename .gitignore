@@ -28,3 +28,8 @@ vignettes/*.pdf
 ./packrat/lib*
 packrat/lib*/
 .Rproj.user
+
+# images 
+*.png
+*.jpeg
+*.jpg
