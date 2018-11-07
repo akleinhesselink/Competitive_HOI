@@ -374,7 +374,7 @@ pw_comp_df <-
 pw_comp_df <- 
   pw_comp_df %>% 
   mutate( Model = factor( pred_type, labels = c('1', '2') )) %>%
-  mutate( species_lab = factor( species_lab, labels = c('a)            Early', 'b)            Mid', 'c)            Late')))
+  mutate( species_lab = factor( species_lab, labels = c('a) Early', 'b) Mid', 'c) Late')))
 
 
 pw_comp_pred_gg <- 
@@ -391,14 +391,10 @@ pw_comp_pred_gg <-
   my_theme + 
   journal_theme + 
   guides(color = guide_legend(order = 1)) + 
-  theme( legend.position = c(0.25, 0.66), 
-         strip.text = element_text(hjust = 0.1), 
+  theme( strip.text = element_text(hjust = 0.1), 
          legend.background = element_rect(fill = NA), 
          legend.key = element_rect(fill = NA), 
          legend.title.align = c(0.5))
-
-pw_comp_pred_gg
-
 
 pw_comp_pred_gg2 <- 
   pw_comp_df %>% 
@@ -414,15 +410,34 @@ pw_comp_pred_gg2 <-
   my_theme + 
   journal_theme + 
   guides(color = guide_legend(order = 1)) + 
-  theme( legend.position = c(0.25, 0.66), 
-         strip.text = element_text(hjust = 0.1), 
+  theme( strip.text = element_text(hjust = 0.1), 
          legend.background = element_rect(fill = NA), 
          legend.key = element_rect(fill = NA), 
          legend.title.align = c(0.5))
 
 
+bigger_text_theme <-  
+  theme( legend.justification = c(0,1), 
+         legend.position = c(0.1, 1), 
+         strip.background = element_blank(),
+         strip.text = element_text(size = 15),
+         axis.text = element_text( size = 12), 
+         axis.title = element_text( size = 15), 
+         legend.text = element_text( size = 12), 
+         legend.title = element_text(size = 15)) 
+
+pw_comp_pred_gg <- 
+  pw_comp_pred_gg + 
+  scale_x_continuous(breaks = c(0,4,8))  + 
+  bigger_text_theme 
+
+pw_comp_pred_gg2 <- 
+  pw_comp_pred_gg2 + 
+  scale_x_continuous(breaks = c(0,4,8)) + 
+  bigger_text_theme
 
 ggsave(pw_comp_pred_gg, filename = 'figures/appendix_pairwise_comp_with_line.png', width = 7, height = 4)
+
 ggsave(pw_comp_pred_gg2, filename = 'figures/pairwise_comp_with_line.png', width = 7, height = 4)
 
 
@@ -432,7 +447,7 @@ ggsave(pw_comp_pred_gg2, filename = 'figures/pairwise_comp_with_line.png', width
 two_sp_df <- results %>% 
   ungroup() %>%
   filter( n_comp < 3) %>% 
-  mutate( species_lab = factor(species, labels = c('a)              Early Species', 'b)                   Mid  Species', 'c)                  Late  Species')))
+  mutate( species_lab = factor(species, labels = c('a) Early', 'b) Mid', 'c) Late')))
 
 
 two_sp_df$m2 <- NA
@@ -449,6 +464,7 @@ two_sp_df <-
   two_sp_df %>% 
   gather( mod_type, pred_y, m1:m2 )
 
+
 p1 <- 
   two_sp_df %>% 
   filter( mod_type == 'm2') %>% 
@@ -457,16 +473,20 @@ p1 <-
   filter( species == 'Y1' , B1 == 0 ) %>% 
   filter( B3 %in% c(0, 2, 8)) %>% 
   ggplot( aes( x = B2, y = y, color = factor(B3) )) + 
-  geom_point() + 
-  scale_color_manual(values = c('gray', 'darkgray', 'black'), 'Late Species Density') + 
-  xlab('Mid Species Density') + 
+  geom_point(size = 2) + 
+  geom_line(aes( y = pred_y)) + 
+  scale_x_continuous(breaks = c(0,4,8)) + 
+  scale_color_manual(values = c('black', 'orange', 'red')) + 
+  xlab('Density of Mid Species') + 
   ylab( 'Per Capita Fecundity') + 
   facet_wrap(~ species_lab) + 
   my_theme + 
   journal_theme + 
-  theme( legend.title = element_text(size = 14)) + 
+  theme( legend.title = element_blank()) + 
   theme(legend.position = c(0.7, 0.8), 
-        strip.text = element_text(hjust = 0.1))
+        strip.text = element_text(hjust = 0.1)) + 
+  annotate(geom = 'text', x = 4, y = 58, label = 'Density of Late Species', size = 5)
+
 
 p2 <- 
   two_sp_df %>% 
@@ -476,16 +496,18 @@ p2 <-
   filter( species == 'Y2' , B2 == 0 ) %>% 
   filter( B3 %in% c(0, 2, 8)) %>% 
   ggplot( aes( x = B1, y = y, color = factor(B3) ) ) + 
-  geom_point() + 
-  scale_color_manual(values = c('gray', 'darkgray', 'black'), 'Late Species Density') + 
-  xlab('Early Species Density') + 
+  geom_point(size = 2) + 
+  geom_line(aes( y = pred_y )) + 
+  scale_x_continuous(breaks = c(0,4,8)) + 
+  scale_color_manual(values = c('black', 'orange', 'red')) + 
+  xlab('Density of Early Species') + 
   ylab( 'Fecundity') + 
   facet_wrap(~ species_lab) + 
   my_theme + 
-  journal_theme + 
-  theme( legend.title = element_text(size = 14)) + 
-  theme(legend.position = c(0.7, 0.8), axis.title.y = element_blank(), 
-        strip.text = element_text(hjust = 0.1))
+  theme( legend.title = element_blank()) + 
+  theme(legend.position = c(0.7, 0.8), 
+        strip.text = element_text(hjust = 0.1)) + 
+  annotate(geom = 'text', x = 4, y = 80, label = 'Density of Late Species', size = 5)
 
 
 p3 <- 
@@ -496,128 +518,29 @@ p3 <-
   filter( species == 'Y3' , B3 == 0 ) %>% 
   filter( B2 %in% c(0, 2, 8)) %>% 
   ggplot( aes( x = B1, y = y, color = factor(B2) ) ) + 
-  geom_point() + 
-  scale_color_manual(values = c('gray', 'darkgray', 'black'), 'Mid Species Density') + 
-  xlab('Early Species Density') + 
+  geom_point(size = 2) + 
+  geom_line(aes( y = pred_y)) + 
+  scale_x_continuous(breaks = c(0,4,8)) + 
+  scale_color_manual(values = c('black', 'orange', 'red')) + 
+  xlab('Density of Early Species') + 
   ylab( 'Fecundity') + 
   facet_wrap(~ species_lab) + 
   my_theme + 
   journal_theme + 
-  theme( legend.title = element_text(size = 14)) + 
-  theme(legend.position = c(0.7, 0.8), axis.title.y = element_blank(), 
-        strip.text = element_text(hjust = 0.1))
+  theme( legend.title = element_blank()) + 
+  theme(legend.position = c(0.7, 0.8), 
+        strip.text = element_text(hjust = 0.1)) + 
+  annotate(geom = 'text', x = 4, y = 105, label = 'Density of Mid Species', size = 5)
 
-p1
-p2 
-p3
+p1 <- p1 + bigger_text_theme + theme(legend.title = element_blank(), legend.justification = c(1, 1), legend.position = c(0.90,0.92))
+p2 <- p2 + bigger_text_theme + theme(axis.title.y = element_blank(), legend.title = element_blank(), legend.justification = c(1, 1), legend.position = c(0.90,0.92))
+p3 <- p3 + bigger_text_theme + theme(axis.title.y = element_blank(), legend.title = element_blank(), legend.justification = c(1, 1), legend.position = c(0.90,0.92))
 
-n_comp2_no_line <- grid.arrange(p1, p2, p3, nrow = 1, widths = c(0.32, 0.3, 0.3))
+n_comp2 <- grid.arrange(p1, p2, p3, nrow = 1, widths = c(0.32, 0.3, 0.3))
 
-#ggsave(n_comp2_no_line, filename = 'ESA_2018/two_sp_comp_no_line.png', width = 10, height = 5.5)
+ggsave(n_comp2, filename = 'figures/two_sp_comp_pw_line.png', width = 10, height = 5.5)
 
-p1_line <- p1 + geom_line(aes( y = pred_y), alpha = 0.5)
-p2_line <- p2 + geom_line(aes( y = pred_y), alpha = 0.5)
-p3_line <- p3 + geom_line(aes( y = pred_y), alpha = 0.5)
-
-n_comp2_pairwise_fit <- grid.arrange(p1_line, p2_line, p3_line, nrow = 1, widths = c(0.32, 0.3, 0.3))
-
-ggsave(n_comp2_pairwise_fit, filename = 'figures/two_sp_comp_pw_line.png', width = 10, height = 5.5)
-
-# Fit HOI ------------------------------ # 
-# 
-# par1 <- 
-#   data.frame( species = 'Y1', coef( summary( nls1 ) )) %>% 
-#   mutate( par = row.names(.)) %>% 
-#   select(species, Estimate, par) %>% 
-#   spread( par, Estimate)
-# 
-# par2 <- 
-#   data.frame( species = 'Y2', coef( summary( nls2 ) )) %>% 
-#   mutate( par = row.names(.)) %>% 
-#   select(species, Estimate, par) %>% 
-#   spread( par, Estimate)
-# 
-# par3 <- 
-#   data.frame( species = 'Y3', coef( summary( nls3 ) )) %>% 
-#   mutate( par = row.names(.)) %>% 
-#   select(species, Estimate, par) %>% 
-#   spread( par, Estimate)
-# 
-# pw_pars <- bind_rows(par1, par2, par3)
-# 
-# two_sp_df <- left_join(two_sp_df, pw_pars, by = 'species')
-# 
-# two_sp_df <- 
-#   two_sp_df %>% 
-#   filter(B1 < 15, B2 < 15 ,B3 < 15)
-# 
-# form_HOI_1 <- 'y ~ lambda/(1 + (alpha.1*B1)^tau.1 + (alpha.2*B2)^tau.2 + (alpha.3*B3)^tau.3 + beta*I(B2*B3))'
-# 
-# nls1_HOI <- nls( form_HOI_1, 
-#                  data = two_sp_df %>% 
-#                    filter( species == 'Y1', B1 == 0 ), 
-#                  start = list(beta = 0), 
-#                  lower = 0, 
-#                  upper = 1, 
-#                  algorithm = 'port')
-# 
-# nls1_HOI
-# form_HOI_2 <- 'y ~ lambda/(1 + (alpha.1*B1)^tau.1 + (alpha.2*B2)^tau.2 + (alpha.3*B3)^tau.3 + beta*I(B1*B3))'
-# 
-# nls2_HOI <- nls( form_HOI_2, 
-#                  data = two_sp_df %>% 
-#                    filter( species == 'Y2', B2 == 0 ), 
-#                  start = list(beta = 0), 
-#                  lower = 0, 
-#                  upper = 1, 
-#                  algorithm = 'port')
-# 
-# 
-# form_HOI_3 <- 'y ~ lambda/(1 + (alpha.1*B1)^tau.1 + (alpha.2*B2)^tau.2 + (alpha.3*B3)^tau.3 + (beta*HOI) )'
-# 
-# 
-# nls3_HOI <- nls( form_HOI_3, 
-#                  data = two_sp_df %>% 
-#                    filter( species == 'Y3', B3 == 0 ), 
-#                  start = list(beta = -1), 
-#                  lower = c(-1), 
-#                  upper = c(0), 
-#                  algorithm = 'port')
-# nls3_HOI
-# 
-# 
-# # Check predictions ----------------------- # 
-# two_sp_df$pred_y_HOI <- NA
-# two_sp_df$pred_y_HOI[two_sp_df$species == 'Y1'] <- predict(nls1_HOI, newdata = two_sp_df[two_sp_df$species == 'Y1' ,] )
-# two_sp_df$pred_y_HOI[two_sp_df$species == 'Y2'] <- predict(nls2_HOI, newdata = two_sp_df[two_sp_df$species == 'Y2' ,] )
-# two_sp_df$pred_y_HOI[two_sp_df$species == 'Y3'] <- predict(nls3_HOI, newdata = two_sp_df[two_sp_df$species == 'Y3' ,] )
-# 
-# two_sp_df <- 
-#   two_sp_df %>% 
-#   gather( Fit, pred, pred_y, pred_y_HOI)
-# 
-# two_sp_df <- 
-#   two_sp_df %>% 
-#   mutate( Fit = factor( Fit, labels = c('pairwise', 'HOI')))
-
-# two_sp_df %>% 
-#   filter( (species == 'Y1' & B1 == 0) | (species == 'Y2' & B2 == 0) | (species == 'Y3' & B3 == 0) ) %>% 
-#   filter( n_comp == 2) %>% 
-#   group_by( species, Fit) %>% 
-#   summarise( MSE = mean( ((y - pred))^2) ) %>% 
-#   spread(Fit, MSE) %>% 
-#   mutate( MSR_reduction = (pairwise - HOI))
-
-# deviance(nls1)
-# deviance(nls1_HOI)
-# 
-# deviance(nls2)
-# deviance(nls2_HOI)
-# 
-# (deviance(nls3_HOI) - deviance(nls3))/(deviance(nls3))
-# (deviance(nls2_HOI) - deviance(nls2))/(deviance(nls2))
-# (deviance(nls1_HOI) - deviance(nls1))/(deviance(nls1))
-
+# ------------------------------------------------------------------# 
 MSE_lab = expression( (MSE[multi] - MSE[single])/MSE[multi])
 
 
