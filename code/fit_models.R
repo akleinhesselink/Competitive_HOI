@@ -176,7 +176,7 @@ pw_comp_df <-
 pw_comp_df <- 
   pw_comp_df %>% 
   mutate( Model = factor( pred_type, labels = c('1', '2') )) %>%
-  mutate( species_lab = factor( species_lab, labels = c('a) Early', 'b) Mid', 'c) Late')))
+  mutate( species_lab = factor( species_lab, labels = c('A) Early', 'B) Mid', 'C) Late')))
 
 pw_comp_pred_gg <- 
   pw_comp_df %>% 
@@ -236,7 +236,7 @@ ggsave(pw_comp_pred_gg2, filename = 'figures/pairwise_comp_with_line.png', width
 two_sp_df <- sim_results %>% 
   ungroup() %>%
   filter( n_comp < 3) %>% 
-  mutate( species_lab = factor(species, labels = c('a) Early', 'b) Mid', 'c) Late')))
+  mutate( species_lab = factor(species, labels = c('A) Early', 'B) Mid', 'C) Late')))
 
 two_sp_df$m2 <- NA
 two_sp_df$m2[two_sp_df$species == 'Y1'] <- predict(nls1, newdata = two_sp_df[two_sp_df$species == 'Y1' ,] )
@@ -348,7 +348,7 @@ MSE_plot_both_models <-
   journal_theme + 
   theme(axis.text.x = element_text( size = 10), axis.title.x = element_text(size = 12)) + 
   guides( color = F)  + 
-  annotate( geom = 'text', 0.6, 2.7, label = 'a)', size = 5)
+  annotate( geom = 'text', 0.6, 2.7, label = 'A)', size = 5)
 
 
 MSE_plot_mod2 <- 
@@ -361,7 +361,7 @@ MSE_plot_mod2 <-
   xlab( 'Species') + 
   guides(fill = F) + 
   journal_theme + 
-  annotate( geom = 'text', 0.6, 2.7, label = 'a)', size = 5)
+  annotate( geom = 'text', 0.6, 2.7, label = 'A)', size = 5)
 
 error_y_lab <- formula( Average~HOI~effect~(obs. - pred.))
 
@@ -385,7 +385,7 @@ mean_error_plot_both_mods <-
   journal_theme + 
   theme(axis.text.x = element_text( size = 10), axis.title.x = element_text(size = 12)) + 
   guides( color = F) + 
-  annotate( geom = 'text', 0.6, 3.65, label = 'b)', size = 5)
+  annotate( geom = 'text', 0.6, 3.65, label = 'B)', size = 5)
 
 mean_error_plot_mod2 <- 
   mean_error_plot_both_mods$data %>% 
@@ -410,3 +410,4 @@ error_plots_both_mods <- grid.arrange(MSE_plot_both_models +
 ggsave( error_plots, filename = 'figures/error_plots.png', width = 10, height = 5.5)
 
 ggsave( error_plots_both_mods, filename = 'figures/appendix_compare_errors.png', width = 10, height = 5.5)
+

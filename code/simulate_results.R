@@ -4,31 +4,7 @@ library(deSolve)
 library(tidyverse)
 library(stringr)
 source('code/plotting_functions.R')
-
-# Functions ------------------------------------------------------ #
-
-f <- function(R, r, K){ r*R/(K + R) }              # resource (water) uptake rate. Saturates at r
-dBdu <- function(u, B, R, r, K, q, m) { B*(q*f(R, r, K) - m)}  # growth as a function of biomass and resource uptake
-dRdu <- function(u, B, R, r, K) { - sum(B*f(R,r, K)) } # resource (water)
-
-grow <- function(u, State, parms, ...){
-  with(parms , {
-    R  <- State[1]                             # resource first
-    B  <- State[2:length(State)]               # biomass for each species
-    dB <- dBdu(u, B, R, r, K, q, m)
-    dR <- dRdu(u, B, R, r, K)
-    return( list( c(dR, dB))) } )
-}
-
-root <- function(u, State, parms) with(parms, { State[1] - m*K/(q*r-m) } )
-
-event <- function(u, State, parms) {
-  with(parms, {
-    terminate <- (State[1] - m*K/(q*r-m) < 0.000001) # logical vector of species to terminate
-    State[2:length(State)][ terminate ] <- 0
-    return(State)
-  })
-}
+source('code/model_functions.R')
 
 # parameterize model --------------------------------------------------------------------------------------------------- 
 times <- 200             # length of simulation in days 
@@ -56,7 +32,7 @@ curves <-
 
 resource_curves <- resource_curves + journal_theme + theme(legend.position = c(0.8, 0.3)) + ylab('Resource uptake rate')
 
-ggsave(filename = 'figures//resource_uptake.png', resource_curves, height = 5.5, width = 6)
+ggsave(filename = 'figures/resource_uptake.png', resource_curves, height = 5.5, width = 6)
 
 R_init <- 200 
 seeds_init <- c(1,1,1)
@@ -68,8 +44,8 @@ out <- ode(state, times = seq(1, 200, by = 0.01), func = grow, parms = parms,
 
 ts_plots <- plot_timeseries(out, sp_labs = c('Resource', '1', '2', '3'), mytheme = journal_theme + theme(legend.position = c(0.8, 0.5), axis.title = element_text(size = 24)))
 
-g1 <- ts_plots[[1]] + annotate(geom = 'text', 10, 220, label = 'a)', size = 5)
-g2 <- ts_plots[[2]] + annotate(geom = 'text', 10, 2, label = 'b)', size = 5)
+g1 <- ts_plots[[1]] + annotate(geom = 'text', 10, 220, label = 'A)', size = 5)
+g2 <- ts_plots[[2]] + annotate(geom = 'text', 10, 2, label = 'B)', size = 5)
 
 g3 <- resource_curves + 
   journal_theme  + 
@@ -82,7 +58,7 @@ g3 <- resource_curves +
         legend.key.size = unit(1.9, unit = 'lines'),
         legend.margin = margin(1.5,1,1,1, unit = 'lines')) + 
   ylab('Resource\nuptake rate') + 
-  annotate( geom = 'text', 10, 2.4, label = 'c)', size = 5)
+  annotate( geom = 'text', 10, 2.4, label = 'C)', size = 5)
 
 ts_plot <- 
   grid.arrange( 
@@ -93,7 +69,7 @@ ts_plot <-
                          c(2,3))
   )
 
-ggsave( ts_plot, filename = 'figures//example_timeseries.png', height = 5, width = 7)
+ggsave( ts_plot, filename = 'figures/example_timeseries.png', height = 5, width = 7)
 
 # Run response surface experiments --------------------------- # 
 
@@ -129,3 +105,6 @@ sim_results <- do.call( rbind, lapply( out, function(x) apply( x, 2, max )))
 sim_results <- data.frame(B_init, sim_results )
 
 save(sim_results, file = 'data/sim_results.rda')
+
+dev.off()
+
