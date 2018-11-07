@@ -3,7 +3,7 @@ rm(list = ls())
 library(deSolve)
 library(tidyverse)
 library(stringr)
-source('code/sim_functions.R')
+source('code/plotting_functions.R')
 
 # Functions ------------------------------------------------------ #
 
