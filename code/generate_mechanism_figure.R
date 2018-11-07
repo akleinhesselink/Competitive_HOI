@@ -50,8 +50,12 @@ df <-
   mutate( species = factor(species, levels = c('Mid', 'Late'), ordered = T))
 
 
+df %>% mutate( row_number() %% 4)
+
 gg1 <- 
   df %>% 
+  arrange( species, type, t ) %>% 
+  filter( row_number() %% 10 == 0 ) %>% 
   ggplot( aes( x = t, y = rate, color = species, linetype = type)) +
   geom_line() + 
   my_theme + 
@@ -70,11 +74,13 @@ gg1 <-
   gg1 + 
   annotate(geom = 'text', label = 'A)', x = xlims[1] + diff(xlims)*0.05 , y = ylims[2] + diff(ylims)*0.05  )
 
-ylims <- ggplot_build(gg1)$layout$panel_ranges[[1]]$y.range
-xlims <- ggplot_build(gg1)$layout$panel_ranges[[1]]$x.range
+xlims <- ggplot_build(gg1)$layout$panel_scales_x[[1]]$range$range
+ylims <- ggplot_build(gg1)$layout$panel_scales_y[[1]]$range$range
 
 gg2 <- 
   df %>% 
+  arrange( species, type, t ) %>% 
+  filter( row_number() %% 10 == 0 ) %>% 
   filter( comp ) %>% 
   group_by( species, type) %>%
   summarise( avg_rate = mean(rate, na.rm = T)) %>% 
@@ -119,8 +125,10 @@ gg1 <-
             activity_bars$x[2] - 1, 
             activity_bars$yend[2] + 0.003, label = paste('Day',round(activity_bars$x[2])), alpha = 0.5)
 
+gg_both <- grid.arrange(gg1, gg2, nrow = 1, widths = c(0.6, 0.4))
+
 
 ggsave( 'figures/mechanism_of_HOI.png', 
-        grid.arrange(gg1, gg2, nrow = 1, widths = c(0.6, 0.4)), 
-        height = 4, width = 6 )  
+        gg_both, 
+        height = 4, width = 7 )  
 

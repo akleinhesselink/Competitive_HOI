@@ -65,9 +65,10 @@ pw_comp_gg <-
   my_theme
 
 # Fit Simple Beverton-Holt/Hassel Model -------------- # 
-form_0 <- 'y ~ lambda/(1 + alpha.[1]*B1 + alpha.[2]*B2 + alpha.[3]*B3)^tau.'
 
 # fit species 1  ------------------ # 
+form_0 <- 'y ~ lambda/(1 + alpha.[1]*B1 + alpha.[2]*B2 + alpha.[3]*B3)^tau.'
+
 pw_comp_df1 <- pw_comp_df %>% 
   filter( species_lab != Competitor) %>% 
   filter( species == 'Y1') %>% 
@@ -121,11 +122,13 @@ nls_0_3 <-
 
 pw_comp_df3$pred_0 <- predict( nls_0_3)
 
-# Fit second model, modified Beverton-Holt/Hassel. Competitor densities contribute non-linearly to competition. 
+# Fit second model, modified Beverton-Holt/Hassel. ----------- # 
+# Competitor densities contribute non-linearly to competition. 
+
+# fit species 1 --------------------- # 
 
 form_1 <- 'y ~ lambda/(1 + (alpha.[1]*B2)^tau.[1] + (alpha.[2]*B3)^tau.[2] )'
 
-# fit species 1 --------------------- # 
 nls1 <- 
   nls( formula = form_1, 
        data = pw_comp_df1 , 
@@ -231,7 +234,7 @@ ggsave(pw_comp_pred_gg, filename = 'figures/appendix_pairwise_comp_with_line.png
 ggsave(pw_comp_pred_gg2, filename = 'figures/pairwise_comp_with_line.png', width = 7, height = 4)
 
 # Compare predicted effects of two species competition to the observed effects of two species competition. 
-# Use the model fits above and add species effects together--i.e. assume additivity. 
+# Use the model fits above and add species effects together--i.e. deviation from additivity. 
 
 two_sp_df <- sim_results %>% 
   ungroup() %>%
@@ -397,7 +400,7 @@ mean_error_plot_mod2 <-
   xlab( 'Species') + 
   journal_theme + 
   guides( fill = F) + 
-  annotate( geom = 'text', 0.6, 3.65, label = 'b)', size = 5)
+  annotate( geom = 'text', 0.6, 3.65, label = 'B)', size = 5)
 
 error_plots <- grid.arrange(MSE_plot_mod2, mean_error_plot_mod2, nrow = 1, widths = c(0.49, 0.51))
 
