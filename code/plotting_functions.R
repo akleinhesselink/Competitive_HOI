@@ -6,7 +6,10 @@ library(scales)
 
 # ggplot themes ------------------------------------------------ # 
 
-my_theme <- theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+my_theme <- 
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())
 
 journal_theme <- 
   my_theme + 
@@ -43,7 +46,8 @@ plot_timeseries <- function(out, sp_labs = c('Resource', '1','2'), mytheme, fnam
     mytheme + 
     theme(axis.title.x = element_blank(), axis.text.y = element_blank(), axis.text = element_blank()) 
   
-  biomass_plot  <- ggplot( temp %>% filter( species != 'Resource'), aes( x = time, y = val, color = species)) + 
+  biomass_plot  <- 
+    ggplot( temp %>% filter( species != 'Resource'), aes( x = time, y = val, color = species)) + 
     geom_line() + 
     ylab( 'Biomass') + 
     xlab( 'Day of Year') + 

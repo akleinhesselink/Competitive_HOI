@@ -304,6 +304,7 @@ gg_rcurves <-
 
 gg_curves <- 
   gg_rcurves + 
+  scale_x_continuous(breaks = c(0, 100, 200), 'Resource Concentration') + 
   facet_grid( ~ Scenario  )
 
 r <- get_r(step = 1)
@@ -369,7 +370,7 @@ gg_curves <-
 error_plots <- grid.arrange(grobs = list(gg_curves, MSE_plot, mean_error_plot), 
                      layout_matrix = rbind(c(1,1), c(2,3)), heights = c(0.4, 0.6))
 
-ggsave( error_plots, filename = 'figures/error_plots_with_trade_off.png', width = 8.5, height = 6)
+ggsave( error_plots, filename = 'figures/error_plots_with_trade_off.png', width = 8.5, height = 8)
 
 
 # write table with parameters for Appendix ------------- # 

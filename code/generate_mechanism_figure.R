@@ -72,7 +72,8 @@ xlims <- ggplot_build(gg1)$layout$panel_ranges[[1]]$x.range
 
 gg1 <- 
   gg1 + 
-  annotate(geom = 'text', label = 'A)', x = xlims[1] + diff(xlims)*0.05 , y = ylims[2] + diff(ylims)*0.05  )
+  ggtitle("A)") + 
+  theme(plot.title = element_text(hjust = 0))
 
 xlims <- ggplot_build(gg1)$layout$panel_scales_x[[1]]$range$range
 ylims <- ggplot_build(gg1)$layout$panel_scales_y[[1]]$range$range
@@ -98,7 +99,8 @@ gg2 <-
 
 gg2 <- 
   gg2 + 
-  annotate(geom = 'text', label = 'B)', x = 0.8, y = ylims[2]) + 
+  ggtitle("B)") + 
+  theme(plot.title = element_text(hjust = 0))
   ylim(ylims)
 
 activity_bars <- 
@@ -125,8 +127,7 @@ gg1 <-
             activity_bars$x[2] - 1, 
             activity_bars$yend[2] + 0.003, label = paste('Day',round(activity_bars$x[2])), alpha = 0.5)
 
-gg_both <- grid.arrange(gg1, gg2, nrow = 1, widths = c(0.6, 0.4))
-
+gg_both <- grid.arrange(gg1, gg2 + geom_line( aes( group = species)), nrow = 1, widths = c(0.6, 0.4))
 
 ggsave( 'figures/mechanism_of_HOI.png', 
         gg_both, 
