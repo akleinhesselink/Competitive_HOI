@@ -3,46 +3,10 @@ rm(list = ls())
 library(deSolve)
 library(tidyverse)
 library(stringr)
-source('code/sim_functions.R')
-source('code/figure_pars.R')
+source('code/model_functions.R')
+source('code/plotting_functions.R')
 
-# graphics themes ------------------------------------------------ # 
-
-journal_theme <- 
-  my_theme + 
-  theme( axis.title = element_text(size = 10), 
-         legend.text = element_text(size = 10), 
-         legend.title = element_text(size = 12), 
-         strip.text = element_text(size = 12), 
-         axis.text = element_text(size = 10))
-
-# Functions ------------------------------------------------------ #
-
-f <- function(R, r, K){ r*R/(K + R) }              # resource (water) uptake rate. Saturates at r
-dBdu <- function(u, B, R, r, K, q, m) { B*(q*f(R, r, K) - m)}  # growth as a function of biomass and resource uptake
-dRdu <- function(u, B, R, r, K) { - sum(B*f(R,r, K)) } # resource (water)
-
-grow <- function(u, State, parms, ...){
-  with(parms , {
-    R  <- State[1]                             # resource first
-    B  <- State[2:length(State)]               # biomass for each species
-    dB <- dBdu(u, B, R, r, K, q, m)
-    dR <- dRdu(u, B, R, r, K)
-    return( list( c(dR, dB))) } )
-}
-
-root <- function(u, State, parms) with(parms, { State[1] - m*K/(q*r-m) } )
-
-event <- function(u, State, parms) {
-  with(parms, {
-    terminate <- (State[1] - m*K/(q*r-m) < 0.000001) # logical vector of species to terminate
-    State[2:length(State)][ terminate ] <- 0
-    return(State)
-  })
-}
-r <- c(2.1, 2.6, 4.2)   # max uptake rates mm of water per g of plant per day
-K <- c(0.5, 30, 150)      # resource half-saturation constant, soil moisture in mm water per 500 mm soil when plant growth is half max  
-
+# new functions to adjust the parameters controlling resource uptake 
 trade_off <- function(r, int = -81.8, m1 = 23.190, m2 = 7.619){ 
   new_K <- -81.8 + 23.190*r + 7.619*r^2
   return(new_K)
@@ -55,37 +19,40 @@ get_r <- function(step, midpoint = 2.6, upperstepsize = 0.32, lowerstepsize  = 0
   return ( c( r1, r2, r3 ))
 }
 
+# ---------- load original parameters ------------------- # 
+
+load('data/parms.rda')
+
+r <- c(2.1, 2.6, 4.2)   # max uptake rates mm of water per g of plant per day
+K <- c(0.5, 30, 150)    # resource half-saturation constant, soil moisture in mm water per 500 mm soil when plant growth is half max  
+
 resource_curves <- my_result <- list ()
-k <- 5
+
+
 for( k in 1:5 ) { 
   # parameterize model --------------------------------------------------------------------------------------------------- 
-  times <- 200             # length of simulation in days 
-  soil_m <- 200            # initial soil moisture (mm water in upper 500 mm of soil)
-  pulse <- 0               # amount of water supplied per day in mm  
-  rainy <- 10             # duration of rainy period 
   r <- get_r(step = k)
   K <- trade_off(r)
   
-  m <- 0.09                # tissue respiration and loss rate g per g per day 
-  q <- 0.07                 # photosynthetic water use efficiency g of carbon gain per mm of water
-  epsilon <- 0.1         # rate of water evaporation and runoff mm per mm per day
-  seedling_mass <- c(0.005) # seed/seedling mass in g 
-  conversion <- 0.1        # proportion live biomass converted to seed mass 
-  R <- seq(0, 200, length.out = 1000)
-  parms <- list( r = r, K = K, m =m , p = c(rep(pulse, rainy), rep(0, times - rainy)), epsilon = epsilon, q = q, soil_m = soil_m, conversion = conversion, seedling_mass = seedling_mass, R = R, times = times)
+  parms$r <- r
+  parms$K <- K 
   
-  resource_curves[[k]] <- plot_resource_uptake(parms, spec_labs = c('Early', 'Mid', 'Late'), R = seq(0, 200, by = 0.01))
+  resource_curves[[k]] <- plot_resource_uptake(parms, spec_labs = species_labs, R = seq(0, 200, by = 0.01))
   
   R <- 0:200
-  spec_labs <- c('Early', 'Mid', 'Late')
+
   curves <- data.frame(R = R,  mapply(x = as.list(parms$r), y = as.list(parms$K), FUN = function(x, y) { f(R = R, x, y) }) )
   
   curves <- 
     curves %>% 
     gather( species, uptake, starts_with('X')) %>% 
-    mutate( species = factor(species, labels = spec_labs))
+    mutate( species = factor(species, labels = species_labs))
   
-  resource_curves[[k]] <- resource_curves[[k]] + journal_theme + theme(legend.position = c(0.8, 0.3)) + ylab('Resource uptake rate')
+  resource_curves[[k]] <- 
+    resource_curves[[k]] + 
+    journal_theme + 
+    theme(legend.position = c(0.8, 0.3)) + 
+    ylab('Resource uptake rate')
   
   R_init <- 200 
   seeds_init <- c(1,1,1)
@@ -166,9 +133,8 @@ for( k in 1:5 ) {
     filter( n_comp < 2) %>% 
     gather( comp, density, B1:B3) %>% 
     filter( n_comp == 0 | density > 0) %>% 
-    mutate( Competitor = factor(comp, label = c('Early', 'Mid', 'Late'))) %>% 
-    #mutate( comp = ifelse(n_comp == 0, str_replace(species, 'Y', 'B'), comp )) %>% 
-    mutate( species_lab = factor(species, labels = c('Early', 'Mid', 'Late') ) ) 
+    mutate( Competitor = factor(comp, label = species_labs)) %>% 
+    mutate( species_lab = factor(species, labels = species_labs ) ) 
   
   pw_comp_gg <- 
     pw_comp_df %>% 
@@ -180,19 +146,18 @@ for( k in 1:5 ) {
     scale_color_manual(values = my_colors[1:3]) + 
     ylab( 'Per Capita Fecundity') + 
     xlab( 'Density') + 
-    my_theme
+    journal_theme
   
-  # modified Hassel with one competitor at a time
+  # modified Hassel with one competitor at a time --------------------------- # 
+  
+  # species 1 -------------------------# 
   
   form_1 <- 'y ~ lambda/(1 + (alpha.[1]*B2)^tau.[1] + (alpha.[2]*B3)^tau.[2] )'
-  
-  # species 1 
+
   pw_comp_df1 <- pw_comp_df %>% 
     filter( species == 'Y1') %>% 
     spread(comp, density, fill = 0)
   
-  
-  # species 1 
   nls1 <- 
     nls( formula = form_1, 
          data = pw_comp_df1 , 
@@ -249,7 +214,7 @@ for( k in 1:5 ) {
     results %>% 
     ungroup() %>%
     filter( n_comp < 3) %>% 
-    mutate( species_lab = factor(species, labels = c('a)                      Early', 'b)                      Mid', 'c)                      Late')))
+    mutate( species_lab = factor(species, labels = c('A) Early', 'B) Mid', 'C) Late')))
   
   two_sp_df$pred_y <- NA
   two_sp_df$pred_y[two_sp_df$species == 'Y1'] <- predict(nls1, newdata = two_sp_df[two_sp_df$species == 'Y1' ,] )
@@ -259,9 +224,10 @@ for( k in 1:5 ) {
   my_result[[k]] <- two_sp_df
 }
 
+# plot deviations from additivity for two species competition --------------------------- # 
 
 error_plots <- list()
-i <- 1
+
 for( k in 1:length(my_result)){ 
 
   two_sp_df <- my_result[[k]]
@@ -278,17 +244,16 @@ for( k in 1:length(my_result)){
     spread( HOI, MSE) %>%
     mutate( MSE_change = (`1` - `0`)  ) %>%
     ungroup() %>%
-    mutate( species_lab = factor( species, labels = c('Early', 'Mid', 'Late'))) %>%
-    ggplot( aes( x = species_lab, y = MSE_change, color = species_lab)) +
+    mutate( species_lab = factor( species, labels = species_labs)) %>%
+    ggplot( aes( x = species_lab, y = MSE_change, color = species_labs)) +
     geom_bar( stat = 'identity', fill = 'gray') +
     scale_color_manual(values = my_colors[1:3])  +
     ylab( 'Increase in root mean squared error') +
     xlab( 'Species') +
-    my_theme +
     journal_theme +
     theme(axis.text.x = element_text( size = 10), axis.title.x = element_text(size = 12)) +
     guides( color = F)  +
-    annotate( geom = 'text', 0.6, 2.7, label = 'a)', size = 5)
+    annotate( geom = 'text', 0.6, 2.7, label = 'A)', size = 5)
   
   
   error_y_lab <- formula( Average~HOI~effect~(obs. - pred.))
@@ -303,17 +268,16 @@ for( k in 1:length(my_result)){
     spread( HOI, ME) %>%
     mutate( ME_change = (`1` - `0`)  ) %>%
     ungroup() %>%
-    mutate( species_lab = factor( species, labels = c('Early', 'Mid', 'Late'))) %>%
-    ggplot( aes( x = species_lab, y = ME_change, color = species_lab)) +
+    mutate( species_lab = factor( species, labels = species_labs)) %>%
+    ggplot( aes( x = species_lab, y = ME_change, color = species_labs)) +
     geom_bar( stat = 'identity', fill = 'gray') +
     scale_color_manual(values = my_colors[1:3])  +
     ylab( error_y_lab) +
     xlab( 'Species') +
-    my_theme +
     journal_theme +
     theme(axis.text.x = element_text( size = 10), axis.title.x = element_text(size = 12)) +
     guides( color = F) +
-    annotate( geom = 'text', 0.6, 3.65, label = 'b)', size = 5)
+    annotate( geom = 'text', 0.6, 3.65, label = 'B)', size = 5)
   
   error_plots[[k]] <- grid.arrange(MSE_plot, mean_error_plot, nrow = 1, widths = c(0.49, 0.51))
 }
@@ -332,7 +296,7 @@ rcurves_data <-
 gg_rcurves <- 
   ggplot( data = rcurves_data, aes( x = R, y = uptake, color = Species)) + 
   geom_line() + 
-  my_theme +  
+  journal_theme + 
   theme( axis.text.y = element_blank()) + 
   scale_color_manual(values = my_colors) + 
   scale_y_continuous(Resource~Uptake~Rate) + 
@@ -345,22 +309,8 @@ gg_curves <-
 r <- get_r(step = 1)
 K <- trade_off(r)
 
-
 par_tab <- data.frame( step = 1:5 ) 
-data.frame( do.call( cbind, par_tab %>% get_r)) %>% 
-  gather( type, r, step:step.1) %>% 
-  mutate( Species = factor(type, labels = c('Early', 'Late', 'Mid') )) %>% 
-  mutate( Species = factor(Species, levels = c('Early', 'Mid', 'Late'), ordered = T)) %>% 
-  select(Species, r) %>%
-  mutate( K = trade_off(r)) %>% 
-  group_by( Species) %>% 
-  mutate( Scenario = row_number()) %>% 
-  arrange( Scenario, Species ) %>% 
-  select( Scenario, Species, r, K) %>% 
-  write_csv('output/scenario_parameter_table.csv')
 
-
-#MSE_lab <- expression( (RMSE[multi] - RMSE[single]))
 
 MSE_plot <- 
   my_results %>%
@@ -372,19 +322,19 @@ MSE_plot <-
   spread( HOI, MSE) %>%
   mutate( MSE_change = (`1` - `0`)  ) %>%
   ungroup() %>%
-  mutate( species_lab = factor( species, labels = c('Early', 'Mid', 'Late'))) %>%
+  mutate( species_lab = factor( species, labels = species_labs)) %>%
   ggplot( aes( x = step, y = MSE_change, color = species_lab)) +
   geom_point() +
-  geom_line() + 
+  geom_line()  + 
   ylab( "Increase in root mean squared error") +
   xlab( 'Scenario') +
-  my_theme + 
   journal_theme +
   theme(axis.text.x = element_text( size = 10), axis.title.x = element_text(size = 12)) +
   theme(legend.position = c(0.25, 0.6)) + 
   scale_color_manual(values = my_colors[1:3])  +
   guides(color = F) + 
   ggtitle('B)') + theme(title = element_text(size = 10))
+
 
 error_y_lab <- formula( Average~HOI~effect~(obs. - pred.))
 
@@ -398,7 +348,7 @@ mean_error_plot <-
   spread( HOI, ME) %>%
   mutate( ME_change = (`1` - `0`)  ) %>%
   ungroup() %>%
-  mutate( species_lab = factor( species, labels = c('Early', 'Mid', 'Late'))) %>%
+  mutate( species_lab = factor( species, labels = species_labs)) %>%
   ggplot( aes( x = step, y = ME_change, color = species_lab)) +
   geom_point() +
   geom_line() + 
@@ -419,5 +369,20 @@ gg_curves <-
 error_plots <- grid.arrange(grobs = list(gg_curves, MSE_plot, mean_error_plot), 
                      layout_matrix = rbind(c(1,1), c(2,3)), heights = c(0.4, 0.6))
 
+ggsave( error_plots, filename = 'figures/error_plots_with_trade_off.png', width = 8.5, height = 6)
 
-ggsave( error_plots, filename = 'figures/error_plots_with_trade_off.png', width = 8, height = 5)
+
+# write table with parameters for Appendix ------------- # 
+data.frame( do.call( cbind, par_tab %>% get_r)) %>% 
+  gather( type, r, step:step.1) %>% 
+  mutate( Species = factor(type, labels = species_labs )) %>% 
+  mutate( Species = factor(Species, levels = species_labs, ordered = T)) %>% 
+  select(Species, r) %>%
+  mutate( K = trade_off(r)) %>% 
+  group_by( Species) %>% 
+  mutate( Scenario = row_number()) %>% 
+  arrange( Scenario, Species ) %>% 
+  select( Scenario, Species, r, K) %>% 
+  write_csv('output/scenario_parameter_table.csv')
+
+dev.off()
