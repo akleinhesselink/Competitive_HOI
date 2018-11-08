@@ -268,7 +268,7 @@ p1 <-
   geom_line(aes( y = pred_y)) + 
   scale_x_continuous(breaks = c(0,4,8)) + 
   scale_color_manual(values = c('black', 'orange', 'red')) + 
-  xlab('Density of Mid Species') + 
+  xlab('Density of\nMid Species') + 
   ylab( 'Per Capita Fecundity') + 
   facet_wrap(~ species_lab) + 
   my_theme + 
@@ -276,7 +276,7 @@ p1 <-
   theme( legend.title = element_blank()) + 
   theme(legend.position = c(0.7, 0.8), 
         strip.text = element_text(hjust = 0.1)) + 
-  annotate(geom = 'text', x = 4, y = 58, label = 'Density of Late Species', size = 5)
+  annotate(geom = 'text', x = 8, y = 55, label = 'Density of\nLate Species', size = 5, hjust = 1)
 
 p2 <- 
   two_sp_df %>% 
@@ -290,14 +290,14 @@ p2 <-
   geom_line(aes( y = pred_y )) + 
   scale_x_continuous(breaks = c(0,4,8)) + 
   scale_color_manual(values = c('black', 'orange', 'red')) + 
-  xlab('Density of Early Species') + 
+  xlab('Density of\nEarly Species') + 
   ylab( 'Fecundity') + 
   facet_wrap(~ species_lab) + 
   journal_theme + 
   theme(legend.title = element_blank(), 
         legend.position = c(0.7, 0.8), 
         strip.text = element_text(hjust = 0.1)) + 
-  annotate(geom = 'text', x = 4, y = 80, label = 'Density of Late Species', size = 5)
+  annotate(geom = 'text', x = 8, y = 76, label = 'Density of\nLate Species', size = 5, hjust = 1)
 
 p3 <- 
   two_sp_df %>% 
@@ -311,7 +311,7 @@ p3 <-
   geom_line(aes( y = pred_y)) + 
   scale_x_continuous(breaks = c(0,4,8)) + 
   scale_color_manual(values = c('black', 'orange', 'red')) + 
-  xlab('Density of Early Species') + 
+  xlab('Density of\nEarly Species') + 
   ylab( 'Fecundity') + 
   facet_wrap(~ species_lab) + 
   my_theme + 
@@ -319,15 +319,31 @@ p3 <-
   theme( legend.title = element_blank()) + 
   theme(legend.position = c(0.7, 0.8), 
         strip.text = element_text(hjust = 0.1)) + 
-  annotate(geom = 'text', x = 4, y = 105, label = 'Density of Mid Species', size = 5)
+  annotate(geom = 'text', x = 8, y = 100, label = 'Density of\nMid Species', size = 5, hjust = 1)
 
-p1 <- p1 + theme(legend.title = element_blank(), legend.justification = c(1, 1), legend.position = c(0.90,0.92))
-p2 <- p2 + theme(axis.title.y = element_blank(), legend.title = element_blank(), legend.justification = c(1, 1), legend.position = c(0.90,0.92))
-p3 <- p3 + theme(axis.title.y = element_blank(), legend.title = element_blank(), legend.justification = c(1, 1), legend.position = c(0.90,0.92))
+temp_legend_theme <- 
+  theme(legend.background = element_blank(), 
+      legend.title = element_blank(), 
+      legend.justification = c(1, 1), 
+      legend.position = c(1,0.8))
+
+p1 <- 
+  p1 + 
+  temp_legend_theme
+
+p2 <- 
+  p2 + 
+  temp_legend_theme + 
+  theme(axis.title.y = element_blank())
+
+p3 <- 
+  p3 + 
+  temp_legend_theme + 
+  theme(axis.title.y = element_blank())
 
 n_comp2 <- grid.arrange(p1, p2, p3, nrow = 1, widths = c(0.32, 0.3, 0.3))
 
-ggsave(n_comp2, filename = 'figures/two_sp_comp_pw_line.png', width = 10, height = 5.5)
+ggsave(n_comp2, filename = 'figures/two_sp_comp_pw_line.png', width = 7, height = 4)
 
 # Plot average error in two species communities ---------------------------------------# 
 MSE_lab = expression( (MSE[multi] - MSE[single])/MSE[multi])
@@ -351,8 +367,8 @@ MSE_plot_both_models <-
   journal_theme + 
   theme(axis.text.x = element_text( size = 10), axis.title.x = element_text(size = 12)) + 
   guides( color = F)  + 
-  annotate( geom = 'text', 0.6, 2.7, label = 'A)', size = 5)
-
+  ggtitle("A)") + 
+  theme(plot.title = element_text(hjust = 0))
 
 MSE_plot_mod2 <- 
   MSE_plot_both_models$data %>% 
@@ -364,7 +380,8 @@ MSE_plot_mod2 <-
   xlab( 'Species') + 
   guides(fill = F) + 
   journal_theme + 
-  annotate( geom = 'text', 0.6, 2.7, label = 'A)', size = 5)
+  ggtitle("A)") + 
+  theme(plot.title = element_text(hjust = 0))
 
 error_y_lab <- formula( Average~HOI~effect~(obs. - pred.))
 
@@ -379,7 +396,8 @@ mean_error_plot_both_mods <-
   mutate( ME_change = (`1` - `0`)  ) %>% 
   ungroup() %>% 
   mutate( species_lab = factor( species, labels = c('Early', 'Mid', 'Late'))) %>% 
-  ggplot( aes( x = species_lab, y = ME_change, fill = mod_type)) + 
+  mutate( Model = factor(mod_type, labels = c('1', '2'))) %>% 
+  ggplot( aes( x = species_lab, y = ME_change, fill = Model)) + 
   geom_bar( stat = 'identity', position = position_dodge()) +
   scale_color_manual(values = my_colors[1:3])  + 
   ylab( error_y_lab) + 
@@ -388,7 +406,8 @@ mean_error_plot_both_mods <-
   journal_theme + 
   theme(axis.text.x = element_text( size = 10), axis.title.x = element_text(size = 12)) + 
   guides( color = F) + 
-  annotate( geom = 'text', 0.6, 3.65, label = 'B)', size = 5)
+  ggtitle("B)") + 
+  theme(plot.title = element_text(hjust = 0))
 
 mean_error_plot_mod2 <- 
   mean_error_plot_both_mods$data %>% 
@@ -400,17 +419,20 @@ mean_error_plot_mod2 <-
   xlab( 'Species') + 
   journal_theme + 
   guides( fill = F) + 
-  annotate( geom = 'text', 0.6, 3.65, label = 'B)', size = 5)
+  ggtitle("B)") + 
+  theme(plot.title = element_text(hjust = 0))
 
 error_plots <- grid.arrange(MSE_plot_mod2, mean_error_plot_mod2, nrow = 1, widths = c(0.49, 0.51))
 
 error_plots_both_mods <- grid.arrange(MSE_plot_both_models + 
                                         guides( fill = F), 
                                       mean_error_plot_both_mods + 
-                                        scale_fill_discrete( 'Model Type') + 
-                                        theme(legend.position = c(0.1,0.8), legend.justification = c(0,1)), nrow = 1, widths = c(0.49, 0.51))
+                                        scale_fill_discrete( 'Model') + 
+                                        theme(legend.position = c(0.05, 1), 
+                                              legend.background = element_blank(),
+                                              legend.justification = c(0,1)), nrow = 1, widths = c(0.49, 0.51))
 
-ggsave( error_plots, filename = 'figures/error_plots.png', width = 10, height = 5.5)
+ggsave( error_plots, filename = 'figures/error_plots.png', width = 7, height = 4)
 
-ggsave( error_plots_both_mods, filename = 'figures/appendix_compare_errors.png', width = 10, height = 5.5)
+ggsave( error_plots_both_mods, filename = 'figures/appendix_compare_errors.png', width = 7, height = 4)
 

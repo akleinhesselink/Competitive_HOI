@@ -3,6 +3,8 @@ rm(list = ls())
 library(deSolve)
 library(tidyverse)
 library(stringr)
+library(grid)
+
 source('code/plotting_functions.R')
 source('code/model_functions.R')
 
@@ -30,9 +32,10 @@ curves <-
   gather( species, uptake, starts_with('X')) %>% 
   mutate( species = factor(species, labels = species_labs))
 
-resource_curves <- resource_curves + journal_theme + theme(legend.position = c(0.8, 0.3)) + ylab('Resource uptake rate')
-
-ggsave(filename = 'figures/resource_uptake.png', resource_curves, height = 5.5, width = 6)
+resource_curves <- 
+  resource_curves + 
+  journal_theme + 
+  theme(legend.position = c(0.8, 0.3)) + ylab('Resource uptake rate')
 
 R_init <- 200 
 seeds_init <- c(1,1,1)
@@ -44,11 +47,24 @@ out <- ode(state, times = seq(1, 200, by = 0.01), func = grow, parms = parms,
 
 ts_plots <- plot_timeseries(out, sp_labs = c('Resource', '1', '2', '3'), mytheme = journal_theme + theme(legend.position = c(0.8, 0.5), axis.title = element_text(size = 24)))
 
-g1 <- ts_plots[[1]] + annotate(geom = 'text', 10, 220, label = 'A)', size = 5)
-g2 <- ts_plots[[2]] + annotate(geom = 'text', 10, 2, label = 'B)', size = 5)
+g1 <- 
+  ts_plots[[1]] + 
+  ggtitle("A)") + 
+  theme(plot.title = element_text(hjust = 0))
 
-g3 <- resource_curves + 
-  journal_theme  + 
+g2 <- 
+  ts_plots[[2]] + 
+  ggtitle("B)") + 
+  theme(plot.title = element_text(hjust = 0))
+  
+g3 <- 
+  resource_curves + 
+  geom_text( 
+    data = data.frame( x = 1, y = Inf, lab = 'C)'), 
+    aes( x = x, y = y, label = lab, color = NULL) , 
+    vjust = -1, size = 5, show.legend = F) + 
+  ylab('Resource\nuptake rate') + 
+  journal_theme + 
   theme(legend.position = 'top', 
         legend.direction = 'vertical', 
         axis.text = element_blank(),
@@ -56,9 +72,13 @@ g3 <- resource_curves +
         legend.title = element_text(size = 24), 
         legend.text = element_text(size = 20), 
         legend.key.size = unit(1.9, unit = 'lines'),
-        legend.margin = margin(1.5,1,1,1, unit = 'lines')) + 
-  ylab('Resource\nuptake rate') + 
-  annotate( geom = 'text', 10, 2.4, label = 'C)', size = 5)
+        legend.margin = margin(1.5,1,1,1, unit = 'lines'), 
+        plot.margin = margin(0.5, 0.5,0.5, 0.5, unit = 'lines'))
+
+
+g3 <- ggplot_gtable(ggplot_build(g3))
+g3$layout$clip[g3$layout$name == "panel"] <- "off"
+
 
 ts_plot <- 
   grid.arrange( 
@@ -66,7 +86,7 @@ ts_plot <-
   widths = c(1,1), 
   heights = c(1,1.2),
   layout_matrix = rbind( c(1,3), 
-                         c(2,3))
+                         c(2,3) )
   )
 
 ggsave( ts_plot, filename = 'figures/example_timeseries.png', height = 5, width = 7)
