@@ -346,20 +346,18 @@ n_comp2 <- grid.arrange(p1, p2, p3, nrow = 1, widths = c(0.32, 0.3, 0.3))
 ggsave(n_comp2, filename = 'figures/two_sp_comp_pw_line.png', width = 7, height = 4)
 
 # Plot average error in two species communities ---------------------------------------# 
-MSE_lab = expression( (MSE[multi] - MSE[single])/MSE[multi])
-
-MSE_plot_both_models <- 
+RMSE_plot_both_models <- 
   two_sp_df %>% 
   select( -time , -c(X2:X4), -lambda) %>%
   filter( (B1 == 0  & species == 'Y1') | (B2 == 0 & species == 'Y2') | (B3 == 0 & species == 'Y3') )  %>% 
   filter( n_comp > 0 ) %>% 
   group_by(species, mod_type, HOI) %>%
-  summarise( MSE = sqrt(mean( (pred_y - y)^2)) ) %>%
-  spread( HOI, MSE) %>% 
-  mutate( MSE_change = (`1` - `0`)  ) %>% 
+  summarise( RMSE = sqrt(mean( (pred_y - y)^2)) ) %>%
+  spread( HOI, RMSE) %>% 
+  mutate( RMSE_change = (`1` - `0`)  ) %>% 
   ungroup() %>% 
   mutate( species_lab = factor( species, labels = c('Early', 'Mid', 'Late'))) %>% 
-  ggplot( aes( x = species_lab, y = MSE_change, fill = mod_type)) + 
+  ggplot( aes( x = species_lab, y = RMSE_change, fill = mod_type)) + 
   geom_bar( stat = 'identity', position = 'dodge') +
   ylab( 'Increase in root mean squared error') + 
   xlab( 'Species') + 
@@ -370,10 +368,10 @@ MSE_plot_both_models <-
   ggtitle("A)") + 
   theme(plot.title = element_text(hjust = 0))
 
-MSE_plot_mod2 <- 
-  MSE_plot_both_models$data %>% 
+RMSE_plot_mod2 <- 
+  RMSE_plot_both_models$data %>% 
   filter( mod_type == 'm2') %>%  
-  ggplot( aes( x = species_lab, y = MSE_change, fill = species_lab)) + 
+  ggplot( aes( x = species_lab, y = RMSE_change, fill = species_lab)) + 
   geom_bar( stat = 'identity', position = 'dodge') +
   scale_fill_manual(values = my_colors[1:3]) + 
   ylab( 'Increase in root mean squared error') + 
@@ -383,7 +381,7 @@ MSE_plot_mod2 <-
   ggtitle("A)") + 
   theme(plot.title = element_text(hjust = 0))
 
-error_y_lab <- formula( Average~HOI~effect~(obs. - pred.))
+error_y_lab <- formula( Average~HOI~effect~(y[obs] - y[pred]))
 
 mean_error_plot_both_mods <- 
   two_sp_df %>% 
@@ -399,6 +397,7 @@ mean_error_plot_both_mods <-
   mutate( Model = factor(mod_type, labels = c('1', '2'))) %>% 
   ggplot( aes( x = species_lab, y = ME_change, fill = Model)) + 
   geom_bar( stat = 'identity', position = position_dodge()) +
+  geom_hline(aes(yintercept = 0)) + 
   scale_color_manual(values = my_colors[1:3])  + 
   ylab( error_y_lab) + 
   xlab( 'Species') + 
@@ -414,6 +413,7 @@ mean_error_plot_mod2 <-
   filter( mod_type == 'm2') %>%  
   ggplot( aes( x = species_lab, y = ME_change, fill = species_lab)) + 
   geom_bar( stat = 'identity', position = position_dodge()) +
+  geom_hline(aes(yintercept = 0)) + 
   scale_fill_manual(values = my_colors[1:3]) + 
   ylab( error_y_lab) + 
   xlab( 'Species') + 
