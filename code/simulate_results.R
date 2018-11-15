@@ -34,14 +34,15 @@ out <- out[seq( 1, nrow(out), by = 50), ]
 
 png('figures/example_timeseries.png', width = 8, height = 6, units = 'in', res = 600)
 
+
 tckmark <- -0.02
 par(mfrow = c(2, 2), xpd = F, 
     mai = c(0.6, 1, 0.5, 0.2), 
     mgp = c(1.5,0.2,0),  
-    cex = 1.25) 
+    cex = 1.25, cex.lab = 1.2) 
 
 plot( out[, 2], type = 'l', lwd = 3, 
-      xlab = '', 
+      xlab = 'Time (d)', 
       ylab = 'Resource (g)', axes = F, 
       xlim = c(0, 275))
 axis(side = 1, at = c(0, 100, 200, 300, 400), tck = tckmark )
@@ -82,7 +83,8 @@ r_u <- data.frame( R = plot_R )  %>%
           u2 = f( R, parms$r[2], parms$K[2]), 
           u3 = f( R, parms$r[3], parms$K[3]))
 
-par(mai = c(0.8, 0.7, 0.1, 0.5))
+par(mai = c(0.8, 0.7, 0.1, 0.5), 
+    mgp = c(1, 0.2, 0))
 
 labelsY=parse(text=paste("Uptake~Rate~", "~'('*g~d^-1*')'", sep=""))
 

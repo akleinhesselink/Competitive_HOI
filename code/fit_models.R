@@ -183,41 +183,55 @@ pw_comp_df <-
 
 pw_comp_pred_gg <- 
   pw_comp_df %>% 
+  mutate( `Best Fit` = factor(Model, labels = c('model 1', 'model 2'))) %>% 
   filter( n_comp == 0 | density > 0) %>% 
   filter( density < 15) %>% 
-  ggplot( aes( x = density, y = y, color = Competitor, linetype = Model)) + 
-  geom_point() + 
-  geom_line(aes( y = pred ), alpha = 0.5) + 
+  ggplot( aes( x = density, y = y, 
+               color = Competitor,
+               shape = Competitor)) + 
+  geom_point(size = 3) + 
+  geom_line(aes( y = pred, linetype = `Best Fit` )) + 
   facet_grid(~species_lab) + 
-  scale_color_manual(values = my_colors[1:3]) +
+  scale_color_manual(values = my_colors[1:3], 
+                     name = 'Competitor') +
+  scale_shape_manual(values = c(19,17,15), 
+                     name = 'Competitor') +  
   ylab( 'Per Capita Fecundity') + 
   xlab( 'Competitor Density') + 
   my_theme + 
   journal_theme + 
-  guides(color = guide_legend(order = 1)) + 
+  guides(color = guide_legend(order = 1, override.aes = list(linetype = 0)), 
+         shape = guide_legend(order = 1, override.aes = list(linetype = 0)), 
+         linetype = guide_legend(order = 2)) + 
   theme( strip.text = element_text(hjust = 0.1), 
          legend.background = element_rect(fill = NA), 
          legend.key = element_rect(fill = NA), 
-         legend.title.align = c(0.5))
+         legend.title.align = c(0.5), 
+         legend.key.width = unit(2, 'line'))
 
 pw_comp_pred_gg2 <- 
   pw_comp_df %>% 
+  mutate( `Best Fit` = factor(Model, labels = c('Model 1', 'Model 2'))) %>% 
   filter( n_comp == 0 | density > 0) %>% 
   filter( density < 15, Model == 2) %>% 
-  ggplot( aes( x = density, y = y, color = Competitor)) + 
-  geom_point() + 
-  geom_line(aes( y = pred ), alpha = 0.5) + 
+  ggplot( aes( x = density, y = y, shape = Competitor, color = Competitor)) + 
+  geom_point(size = 3) + 
+  geom_line(aes( y = pred, linetype = `Best Fit` )) + 
   facet_grid(~species_lab) + 
-  scale_color_manual(values = my_colors[1:3]) +
+  scale_color_manual(values = my_colors[1:3], name = 'Competitor') +
+  scale_shape_discrete(name = 'Competitor') + 
   ylab( 'Per Capita Fecundity') + 
   xlab( 'Competitor Density') + 
   my_theme + 
   journal_theme + 
-  guides(color = guide_legend(order = 1)) + 
+  guides(shape = guide_legend(order = 1), 
+         color = guide_legend(order = 1, 
+                              override.aes = list(linetype = 0))) + 
   theme( strip.text = element_text(hjust = 0.1), 
          legend.background = element_rect(fill = NA), 
          legend.key = element_rect(fill = NA), 
-         legend.title.align = c(0.5))
+         legend.title.align = c(0.5), 
+         legend.key.width = unit(2, 'line'))
 
 pw_comp_pred_gg <- 
   pw_comp_pred_gg + 
@@ -225,9 +239,7 @@ pw_comp_pred_gg <-
 
 pw_comp_pred_gg2 <- 
   pw_comp_pred_gg2 + 
-  scale_x_continuous(breaks = c(0,4,8)) + 
-  theme( legend.justification = c(0,1), 
-         legend.position = c(0.1, 1)) 
+  scale_x_continuous(breaks = c(0,4,8)) 
 
 ggsave(pw_comp_pred_gg, filename = 'figures/appendix_pairwise_comp_with_line.png', width = 7, height = 4)
 
@@ -263,20 +275,25 @@ p1 <-
   mutate( lambda_plot  = ifelse (y == lambda, T, F)) %>% 
   filter( species == 'Y1' , B1 == 0 ) %>% 
   filter( B3 %in% c(0, 2, 8)) %>% 
-  ggplot( aes( x = B2, y = y, color = factor(B3) )) + 
-  geom_point(size = 2) + 
+  ggplot( aes( x = B2, y = y, color = factor(B3), shape = factor(B3) )) + 
+  geom_point(size = 3) + 
   geom_line(aes( y = pred_y)) + 
   scale_x_continuous(breaks = c(0,4,8)) + 
   scale_color_manual(values = c('black', 'orange', 'red')) + 
+  scale_shape_manual(values = c(1, 0, 2)) + 
   xlab('Density of\nMid Species') + 
   ylab( 'Per Capita Fecundity') + 
   facet_wrap(~ species_lab) + 
   my_theme + 
   journal_theme + 
-  theme( legend.title = element_blank()) + 
-  theme(legend.position = c(0.7, 0.8), 
+  theme( legend.title = element_blank(), 
+         legend.position = c(0.7, 0.8), 
         strip.text = element_text(hjust = 0.1)) + 
+  guides( 
+    color = guide_legend(order = 1, override.aes = list(linetype = 0)), 
+    shape = guide_legend(order = 1, override.aes = list(linetype = 0))) +
   annotate(geom = 'text', x = 8, y = 55, label = 'Density of\nLate Species', size = 5, hjust = 1)
+
 
 p2 <- 
   two_sp_df %>% 
@@ -285,11 +302,12 @@ p2 <-
   mutate( lambda_plot  = ifelse (y == lambda, T, F)) %>% 
   filter( species == 'Y2' , B2 == 0 ) %>% 
   filter( B3 %in% c(0, 2, 8)) %>% 
-  ggplot( aes( x = B1, y = y, color = factor(B3) ) ) + 
-  geom_point(size = 2) + 
+  ggplot( aes( x = B1, y = y, color = factor(B3), shape = factor(B3)) ) + 
+  geom_point(size = 3) + 
   geom_line(aes( y = pred_y )) + 
   scale_x_continuous(breaks = c(0,4,8)) + 
   scale_color_manual(values = c('black', 'orange', 'red')) + 
+  scale_shape_manual(values = c(1, 0, 2)) + 
   xlab('Density of\nEarly Species') + 
   ylab( 'Fecundity') + 
   facet_wrap(~ species_lab) + 
@@ -297,7 +315,11 @@ p2 <-
   theme(legend.title = element_blank(), 
         legend.position = c(0.7, 0.8), 
         strip.text = element_text(hjust = 0.1)) + 
+  guides( 
+    color = guide_legend(order = 1, override.aes = list(linetype = 0)), 
+    shape = guide_legend(order = 1, override.aes = list(linetype = 0))) +
   annotate(geom = 'text', x = 8, y = 76, label = 'Density of\nLate Species', size = 5, hjust = 1)
+
 
 p3 <- 
   two_sp_df %>% 
@@ -306,11 +328,12 @@ p3 <-
   mutate( lambda_plot  = ifelse (y == lambda, T, F)) %>% 
   filter( species == 'Y3' , B3 == 0 ) %>% 
   filter( B2 %in% c(0, 2, 8)) %>% 
-  ggplot( aes( x = B1, y = y, color = factor(B2) ) ) + 
-  geom_point(size = 2) + 
+  ggplot( aes( x = B1, y = y, color = factor(B2), shape = factor(B2) ) ) + 
+  geom_point(size = 3) + 
   geom_line(aes( y = pred_y)) + 
   scale_x_continuous(breaks = c(0,4,8)) + 
   scale_color_manual(values = c('black', 'orange', 'red')) + 
+  scale_shape_manual(values = c(1, 0, 2)) + 
   xlab('Density of\nEarly Species') + 
   ylab( 'Fecundity') + 
   facet_wrap(~ species_lab) + 
@@ -319,7 +342,11 @@ p3 <-
   theme( legend.title = element_blank()) + 
   theme(legend.position = c(0.7, 0.8), 
         strip.text = element_text(hjust = 0.1)) + 
+  guides( 
+    color = guide_legend(order = 1, override.aes = list(linetype = 0)), 
+    shape = guide_legend(order = 1, override.aes = list(linetype = 0))) +
   annotate(geom = 'text', x = 8, y = 100, label = 'Density of\nMid Species', size = 5, hjust = 1)
+
 
 temp_legend_theme <- 
   theme(legend.background = element_blank(), 
@@ -341,9 +368,15 @@ p3 <-
   temp_legend_theme + 
   theme(axis.title.y = element_blank())
 
-n_comp2 <- grid.arrange(p1, p2, p3, nrow = 1, widths = c(0.32, 0.3, 0.3))
 
-ggsave(n_comp2, filename = 'figures/two_sp_comp_pw_line.png', width = 7, height = 4)
+n_comp2 <- grid.arrange(p1, p2, p3, 
+                        nrow = 1, 
+                        widths = c(0.32, 0.3, 0.3))
+
+ggsave(n_comp2, 
+       filename = 'figures/two_sp_comp_pw_line.png', 
+       width = 7, 
+       height = 4)
 
 # Plot average error in two species communities ---------------------------------------# 
 RMSE_plot_both_models <- 
@@ -359,7 +392,7 @@ RMSE_plot_both_models <-
   mutate( species_lab = factor( species, labels = c('Early', 'Mid', 'Late'))) %>% 
   ggplot( aes( x = species_lab, y = RMSE_change, fill = mod_type)) + 
   geom_bar( stat = 'identity', position = 'dodge') +
-  ylab( 'Increase in root mean squared error') + 
+  ylab( 'Increase in RMSE') + 
   xlab( 'Species') + 
   my_theme + 
   journal_theme + 
@@ -374,7 +407,7 @@ RMSE_plot_mod2 <-
   ggplot( aes( x = species_lab, y = RMSE_change, fill = species_lab)) + 
   geom_bar( stat = 'identity', position = 'dodge') +
   scale_fill_manual(values = my_colors[1:3]) + 
-  ylab( 'Increase in root mean squared error') + 
+  ylab( 'Increase in RMSE') + 
   xlab( 'Species') + 
   guides(fill = F) + 
   journal_theme + 
@@ -422,9 +455,9 @@ mean_error_plot_mod2 <-
   ggtitle("B)") + 
   theme(plot.title = element_text(hjust = 0))
 
-error_plots <- grid.arrange(MSE_plot_mod2, mean_error_plot_mod2, nrow = 1, widths = c(0.49, 0.51))
+error_plots <- grid.arrange(RMSE_plot_mod2, mean_error_plot_mod2, nrow = 1, widths = c(0.49, 0.51))
 
-error_plots_both_mods <- grid.arrange(MSE_plot_both_models + 
+error_plots_both_mods <- grid.arrange(RMSE_plot_both_models + 
                                         guides( fill = F), 
                                       mean_error_plot_both_mods + 
                                         scale_fill_discrete( 'Model') + 

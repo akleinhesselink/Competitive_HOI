@@ -50,8 +50,6 @@ df <-
   mutate( species = factor(species, levels = c('Mid', 'Late'), ordered = T))
 
 
-df %>% mutate( row_number() %% 4)
-
 gg1 <- 
   df %>% 
   arrange( species, type, t ) %>% 
@@ -65,10 +63,8 @@ gg1 <-
   xlab( 'Time (d)') + 
   ylab( 'Resource Uptake Rate') + 
   scale_color_manual(values = my_colors[2:3], 'Species') + 
-  scale_linetype_manual(values = c(1,2), '')
-
-ylims <- ggplot_build(gg1)$layout$panel_ranges[[1]]$y.range
-xlims <- ggplot_build(gg1)$layout$panel_ranges[[1]]$x.range
+  scale_linetype_manual(values = c(1,2), '') + 
+  theme(legend.key.width = unit(2, 'line'))
 
 gg1 <- 
   gg1 + 
@@ -85,23 +81,34 @@ gg2 <-
   filter( comp ) %>% 
   group_by( species, type) %>%
   summarise( avg_rate = mean(rate, na.rm = T)) %>% 
-  ggplot( aes( x = type, y = avg_rate, color = species, shape = type)) + 
+  mutate( type_label = factor( type, label = c('Early\nAbsent','Early\nPresent') )) %>% 
+  ggplot( aes( x = type_label, y = avg_rate, color = species, shape = type_label)) + 
   geom_point( size = 3) + 
   ylab( 'Avg. Resource Uptake Rate') + 
-  xlab( '') + 
   scale_color_manual(values = my_colors[2:3], 'Species') + 
   scale_shape_manual(values = c(19, 1)) + 
   journal_theme + 
   ylim( ylims ) + 
-  theme( axis.text.y = element_blank(), axis.title.x = element_text(size = 14)) + 
+  theme( axis.text.y = element_blank(), 
+         axis.title.x = element_blank(), 
+         axis.text.x = element_text(size = 14)) + 
   guides(color = F, shape = F) 
-
 
 gg2 <- 
   gg2 + 
+  geom_line( aes( group = species)) + 
   ggtitle("B)") + 
-  theme(plot.title = element_text(hjust = 0))
+  theme(plot.title = element_text(hjust = 0))  + 
   ylim(ylims)
+
+gg2 <- 
+  gg2 + 
+  annotate(geom = 'text', 
+           x = c(2.2,2.2), y = c(0.061,0.045), 
+           label = c('Late', 'Mid'), 
+           color = my_colors[c(3,2)], 
+           size = 5) 
+
 
 activity_bars <- 
   df %>% 
@@ -119,15 +126,19 @@ gg1 <-
             xend = activity_bars$xend, 
             yend = activity_bars$yend, 
             linetype = c(1,2),
-            color = 'black', alpha = 0.5) + 
+            color = 'black', alpha = 0.8) + 
   annotate( geom = 'text', 
             activity_bars$x[1] + 1, 
-            activity_bars$yend[1] + 0.003, label = paste('Day',round(activity_bars$x[1])), alpha = 0.5) + 
+            activity_bars$yend[1] + 0.003, label = paste('Day',round(activity_bars$x[1])), alpha = 1, size = 4) + 
   annotate( geom = 'text', 
             activity_bars$x[2] - 1, 
-            activity_bars$yend[2] + 0.003, label = paste('Day',round(activity_bars$x[2])), alpha = 0.5)
+            activity_bars$yend[2] + 0.003, label = paste('Day',round(activity_bars$x[2])), alpha = 1, size = 4)
 
-gg_both <- grid.arrange(gg1, gg2 + geom_line( aes( group = species)), nrow = 1, widths = c(0.6, 0.4))
+gg_both <- 
+  grid.arrange(gg1, 
+               gg2, 
+               nrow = 1, 
+               widths = c(0.6, 0.4))
 
 ggsave( 'figures/mechanism_of_HOI.png', 
         gg_both, 
