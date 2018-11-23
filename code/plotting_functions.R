@@ -15,13 +15,16 @@ journal_theme <-
   my_theme + 
   theme(  strip.background = element_blank(),
           strip.text = element_text(size = 15),
-          axis.text = element_text( size = 12), 
-          axis.title = element_text( size = 15), 
+          axis.text = element_text( size = 12, color = 'black'), 
+          axis.title = element_text( size = 15, color = 'black'), 
           legend.text = element_text( size = 12), 
-          legend.title = element_text(size = 15)) 
+          legend.title = element_text(size = 15), 
+          axis.line = element_line(color = 'black'), 
+          axis.ticks = element_line(color = 'black')) 
 
 # colors and labels ----------------------------
 my_colors <- c(1,2,4,5)
+my_lntps <- c(1,3,2)
 
 species_labs <- c('Early', 'Mid', 'Late')
 
@@ -41,17 +44,19 @@ plot_timeseries <- function(out, sp_labs = c('Resource', '1','2'), mytheme, fnam
     
   resource_plot <- 
     ggplot( temp %>% filter( species == 'Resource'), aes( x = time, y = val )) + 
-    geom_line() + 
+    geom_line(size = 1.2) + 
     ylab( 'Resource') + 
     mytheme + 
     theme(axis.title.x = element_blank(), axis.text.y = element_blank(), axis.text = element_blank()) 
   
   biomass_plot  <- 
-    ggplot( temp %>% filter( species != 'Resource'), aes( x = time, y = val, color = species)) + 
-    geom_line() + 
+    ggplot( temp %>% filter( species != 'Resource'), 
+            aes( x = time, y = val, color = species, linetype = species)) + 
+    geom_line(size = 1.2) + 
     ylab( 'Biomass') + 
     xlab( 'Day of Year') + 
     scale_color_manual(values = my_colors, guide = F) + 
+    scale_linetype_manual(values = my_lntps, guide = F) + 
     mytheme +
     theme(legend.position = c(0.85, 0.5), 
           legend.background = element_rect(colour = 1, size = 0.2), 
@@ -77,13 +82,15 @@ plot_resource_uptake <- function(parms, R = 0:500, spec_labs = c('1','2')){
   
 
   curves %>% 
-    ggplot(aes( x = R, y = uptake, color = species )) + 
-    geom_line() +
+    ggplot(aes( x = R, y = uptake, color = species , linetype = species)) + 
+    geom_line(size = 1.2) +
     my_theme +
     ylab( 'Resource uptake rate \n per g per day') + 
     xlab( 'Resource') + 
-    scale_color_manual(values = my_colors, 'Species') + 
-    theme(legend.position = c(0.75, 0.25), legend.background = element_rect(color = 1, size = 0.25))
+    scale_color_manual(values = my_colors, 'Species') +
+    scale_linetype_manual(values = my_lntps, 'Species') + 
+    theme(legend.position = c(0.75, 0.25), 
+          legend.background = element_rect(color = 1, size = 0.25))
   
 }
 

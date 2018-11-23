@@ -196,6 +196,7 @@ pw_comp_pred_gg <-
                      name = 'Competitor') +
   scale_shape_manual(values = c(19,17,15), 
                      name = 'Competitor') +  
+  scale_linetype_discrete(name = 'Best Fit') + 
   ylab( 'Per Capita Fecundity') + 
   xlab( 'Competitor Density') + 
   my_theme + 
@@ -220,6 +221,7 @@ pw_comp_pred_gg2 <-
   facet_grid(~species_lab) + 
   scale_color_manual(values = my_colors[1:3], name = 'Competitor') +
   scale_shape_discrete(name = 'Competitor') + 
+  scale_linetype_discrete(name = 'Best Fit') + 
   ylab( 'Per Capita Fecundity') + 
   xlab( 'Competitor Density') + 
   my_theme + 
@@ -377,6 +379,9 @@ ggsave(n_comp2,
        filename = 'figures/two_sp_comp_pw_line.png', 
        width = 7, 
        height = 4)
+
+
+
 
 # Plot average error in two species communities ---------------------------------------# 
 RMSE_plot_both_models <- 
