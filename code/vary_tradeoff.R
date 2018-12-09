@@ -1,10 +1,16 @@
+#
+# Run simulations for Appendix A 
+# 
+
 rm(list = ls())
 
 library(deSolve)
 library(tidyverse)
 library(stringr)
-source('code/model_functions.R')
-source('code/plotting_functions.R')
+library(gridExtra)
+
+source('code/simulation_functions.R')
+source('code/plotting_parameters.R')
 
 # new functions to adjust the parameters controlling resource uptake 
 trade_off <- function(r, int = -81.8, m1 = 23.190, m2 = 7.619){ 
@@ -21,13 +27,12 @@ get_r <- function(step, midpoint = 2.6, upperstepsize = 0.32, lowerstepsize  = 0
 
 # ---------- load original parameters ------------------- # 
 
-load('data/parms.rda')
+load('output/parms.rda')
 
 r <- c(2.1, 2.6, 4.2)   # max uptake rates mm of water per g of plant per day
 K <- c(0.5, 30, 150)    # resource half-saturation constant, soil moisture in mm water per 500 mm soil when plant growth is half max  
 
 resource_curves <- my_result <- list ()
-
 
 for( k in 1:5 ) { 
   # parameterize model --------------------------------------------------------------------------------------------------- 
@@ -54,25 +59,8 @@ for( k in 1:5 ) {
     filter( uptake > 0 ) %>% 
     mutate( species = factor(species, labels = species_labs))
   
-  
   resource_curves[[k]] <- curves 
-  #resource_curves[[k]] <- plot_resource_uptake(parms, spec_labs = species_labs, R = seq(0, 200, by = 0.01))
-  
 
-  # curves <- data.frame(R = R,  mapply(x = as.list(parms$r), y = as.list(parms$K), FUN = function(x, y) { f(R = R, x, y) }) )
-  # 
-  # curves <- 
-  #   curves %>% 
-  #   gather( species, uptake, starts_with('X')) %>% 
-  #   mutate( species = factor(species, labels = species_labs))
-  # 
-  # resource_curves[[k]] <- 
-  #   resource_curves[[k]] + 
-  #   journal_theme + 
-  #   theme(legend.position = c(0.8, 0.3)) + 
-  #   ylab('Resource uptake rate')
-  # 
-  
   seeds_init <- c(1,1,1)
   
   state <- c( parms$R0, NA, NA, NA)
@@ -385,7 +373,7 @@ gg_curves <-
 error_plots <- grid.arrange(grobs = list(gg_curves, MSE_plot, mean_error_plot), 
                      layout_matrix = rbind(c(1,1), c(2,3)), heights = c(0.4, 0.6))
 
-ggsave( error_plots, filename = 'figures/error_plots_with_trade_off.png', width = 8.5, height = 8)
+ggsave( error_plots, filename = 'figures/figure_A1.png', width = 8.5, height = 8)
 
 
 # write table with parameters for Appendix ------------- # 

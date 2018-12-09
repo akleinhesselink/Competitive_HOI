@@ -1,16 +1,18 @@
 #
-# generate figure 5 in main text -----------------------------------------# 
+# generate figure 6 in main text -----------------------------------------# 
 # 
 rm(list = ls())
 
 library(deSolve)
 library(tidyverse)
 library(stringr)
-source('code/plotting_functions.R')
-source('code/model_functions.R')
+library(gridExtra)
+
+source('code/plotting_parameters.R')
+source('code/simulation_functions.R')
 
 # load parameters --------------------------------- # 
-load('data/parms.rda')
+load('output/parms.rda')
 
 # run simulation for mid species effect on late season species---------- # 
 R0 <- parms$R0 
@@ -73,10 +75,6 @@ df <-
   gather( species, rate, c(Mid, Late))  %>% 
   mutate( species = factor(species, levels = c('Mid', 'Late'), ordered = T))
 
-df %>% 
-  group_by( species, type ) %>% 
-  summarise(min(rate, na.rm = T))
-
 gg1 <- 
   df %>% 
   arrange( species, type, t ) %>% 
@@ -124,8 +122,7 @@ gg2 <-
   gg2 + 
   geom_line( aes( group = species)) + 
   ggtitle("B)") + 
-  theme(plot.title = element_text(hjust = 0))  + 
-  ylim(ylims)
+  theme(plot.title = element_text(hjust = 0))  
 
 gg2 <- 
   gg2 + 
@@ -160,15 +157,13 @@ gg1_notes <-
             activity_bars$x[2] - 5, 
             activity_bars$yend[2] + 0.003, label = paste('Day',round(activity_bars$x[2])), alpha = 1, size = 4)
 
-gg1_notes
-
 gg_both <- 
   grid.arrange(gg1_notes, 
                gg2, 
                nrow = 1, 
                widths = c(0.6, 0.4))
 
-ggsave( 'figures/mechanism_of_HOI.png', 
+ggsave( 'figures/figure_6.png', 
         gg_both, 
         height = 4, width = 7 )  
 

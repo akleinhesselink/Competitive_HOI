@@ -4,10 +4,18 @@ library( tidyverse )
 library( stringr )
 library( deSolve )
 library( grid ) 
+library( gridExtra )
 
-source('code/make_figure_one.R')
-source('code/simulate_results.R')
+if(!dir.exists(paths = 'figures/')){ 
+  dir.create('figures/')
+}
+if(!dir.exists(paths = 'output/')){
+  dir.create('output/')
+}
+
+source('code/make_figure_two.R')
+source('code/run_simulations.R')
 source('code/fit_models.R')
-source('code/generate_mechanism_figure.R')
-source('code/change_trade_off.R')
+source('code/make_mechanism_figure.R')
+source('code/vary_tradeoff.R')
 

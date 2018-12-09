@@ -1,11 +1,8 @@
 rm(list = ls())
 
 library(deSolve)
-library(tidyverse)
-library(stringr)
-library(grid)
 
-source('code/model_functions.R')
+source('code/simulation_functions.R')
 
 # parameterize model --------------------------------------------------------------------------------------------------- 
 U <- 200                  # length of simulation in days 
@@ -27,7 +24,7 @@ parms <- list( r = r,
                #R = R, 
                U = U)
 
-save(parms,file = 'data/parms.rda')
+save(parms, file = 'output/parms.rda')
 
 # Run response surface experiments --------------------------- # 
 
@@ -64,6 +61,6 @@ for( i in 1:nrow(B_init)){
 sim_results <- do.call( rbind, lapply( out, function(x) apply( x, 2, max )))
 sim_results <- data.frame(B_init, sim_results )
 
-save(sim_results, file = 'data/sim_results.rda')
+save(sim_results, file = 'output/sim_results.rda')
 
 

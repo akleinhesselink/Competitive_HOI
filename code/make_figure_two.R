@@ -1,12 +1,9 @@
 rm(list = ls())
 
 library(deSolve)
-library(tidyverse)
-library(stringr)
-library(grid)
 
-source('code/plotting_functions.R')
-source('code/model_functions.R')
+source('code/plotting_parameters.R')
+source('code/simulation_functions.R')
 
 load('data/parms.rda')
 
@@ -27,7 +24,7 @@ out <- ode(state,
 out <- out[seq( 1, nrow(out), by = 50), ]
 
 ## Generate Figure 1 --------------------------------------- # 
-png('figures/example_timeseries.png', 
+png('figures/figure_2.png', 
     width = 8, 
     height = 6, 
     units = 'in', 

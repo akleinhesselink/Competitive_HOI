@@ -1,8 +1,4 @@
 library(tidyverse)
-library(deSolve)
-library(stringr)
-library(gridExtra)
-library(scales)
 
 # ggplot themes ------------------------------------------------ # 
 

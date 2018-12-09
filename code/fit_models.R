@@ -3,10 +3,13 @@ rm(list = ls())
 library(deSolve)
 library(tidyverse)
 library(stringr)
-source('code/plotting_functions.R')
+library(gridExtra)
 
-load( 'data/sim_results.rda')
-load( 'data/parms.rda')
+source('code/plotting_parameters.R')
+source('code/simulation_functions.R')
+
+load( 'output/sim_results.rda')
+load( 'output/parms.rda')
 
 # convert biomass results into final seed production per plant 
 sim_results <- 
@@ -231,13 +234,13 @@ pw_comp_pred_gg2 <-
 
 
 ggsave(pw_comp_pred_gg2, 
-       filename = 'figures/pairwise_comp_with_line.png', 
+       filename = 'figures/figure_3.png', 
        width = 7, 
        height = 4)
 
 
 ggsave(pw_comp_pred_gg, 
-       filename = 'figures/appendix_pairwise_comp_with_line.png', 
+       filename = 'figures/figure_S1.png', 
        width = 7, 
        height = 4)
 
@@ -367,7 +370,7 @@ n_comp2 <- grid.arrange(p1, p2, p3,
                         top = textGrob('Focal Species', gp = gpar(fontsize = 16)))
 
 ggsave(n_comp2, 
-       filename = 'figures/two_sp_comp_pw_line.png', 
+       filename = 'figures/figure_4.png', 
        width = 7.5, 
        height = 4.5)
 
@@ -461,12 +464,12 @@ error_plots_both_mods <-
                widths = c(0.49, 0.51))
 
 ggsave( error_plots, 
-        filename = 'figures/error_plots.png', 
+        filename = 'figures/figure_5.png', 
         width = 7, 
         height = 4)
 
 ggsave( error_plots_both_mods, 
-        filename = 'figures/appendix_compare_errors.png', 
+        filename = 'figures/figure_S2.png', 
         width = 7, 
         height = 4)
 
