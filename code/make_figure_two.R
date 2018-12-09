@@ -5,7 +5,7 @@ library(deSolve)
 source('code/plotting_parameters.R')
 source('code/simulation_functions.R')
 
-load('data/parms.rda')
+load('output/parms.rda')
 
 R0 <- parms$R0
 seeds_init <- c(1,1,1)

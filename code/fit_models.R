@@ -4,6 +4,7 @@ library(deSolve)
 library(tidyverse)
 library(stringr)
 library(gridExtra)
+library(grid)
 
 source('code/plotting_parameters.R')
 source('code/simulation_functions.R')
