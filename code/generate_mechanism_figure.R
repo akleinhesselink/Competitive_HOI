@@ -1,3 +1,6 @@
+#
+# generate figure 5 in main text -----------------------------------------# 
+# 
 rm(list = ls())
 
 library(deSolve)
@@ -24,7 +27,11 @@ g3 <- parms$q*f(R, parms$r[3], parms$K[3]) - parms$m
 g2[ g2 < 0 ] <- NA
 g3[ g3 < 0 ] <- NA
 
-df1 <- data.frame( t = out[out[,1] < tlim, 1], R = R, Mid = g2, Late = g3, type = 'Early Absent') 
+df1 <- data.frame( t = out[out[,1] < tlim, 1], 
+                   R = R, 
+                   Mid = g2, 
+                   Late = g3, 
+                   type = 'Early Absent') 
 
 # run simulation with early season species present ---------- # 
 
@@ -34,13 +41,19 @@ state <- c(R_init, seeds_init)
 out <- ode(state, times = seq(0, 200, by = 0.001), func = grow, parms = parms, 
            rootfun = root, event = list(func = event, root = T))
 
+# organize data for plotting --------------------------------- #
+
 R <- out[out[,1] < tlim, 2]
 g2 <- parms$q*f(R, parms$r[2], parms$K[2]) - parms$m
 g3 <- parms$q*f(R, parms$r[3], parms$K[3]) - parms$m
 g2[ g2 < 0 ] <- NA
 g3[ g3 < 0 ] <- NA
 
-df2 <- data.frame( t = out[out[,1] < tlim, 1], R = R, Mid = g2, Late = g3, type = 'Early Present') 
+df2 <- data.frame( t = out[out[,1] < tlim, 1], 
+                   R = R, 
+                   Mid = g2, 
+                   Late = g3, 
+                   type = 'Early Present') 
 
 df <- 
   rbind( df1, df2) %>% 
@@ -56,15 +69,14 @@ gg1 <-
   filter( row_number() %% 10 == 0 ) %>% 
   ggplot( aes( x = t, y = rate, color = species, linetype = type)) +
   geom_line() + 
-  my_theme + 
-  journal_theme + 
-  theme( axis.text.y = element_blank(), 
-         legend.position = c(0.25, 0.4)) + 
   xlab( 'Time (d)') + 
   ylab( 'Resource Uptake Rate') + 
   scale_color_manual(values = my_colors[2:3], 'Species') + 
   scale_linetype_manual(values = c(1,2), '') + 
-  theme(legend.key.width = unit(2, 'line'))
+  journal_theme + 
+  theme( axis.text.y = element_blank(), 
+         legend.position = c(0.25, 0.4), 
+         legend.key.width = unit(2, 'line'))
 
 gg1 <- 
   gg1 + 
@@ -87,12 +99,12 @@ gg2 <-
   ylab( 'Avg. Resource Uptake Rate') + 
   scale_color_manual(values = my_colors[2:3], 'Species') + 
   scale_shape_manual(values = c(19, 1)) + 
-  journal_theme + 
   ylim( ylims ) + 
+  guides(color = F, shape = F) + 
+  journal_theme + 
   theme( axis.text.y = element_blank(), 
          axis.title.x = element_blank(), 
-         axis.text.x = element_text(size = 14)) + 
-  guides(color = F, shape = F) 
+         axis.text.x = element_text(size = 14)) 
 
 gg2 <- 
   gg2 + 
