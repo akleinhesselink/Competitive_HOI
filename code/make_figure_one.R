@@ -10,14 +10,18 @@ source('code/model_functions.R')
 
 load('data/parms.rda')
 
-R_init <- 200 
+R0 <- parms$R0
 seeds_init <- c(1,1,1)
 
-seedling_mass <- parms$seedling_mass
+B0 <- seeds_init*parms$seed_mass
 
-state <- c( R_init, seeds_init[1]*seedling_mass, seeds_init[2]*seedling_mass, seeds_init[3]*seedling_mass)
+state <- c( R0, 
+            B0)
 
-out <- ode(state, times = seq(1, 200, by = 0.01), func = grow, parms = parms, 
+out <- ode(state, 
+           times = seq(1, parms$U, by = 0.01), 
+           func = grow, 
+           parms = parms, 
            rootfun = root, event = list(func = event, root = T))
 
 out <- out[seq( 1, nrow(out), by = 50), ]

@@ -13,14 +13,20 @@ source('code/model_functions.R')
 load('data/parms.rda')
 
 # run simulation for mid species effect on late season species---------- # 
-R_init <- 200 
-seeds_init <- c(0,1,1)
-state <- c(R_init, seeds_init)
+R0 <- parms$R0 
 
-out <- ode(state, times = seq(0, 200, by = 0.001), func = grow, parms = parms, 
+seeds_init <- c(0,5,5)
+B0 <- seeds_init*parms$seed_mass
+
+state <- c(R0, B0)
+
+out <- ode(state,
+           times = seq(0, parms$U, by = 0.001), 
+           func = grow, 
+           parms = parms, 
            rootfun = root, event = list(func = event, root = T))
 
-tlim <- 27
+tlim <- 85
 R <- out[out[,1] < tlim, 2]
 g2 <- parms$q*f(R, parms$r[2], parms$K[2]) - parms$m
 g3 <- parms$q*f(R, parms$r[3], parms$K[3]) - parms$m
@@ -35,10 +41,15 @@ df1 <- data.frame( t = out[out[,1] < tlim, 1],
 
 # run simulation with early season species present ---------- # 
 
-R_init <- 200 
-seeds_init <- c(1,1,1)
-state <- c(R_init, seeds_init)
-out <- ode(state, times = seq(0, 200, by = 0.001), func = grow, parms = parms, 
+seeds_init <- c(5,5,5)
+B0 <- seeds_init*parms$seed_mass
+
+state <- c(R0, B0)
+
+out <- ode(state, 
+           times = seq(0, 200, by = 0.001), 
+           func = grow, 
+           parms = parms, 
            rootfun = root, event = list(func = event, root = T))
 
 # organize data for plotting --------------------------------- #
@@ -62,11 +73,14 @@ df <-
   gather( species, rate, c(Mid, Late))  %>% 
   mutate( species = factor(species, levels = c('Mid', 'Late'), ordered = T))
 
+df %>% 
+  group_by( species, type ) %>% 
+  summarise(min(rate, na.rm = T))
 
 gg1 <- 
   df %>% 
   arrange( species, type, t ) %>% 
-  filter( row_number() %% 10 == 0 ) %>% 
+  filter( row_number() %% 100 == 0 | rate < 0.0001 ) %>% 
   ggplot( aes( x = t, y = rate, color = species, linetype = type)) +
   geom_line() + 
   xlab( 'Time (d)') + 
@@ -89,7 +103,7 @@ ylims <- ggplot_build(gg1)$layout$panel_scales_y[[1]]$range$range
 gg2 <- 
   df %>% 
   arrange( species, type, t ) %>% 
-  filter( row_number() %% 10 == 0 ) %>% 
+  filter( row_number() %% 100 == 0 ) %>% 
   filter( comp ) %>% 
   group_by( species, type) %>%
   summarise( avg_rate = mean(rate, na.rm = T)) %>% 
@@ -116,11 +130,11 @@ gg2 <-
 gg2 <- 
   gg2 + 
   annotate(geom = 'text', 
-           x = c(2.2,2.2), y = c(0.061,0.045), 
-           label = c('Late', 'Mid'), 
-           color = my_colors[c(3,2)], 
+           x = c(0.9,0.9), 
+           y = c(0.065,0.052), 
+           label = c('Mid', 'Late'), 
+           color = my_colors[c(2,3)], 
            size = 5) 
-
 
 activity_bars <- 
   df %>% 
@@ -130,7 +144,7 @@ activity_bars <-
   mutate( x = xend , y = 0) %>% 
   filter( species == 'Mid')
 
-gg1 <- 
+gg1_notes <- 
   gg1 + 
   annotate( geom = 'segment', 
             activity_bars$x, 
@@ -140,14 +154,16 @@ gg1 <-
             linetype = c(1,2),
             color = 'black', alpha = 0.8) + 
   annotate( geom = 'text', 
-            activity_bars$x[1] + 1, 
+            activity_bars$x[1] + 5, 
             activity_bars$yend[1] + 0.003, label = paste('Day',round(activity_bars$x[1])), alpha = 1, size = 4) + 
   annotate( geom = 'text', 
-            activity_bars$x[2] - 1, 
+            activity_bars$x[2] - 5, 
             activity_bars$yend[2] + 0.003, label = paste('Day',round(activity_bars$x[2])), alpha = 1, size = 4)
 
+gg1_notes
+
 gg_both <- 
-  grid.arrange(gg1, 
+  grid.arrange(gg1_notes, 
                gg2, 
                nrow = 1, 
                widths = c(0.6, 0.4))

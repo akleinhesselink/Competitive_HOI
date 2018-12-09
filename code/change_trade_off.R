@@ -37,27 +37,45 @@ for( k in 1:5 ) {
   parms$r <- r
   parms$K <- K 
   
-  resource_curves[[k]] <- plot_resource_uptake(parms, spec_labs = species_labs, R = seq(0, 200, by = 0.01))
-  
   R <- 0:200
-
-  curves <- data.frame(R = R,  mapply(x = as.list(parms$r), y = as.list(parms$K), FUN = function(x, y) { f(R = R, x, y) }) )
+  
+  Req <- function(r, K, m, q) { m*K/(q*r-m) } # resource required for growth to balance loss
+  
+  curves <- data.frame(R = R,  
+                       mapply(x = as.list(parms$r), y = as.list(parms$K), 
+                              FUN = function(x, y) { f(R = R, x, y) }) )
+  curves$X1[curves$R < Req(parms$r[1], parms$K[1], parms$m, parms$q) ] <- 0
+  curves$X2[curves$R < Req(parms$r[2], parms$K[2], parms$m, parms$q) ] <- 0
+  curves$X3[curves$R < Req(parms$r[3], parms$K[3], parms$m, parms$q) ] <- 0
   
   curves <- 
     curves %>% 
     gather( species, uptake, starts_with('X')) %>% 
+    filter( uptake > 0 ) %>% 
     mutate( species = factor(species, labels = species_labs))
   
-  resource_curves[[k]] <- 
-    resource_curves[[k]] + 
-    journal_theme + 
-    theme(legend.position = c(0.8, 0.3)) + 
-    ylab('Resource uptake rate')
   
-  R_init <- 200 
+  resource_curves[[k]] <- curves 
+  #resource_curves[[k]] <- plot_resource_uptake(parms, spec_labs = species_labs, R = seq(0, 200, by = 0.01))
+  
+
+  # curves <- data.frame(R = R,  mapply(x = as.list(parms$r), y = as.list(parms$K), FUN = function(x, y) { f(R = R, x, y) }) )
+  # 
+  # curves <- 
+  #   curves %>% 
+  #   gather( species, uptake, starts_with('X')) %>% 
+  #   mutate( species = factor(species, labels = species_labs))
+  # 
+  # resource_curves[[k]] <- 
+  #   resource_curves[[k]] + 
+  #   journal_theme + 
+  #   theme(legend.position = c(0.8, 0.3)) + 
+  #   ylab('Resource uptake rate')
+  # 
+  
   seeds_init <- c(1,1,1)
   
-  state <- c( R_init, NA, NA, NA)
+  state <- c( parms$R0, NA, NA, NA)
   
   # Run response surface experiments --------------------------- # 
   
@@ -76,12 +94,12 @@ for( k in 1:5 ) {
   
   for( i in 1:nrow(B_init)){ 
     
-    state[2] <- B_init[i,1]*parms$seedling_mass
-    state[3] <- B_init[i,2]*parms$seedling_mass
-    state[4] <- B_init[i,3]*parms$seedling_mass 
+    state[2] <- B_init[i,1]*parms$seed_mass
+    state[3] <- B_init[i,2]*parms$seed_mass
+    state[4] <- B_init[i,3]*parms$seed_mass 
     
     out[[i]] <- ode(state, 
-                    times = seq(1, 200, by = 0.1), 
+                    times = seq(1, parms$U, by = 0.1), 
                     func = grow, 
                     parms = parms, 
                     rootfun = root, 
@@ -94,9 +112,9 @@ for( k in 1:5 ) {
   
   results <- 
     results %>% 
-    mutate( Y1 = parms$conversion*X2/parms$seedling_mass/B1, 
-            Y2 = parms$conversion*X3/parms$seedling_mass/B2, 
-            Y3 = parms$conversion*X4/parms$seedling_mass/B3) %>% 
+    mutate( Y1 = parms$conversion*X2/parms$seed_mass/B1, 
+            Y2 = parms$conversion*X3/parms$seed_mass/B2, 
+            Y3 = parms$conversion*X4/parms$seed_mass/B3) %>% 
     select( - X1)
   
   results <- 
@@ -232,8 +250,6 @@ for( k in 1:length(my_result)){
 
   two_sp_df <- my_result[[k]]
 
-  MSE_lab = expression( (MSE[multi] - MSE[single])/MSE[multi])
-  
   MSE_plot <-
     two_sp_df %>%
     select( -time , -c(X2:X4), -lambda) %>%
@@ -282,7 +298,7 @@ for( k in 1:length(my_result)){
   error_plots[[k]] <- grid.arrange(MSE_plot, mean_error_plot, nrow = 1, widths = c(0.49, 0.51))
 }
 
-rcurves_data <- mapply( x = 1:length(resource_curves), y = resource_curves, function(x, y){ df <- y$data ; df$step <- x; return(df) }, SIMPLIFY = F)
+rcurves_data <- mapply( x = 1:length(resource_curves), y = resource_curves, function(x, y){ y$step <- x; return(y) }, SIMPLIFY = F)
 rcurves_data <- do.call(rbind, rcurves_data)
 
 my_results <- mapply( x = 1:length(resource_curves), y = my_result, function(x, y) { y$step <- x; return(y) } , SIMPLIFY = F)
@@ -312,7 +328,6 @@ K <- trade_off(r)
 
 par_tab <- data.frame( step = 1:5 ) 
 
-
 MSE_plot <- 
   my_results %>%
   select( -time , -c(X2:X4), -lambda) %>%
@@ -327,7 +342,7 @@ MSE_plot <-
   ggplot( aes( x = step, y = MSE_change, color = species_lab)) +
   geom_point() +
   geom_line()  + 
-  ylab( "Increase in root mean squared error") +
+  ylab( "Increase in RMSE") +
   xlab( 'Scenario') +
   journal_theme +
   theme(axis.text.x = element_text( size = 10), axis.title.x = element_text(size = 12)) +

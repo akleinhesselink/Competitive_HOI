@@ -8,12 +8,14 @@ source('code/plotting_functions.R')
 load( 'data/sim_results.rda')
 load( 'data/parms.rda')
 
+# convert biomass results into final seed production per plant 
 sim_results <- 
   sim_results %>% 
-  mutate( Y1 = parms$conversion*X2/parms$seedling_mass/B1, 
-          Y2 = parms$conversion*X3/parms$seedling_mass/B2, 
-          Y3 = parms$conversion*X4/parms$seedling_mass/B3) %>% 
+  mutate( Y1 = parms$conversion*X2/parms$seed_mass/B1, 
+          Y2 = parms$conversion*X3/parms$seed_mass/B2, 
+          Y3 = parms$conversion*X4/parms$seed_mass/B3) %>% 
   select( - X1)
+
 
 sim_results <- 
   sim_results %>% 

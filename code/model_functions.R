@@ -2,9 +2,9 @@ library(deSolve)
 
 # Modeling Functions ------------------------------------------------------ #
 
-f <- function(R, r, K){ r*R/(K + R) }              # resource (water) uptake rate. Saturates at r
+f <- function(R, r, K){ r*R/(K + R) }                          # resource uptake rate. Saturates at r
 dBdu <- function(u, B, R, r, K, q, m) { B*(q*f(R, r, K) - m)}  # growth as a function of biomass and resource uptake
-dRdu <- function(u, B, R, r, K) { - sum(B*f(R,r, K)) } # resource (water)
+dRdu <- function(u, B, R, r, K) { - sum(B*f(R,r, K)) }         # resource 
 
 grow <- function(u, State, parms, ...){
   with(parms , {
