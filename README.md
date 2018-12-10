@@ -66,8 +66,7 @@ nickname       Feather Spray
 
 ### Authors 
 
-Andrew R. Kleinhesselink -- [Github](https://github.com/akleinhesselink)
-
+Obscured for peer review 
 
 
 
