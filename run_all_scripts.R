@@ -3,9 +3,8 @@
 # manuscript "Mechanisms underlying higher order interactions: from definitions 
 # to ecological processes".  Running this script may take over 15 minutes. 
 #
-# Before running this script set the working directory to one directory above 
-# "code" folder (the HOI_code directory). For example, 
-# setwd( "~/Downloads/HOI_code" )
+# Before running this script set the working directory to the directory containing
+# the README (the directory this script is in). 
 # 
 
 rm(list = ls())
