@@ -18,7 +18,8 @@ theme1 <-
          plot.title = element_text(hjust = 0.5, size = 16))
 
 species_labs2 <- paste0( LETTERS[1:3], ') ' , species_labs)
-
+model_labs <- c('Hassel', 'Hassel + HOI', 'Hassel pw', 'Model 2', 'Model 2 + HOI', 'Model 2 pw')  
+  
 predicted <- 
   predicted %>% 
   ungroup() %>% 
@@ -32,16 +33,15 @@ sim_results <-
   mutate( lambda_plot = y == max(y)) %>% 
   ungroup()
 
-
 pw_pred <- 
   predicted %>%   
   filter( n_comp < 2) %>% 
   select( B1:B3, id) %>% 
   gather( comp, density, B1:B3) %>% 
   left_join(predicted, by = 'id') %>%
-  filter( (density != 0)|(m1 == max(m1) ) )  %>% 
-  gather( model, y_hat, starts_with('m')) %>%
-  mutate( `Best Fit` = factor(model)) %>% 
+  filter( (density != 0)|(m1 == max(m1) ) ) %>%
+  gather( model, y_hat, starts_with('m'))  %>% 
+  mutate( `Best Fit` = factor(model, labels = model_labs)) %>%  
   mutate( Species = factor(species, labels = species_labs2)) %>% 
   mutate( Competitor = factor(comp, labels = species_labs))
 
@@ -55,11 +55,11 @@ pw_results <-
   filter( (density != 0)|( lambda_plot ) ) %>% 
   mutate( Species = factor(species, labels = species_labs2)) %>% 
   mutate( Competitor = factor(comp, labels = species_labs)) %>% 
-  select( id, comp, density, species, y, n_comp, Species, Competitor, lambda_plot)
-
+  select( id, comp, density, species, y, n_comp, Species, Competitor, lambda_plot) 
+  
 top_pw_preds <- 
   pw_pred %>% 
-  filter( model %in% c('m1', 'm2')) %>% 
+  filter( model %in% c('m1_pw', 'm2_pw')) %>% 
   distinct(Species, density, Competitor, `Best Fit`, y_hat)
 
 pp <- 
@@ -85,30 +85,19 @@ pp <-
   theme1
 
 
-
 # plot model predictions and "observed" simulated data ---------------- # 
+
+top_pw_preds$`Best Fit` <- factor( top_pw_preds$`Best Fit`, labels = model_labs[c(1,4)])
+
 pp1 <- 
   pp + 
-  geom_line(data =top_pw_preds, 
+  geom_line(data = top_pw_preds %>% distinct(), 
             aes( y = y_hat, linetype = `Best Fit`))  
-pp1
 
-# ggsave(pp1, 
-#        filename = 'figures/figure_3_new.png', 
-#        width = 7, 
-#        height = 4)
-
-pp2 <- 
-  pp + 
-  geom_line(data = pw_pred, 
-            aes( y = y_hat, linetype = `Best Fit`))  
-  
-pp2
-
-# ggsave(pw_comp_pred_gg, 
-#        filename = 'figures/figure_S1.png', 
-#        width = 7, 
-#        height = 4)
+ggsave(pp1,
+       filename = 'figures/figure_3_new.png',
+       width = 7,
+       height = 4)
 
 # Compare predicted effects of two species competition to the observed 
 # effects of two species competition. Add separate species effects together 
@@ -119,12 +108,11 @@ theme2 <-
   theme(strip.text = element_text(hjust = 0.1), 
         legend.background = element_blank())
 
-
 two_sp_pred <- 
   predicted %>%   
   filter( n_comp < 3, B1 < 15, B2 < 15, B3 < 15) %>% 
   gather( model, y_hat, starts_with('m')) %>%
-  mutate( `Best Fit` = factor(model, labels = c('Hassel', 'Hassel + HOI', 'Model 2', 'Model 2 + HOI'))) %>% 
+  mutate( `Best Fit` = factor(model, labels = model_labs)) %>% 
   mutate( Species = factor(species, labels = species_labs2))
 
 two_sp_results <-
@@ -189,8 +177,13 @@ two_sp_plot <- function( d1, d2, label_df ){
     
 }
 
+legend_pos <- all_res %>% group_by( species ) %>% summarise( ymax = max(y), ymin = min(y))
+
+y_pos <- legend_pos$ymax - 0.05*(legend_pos$ymax - legend_pos$ymin)
+y_pos <- c(y_pos, legend_pos$ymax - 0.1*(legend_pos$ymax - legend_pos$ymin))
+
 annotate_df <- data.frame( Species = species_labs2,
-                           y_pos = c(14, 20, 33, 13.9, 19.1, 31.4), 
+                           y_pos = y_pos, 
                            x_pos = c(8, 8, 8), 
                            labels = c('C1 = Mid', 'C1 = Early', 'C1 = Early', 
                                       'C2 = Late', 'C2 = Late', 'C2 = Mid'))
@@ -204,128 +197,60 @@ Model2_fits <- two_sp_plot(all_res,
                            all_preds %>% filter( model %in% c('m2', 'm2_HOI')), 
                            label_df = annotate_df)
 
-Model1_fits
-
 ggsave(Model1_fits, 
        filename = 'figures/figure_4_new.png', 
        width = 7.5, 
        height = 4.5)
 
+ggsave(Model2_fits, 
+       filename = 'figures/figure_S2_new.png', 
+       width = 7.5, 
+       height = 4.5)
 
-# Plot average error in two species communities ---------------------------------------# 
-error <- 
-  sim_results %>% 
-  select( B1:B3, species, y) %>% 
-  left_join(
-    predicted %>% 
-      gather( model, y_hat, starts_with('m')) %>% 
-      select( model, y_hat, B1:B3, species, n_comp)) %>% 
-  filter( !is.na(model)) %>% 
-  mutate( deviation = y - y_hat, SE = deviation^2 ) %>% 
-  group_by( species, model) %>% 
-  summarise ( MSE = mean( SE ),  ME = mean(deviation))  
+# Plot model error  ---------------------------------------# 
+
+Models <- model_labs[c(1,2,4,5)]
+modlist <- list( fit1, fit1HOI, fit2, fit2HOI)
+out <- list()
+for( i in 1:length(Models)){ 
+  mo <- as.numeric( factor( Models))[i]
+  temp_error <- do.call( rbind, lapply( modlist[[mo]], function(x) sqrt(  x$m$deviance() )) ) 
+  out[[i]] <- data.frame( error = temp_error, Species = species_labs, Model = Models[i])
+}
 
 
-error_data <- 
-  sim_results %>% 
-  select( B1:B3 , species, y )  %>% 
-  left_join(
-    predicted %>% 
-      gather( model, y_hat, starts_with('m')) %>% 
-      select( model, y_hat, B1:B3, species, n_comp)) %>% 
-  filter( !is.na(model)) %>% 
-  mutate( HOI = as.numeric( str_detect(model, 'HOI') )) %>% 
-  filter( (B1 == 0  & species == 'Y1') | (B2 == 0 & species == 'Y2') | (B3 == 0 & species == 'Y3') )  %>% 
-  filter( n_comp > 0 ) %>% 
-  group_by(species, model, HOI) %>%
-  summarise( RMSE = sqrt(mean( (y - y_hat)^2)), ME = mean (y - y_hat) ) %>%
-  gather( errortype, error, RMSE, ME)   %>% 
-  spread( HOI, error)  
-  mutate( error_change = (`1` - `0`)  ) %>% 
-  ungroup()  %>% 
-  mutate( species_lab = factor( species, labels = c('Early', 'Mid', 'Late'))) %>% 
-  mutate( Model = factor(mod_type, labels = c('1', '2')))
-
-  
 error_theme <- 
   journal_theme + 
-  theme(plot.title = element_text(hjust = 0), 
-        axis.text.x = element_text(size = 14))
+  theme(plot.title = element_text(hjust = 0.5, size = 20), 
+        axis.text.x = element_text(size = 14), 
+        axis.title = element_text(size = 16))
 
-error_y_lab <- formula( Average~HOI~effect~(y[obs] - y[pred]))
+error_df <- 
+  do.call(rbind, out ) %>% 
+  separate( Model, c('Model', 'HOI'), sep = ' \\+ ', fill = 'right') %>% 
+  mutate( HOI = ifelse( is.na(HOI), 'No HOI', 'HOI')) %>% 
+  mutate( Model = factor( Model, levels = c('Hassel', 'Model 2'), ordered = T)) %>% 
+  mutate( Species = factor( Species, levels = species_labs, ordered = T)) %>% 
+  mutate( HOI = factor( HOI, levels = c('No HOI', 'HOI'), ordered = T)) 
 
-RMSE_plot_both_models <- 
-  error_data %>% 
-  filter( errortype == 'RMSE' ) %>% 
-  ggplot( aes( x = species_lab, y = error_change, fill = mod_type)) + 
-  geom_bar( stat = 'identity', position = 'dodge') +
-  geom_hline(aes(yintercept = 0)) + 
-  ylab( 'Increase in RMSE') + 
-  xlab( 'Species') + 
-  ggtitle("A)") + 
-  error_theme
+gg_error <- 
+  error_df %>% 
+  ggplot( aes( x = Model, y = error, fill = HOI) ) + 
+    geom_bar(stat = 'identity', position = 'dodge') + 
+    scale_fill_discrete() + 
+    facet_wrap(~Species) + 
+    ggtitle('Focal species') + 
+    error_theme + 
+    guides(fill = guide_legend(title = NULL) )  + 
+    theme(axis.title.x = element_blank(), 
+        plot.title = element_text(hjust = 0.5, size = 20))  + 
+    ylab( 'Residual Sum-of-Squares')
 
-RMSE_plot_mod2 <- 
-  error_data %>% 
-  filter( errortype == 'RMSE', mod_type == 'm2') %>%  
-  ggplot( aes( x = species_lab, y = error_change, fill = species_lab)) + 
-  geom_bar( stat = 'identity', position = 'dodge') +
-  geom_hline(aes(yintercept = 0)) + 
-  scale_fill_manual(values = my_colors[1:3]) + 
-  ylab( 'Increase in RMSE') + 
-  xlab( 'Species') + 
-  guides(fill = F) + 
-  ggtitle("A)") + 
-  error_theme
+gg_error
 
-ME_plot_both_mods <- 
-  error_data %>% 
-  filter( errortype == 'ME' ) %>% 
-  ggplot( aes( x = species_lab, y = error_change, fill = Model)) + 
-  geom_bar( stat = 'identity', position = position_dodge()) +
-  geom_hline(aes(yintercept = 0)) + 
-  scale_fill_discrete( 'Model') +
-  ylab( error_y_lab) + 
-  xlab( 'Species') + 
-  ggtitle("B)") + 
-  error_theme + 
-  theme(legend.position = c(0.05, 1), 
-        legend.background = element_blank(),
-        legend.justification = c(0,1))
-
-
-ME_plot_mod2 <- 
-  error_data %>% 
-  filter( mod_type == 'm2', errortype == 'ME' ) %>%  
-  ggplot( aes( x = species_lab, y = error_change, fill = species_lab)) + 
-  geom_bar( stat = 'identity', position = position_dodge()) +
-  geom_hline(aes(yintercept = 0)) + 
-  scale_fill_manual(values = my_colors[1:3]) + 
-  ylab( error_y_lab) + 
-  xlab( 'Species') + 
-  guides( fill = F) + 
-  ggtitle("B)") + 
-  error_theme
-
-error_plots <- 
-  grid.arrange(RMSE_plot_mod2, 
-               ME_plot_mod2, 
-               nrow = 1, 
-               widths = c(0.49, 0.51))
-
-error_plots_both_mods <- 
-  grid.arrange(RMSE_plot_both_models + 
-                 guides( fill = F), 
-               ME_plot_both_mods, 
-               nrow = 1, 
-               widths = c(0.49, 0.51))
-
-ggsave( error_plots, 
-        filename = 'figures/figure_5.png', 
+ggsave( gg_error, 
+        filename = 'figures/figure_5_new.png', 
         width = 7, 
         height = 4)
-
-ggsave( error_plots_both_mods, 
-        filename = 'figures/figure_S2.png', 
-        width = 7, 
-        height = 4)
+  
+save(error_df, file = 'output/model_errors.rda')
