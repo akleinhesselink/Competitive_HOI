@@ -17,6 +17,8 @@ theme1 <-
          legend.text = element_text(size = 14),
          plot.title = element_text(hjust = 0.5, size = 16))
 
+xbreaks <- c(0,10,20,30,40)
+
 species_labs2 <- paste0( LETTERS[1:3], ') ' , species_labs)
 model_labs <- c('Hassel', 'Hassel + HOI', 'Hassel pw', 'Model 2', 'Model 2 + HOI', 'Model 2 pw')  
   
@@ -50,7 +52,6 @@ pw_results <-
   filter( n_comp < 2 ) %>% 
   select( B1:B3, id) %>% 
   gather( comp, density, B1:B3) %>%
-  filter( density < 15 ) %>% 
   left_join( sim_results, by = 'id') %>% 
   filter( (density != 0)|( lambda_plot ) ) %>% 
   mutate( Species = factor(species, labels = species_labs2)) %>% 
@@ -76,7 +77,7 @@ pp <-
   scale_shape_manual(values = c(19,17,15), 
                      name = 'Competitor\nSpecies') +  
   scale_linetype_discrete(name = 'Best Fit') + 
-  scale_x_continuous(breaks = c(0,4,8)) +
+  scale_x_continuous(breaks = xbreaks) +
   ylab( 'Per Capita Seed Production') + 
   xlab( 'Competitor Density') + 
   ggtitle('Focal Species') +
@@ -94,6 +95,9 @@ pp1 <-
   geom_line(data = top_pw_preds %>% distinct(), 
             aes( y = y_hat, linetype = `Best Fit`))  
 
+
+pp1
+
 ggsave(pp1,
        filename = 'figures/figure_3_new.png',
        width = 7,
@@ -110,14 +114,14 @@ theme2 <-
 
 two_sp_pred <- 
   predicted %>%   
-  filter( n_comp < 3, B1 < 15, B2 < 15, B3 < 15) %>% 
+  filter( n_comp < 3, B1 < 40, B2 < 40, B3 < 40) %>% 
   gather( model, y_hat, starts_with('m')) %>%
   mutate( `Best Fit` = factor(model, labels = model_labs)) %>% 
   mutate( Species = factor(species, labels = species_labs2))
 
 two_sp_results <-
   sim_results %>% 
-  filter( n_comp < 3, B1 < 15, B2 < 15, B3 < 15 ) %>% 
+  filter( n_comp < 3, B1 < 40, B2 < 40, B3 < 40 ) %>% 
   mutate( Species = factor(species, labels = species_labs2)) %>% 
   select( id, B1:B3, species, Species, y, n_comp, lambda_plot)
 
@@ -139,8 +143,8 @@ make_2comp_df <- function(x, i ) {
                      labels = c('Competitor 1', 
                                 'Competitor 2'))) %>% 
     spread( comp_label, density ) %>% 
-    filter( `Competitor 1` < 15) %>% 
-    filter( `Competitor 2` %in% c(0, 2, 8)) %>%
+    filter( `Competitor 1` < 40) %>% 
+    filter( `Competitor 2` %in% c(0, 1, 9)) %>%
     mutate( `Competitor 2` = factor(`Competitor 2`))    
 }
 
@@ -160,7 +164,7 @@ two_sp_plot <- function( d1, d2, label_df ){
     facet_wrap(~Species, scales = 'free') + 
     scale_color_manual(values = c('black', 'red', 'blue')) + 
     scale_shape_manual(values = c(1, 0, 2)) + 
-    scale_x_continuous(breaks = c(0,4,8), limits = c(0, 8)) + 
+    scale_x_continuous(breaks = xbreaks) + 
     ylab('Per Capita Seed Production') + 
     xlab('Density of Competitor 1') + 
     ggtitle('Focal Species') + 
@@ -184,7 +188,7 @@ y_pos <- c(y_pos, legend_pos$ymax - 0.1*(legend_pos$ymax - legend_pos$ymin))
 
 annotate_df <- data.frame( Species = species_labs2,
                            y_pos = y_pos, 
-                           x_pos = c(8, 8, 8), 
+                           x_pos = c(40, 40, 40), 
                            labels = c('C1 = Mid', 'C1 = Early', 'C1 = Early', 
                                       'C2 = Late', 'C2 = Late', 'C2 = Mid'))
 
@@ -196,6 +200,10 @@ Model1_fits <- two_sp_plot(all_res,
 Model2_fits <- two_sp_plot(all_res, 
                            all_preds %>% filter( model %in% c('m2', 'm2_HOI')), 
                            label_df = annotate_df)
+
+Model1_fits
+
+Model2_fits
 
 ggsave(Model1_fits, 
        filename = 'figures/figure_4_new.png', 

@@ -7,24 +7,27 @@ source('code/simulation_functions3.R')
 # parameterize model --------------------------------------------------------------------------------------------------- 
 U <- 200                    # Length of simulation in days 
 R0 <- 400                   # Initial resource concentration 
-Vmax <- 0.12                # Max R uptake rates per unit surface area 
-b0 <- 0.3                   # Base of resource uptake function 
-K <- 200                    # Resource half-saturation constants
-nu <- 0.66                  # Exponent for scaling of tissue mass to surface area 
-d <- c(0.001, 0.005, 0.01)  # "Density", i.e. investment in resource acquisition tissues per unit mass  
-m <- c(0.5, 0.13, 0.07)     # Biomass loss rate per unit mass 
+Vmax <- 1                 # Max R uptake rates per unit root surface area  
+p <- 0.5                    # Proportion root biomass per total biomass  
+d <- c(0.06, 0.12, 0.36) # Root density (g/cm^3)
+K <- 350                    # Resource half-saturation constants
+nu <- 2/3                   # Scaling of root volume to root surface area
+m <- c(0.3, 0.15, 0.053)   # Biomass loss rate per unit mass 
 q <- 0.2                    # Resource use efficiency 
 seed_mass <- c(0.005)       # Seed/seedling mass 
 conversion <- 0.1           # Proportion live biomass converted to seed mass 
+S <- 0
+
 
 parms <- list( Vmax = Vmax, 
                K = K, 
                m = m, 
                q = q, 
-               b0 = b0, 
+               d = d, 
                nu = nu,
+               p = p,
                R0 = R0,
-               d = d,
+               S = S,
                conversion = conversion, 
                seed_mass = seed_mass, 
                U = U)
@@ -86,9 +89,9 @@ show_results <- function( out, labels, cols ){
 show_results(basics, labels, cols)
 
 par(mfrow = c(1,1), mar = c(4,4,3,3))
-plot( d, m, type = 'b', col = cols, ylab = 'Loss rate (m)', xlab = 'Tissue density (d)')
-text( d[1], m[1], labels[1], adj = c(-0.5, 0.5))
-text( d[2], m[2], labels[2], adj = c(-0.5, -1))
-text( d[3], m[3], labels[3], adj = c(0.5, -1))
+plot( d, m, type = 'b', col = cols, ylab = 'Loss rate (m)', 
+      xlab = expression( Root ~ Density ~ (g/cm^3) ))
+text(d[1], m[1], labels[1], adj = c(-0.5, 0.5))
+text(d[2], m[2], labels[2], adj = c(-0.5, -1))
+text(d[3], m[3], labels[3], adj = c(0.5, -1))
 
-lm(data =  data.frame(d = d, m = m) , d ~ m )

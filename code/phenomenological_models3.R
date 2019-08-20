@@ -61,9 +61,9 @@ get_fixed_pars <- function(myfit ){
 }
 
 # Initial values and parameter limits for nls fitting  
-inits <- list( lambda = 10, alpha = rep(0.1, 3), tau = 0.9)
+inits <- list( lambda = 40, alpha = rep(0.2, 3), tau = 0.6)
 lowers <- unlist(inits)[] 
-lowers[] <- c(1, rep(0, 3), 0) 
+lowers[] <- c(10, rep(0, 3), 0.0001) 
 uppers <- lowers
 uppers <- c(200, rep(10, 3), 5)
 
@@ -73,5 +73,5 @@ uppers1 <- uppers2 <- uppers
 
 initsHOI <- inits1
 initsHOI$beta <- rep(0, 3)
-lowersHOI <- c( lowers1, beta = rep(-0.2, 3))
+lowersHOI <- c( lowers1, beta = rep(-0.01, 3))
 uppersHOI <- c( uppers, beta = rep(1, 3))

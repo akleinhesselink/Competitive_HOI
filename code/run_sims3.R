@@ -5,16 +5,21 @@ library(tidyverse)
 source('code/simulation_functions3.R')
 load( 'output/parms3.rda')
 
+max_d <- 36
+min_d <- 0 
+dgrad <- sort( c(2,3,(seq(sqrt(min_d), sqrt(max_d), 1))^2) )
+
 B_init <- expand.grid( 
-  B1 = c(0, seq(1, 8, by = 1), 16), 
-  B2 = c(0, seq(1, 8, by = 1), 16), 
-  B3 = c(0, seq(1, 8, by = 1), 16))
+  B1 = dgrad, 
+  B2 = dgrad,
+  B3 = dgrad)
 
 B_init <- B_init[-1,]
 
 B_init <- 
   B_init %>% 
-  filter( (B1 < 2) + (B2 < 2) + (B3 < 2) > 0 )  # filter out three species cases 
+  filter( (B1 < 2) + (B2 < 2) + (B3 < 2) > 0 ) %>%  # filter out three species cases 
+  filter( B1 + B2 + B3 < 50) # filter out cases where total density is high  
 
 state <- c( R = parms$R0, B1 = 0, B2 = 0, B3 = 0)
 
