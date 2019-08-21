@@ -20,7 +20,7 @@ theme1 <-
 xbreaks <- c(0,10,20,30,40)
 
 species_labs2 <- paste0( LETTERS[1:3], ') ' , species_labs)
-model_labs <- c('Hassel', 'Hassel + HOI', 'Hassel pw', 'Model 2', 'Model 2 + HOI', 'Model 2 pw')  
+model_labs <- c('Hassel', 'HOI', 'Model 2')  
   
 predicted <- 
   predicted %>% 
@@ -43,7 +43,8 @@ pw_pred <-
   left_join(predicted, by = 'id') %>%
   filter( (density != 0)|(m1 == max(m1) ) ) %>%
   gather( model, y_hat, starts_with('m'))  %>% 
-  mutate( `Best Fit` = factor(model, labels = model_labs)) %>%  
+  filter( model == 'm1_pw' )  %>% 
+  mutate( `Best Fit` = factor(model, labels = model_labs[1])) %>%  
   mutate( Species = factor(species, labels = species_labs2)) %>% 
   mutate( Competitor = factor(comp, labels = species_labs))
 
@@ -60,8 +61,8 @@ pw_results <-
   
 top_pw_preds <- 
   pw_pred %>% 
-  filter( model %in% c('m1_pw', 'm2_pw')) %>% 
   distinct(Species, density, Competitor, `Best Fit`, y_hat)
+
 
 pp <- 
   pw_results %>% 
@@ -76,7 +77,7 @@ pp <-
                      name = 'Competitor\nSpecies') +
   scale_shape_manual(values = c(19,17,15), 
                      name = 'Competitor\nSpecies') +  
-  scale_linetype_discrete(name = 'Best Fit') + 
+  scale_linetype_discrete(name = 'Model Fit') + 
   scale_x_continuous(breaks = xbreaks) +
   ylab( 'Per Capita Seed Production') + 
   xlab( 'Competitor Density') + 
@@ -88,7 +89,7 @@ pp <-
 
 # plot model predictions and "observed" simulated data ---------------- # 
 
-top_pw_preds$`Best Fit` <- factor( top_pw_preds$`Best Fit`, labels = model_labs[c(1,4)])
+top_pw_preds$`Best Fit` <- factor( top_pw_preds$`Best Fit`, labels = model_labs[c(1)])
 
 pp1 <- 
   pp + 
@@ -96,17 +97,69 @@ pp1 <-
             aes( y = y_hat, linetype = `Best Fit`))  
 
 
-pp1
+fit1pw[[1]]
+fit1pw[[2]]
+fit1pw[[3]]
 
+pp1
 ggsave(pp1,
        filename = 'figures/figure_3_new.png',
        width = 7,
        height = 4)
 
+# Plot model error  ---------------------------------------# 
+model_labs
+Models <- model_labs[c(1,2,3)]
+
+modlist <- list( fit1, fit1HOI, fit2)
+out <- list()
+
+for( i in 1:length(Models)){ 
+  mo <- as.numeric( factor( Models))[i]
+  temp_error <- do.call( rbind, lapply( modlist[[mo]], function(x) sqrt(  x$m$deviance() )) ) 
+  out[[i]] <- data.frame( error = temp_error, Species = species_labs, Model = Models[i])
+}
+
+
+error_theme <- 
+  journal_theme + 
+  theme(plot.title = element_text(hjust = 0.5, size = 20), 
+        axis.text.x = element_text(size = 14), 
+        axis.title = element_text(size = 16))
+
+error_df <- 
+  do.call(rbind, out ) %>%
+  mutate( Species = factor( Species, levels = species_labs, ordered = T)) 
+
+error_df
+
+gg_error <- 
+  error_df %>% 
+  ggplot( aes( x = Model, y = error, fill = Species) ) + 
+    geom_bar(stat = 'identity', position = 'dodge') + 
+    facet_wrap(~Species) + 
+    ggtitle('Focal species') + 
+    guides(fill = "none") + 
+    scale_fill_manual(values = my_colors[1:3] ) + 
+    error_theme + 
+    theme(axis.title.x = element_blank(), 
+        plot.title = element_text(hjust = 0.5, size = 20))  + 
+    ylab( 'Residual Sum-of-Squares') 
+
+gg_error
+
+ggsave( gg_error, 
+        filename = 'figures/figure_5_new.png', 
+        width = 7, 
+        height = 4)
+  
+save(error_df, file = 'output/model_errors.rda')
+
 # Compare predicted effects of two species competition to the observed 
 # effects of two species competition. Add separate species effects together 
 # to predict total effect. Errors are deviations from additivity of 
 # competition. 
+
 theme2 <- 
   journal_theme + 
   theme(strip.text = element_text(hjust = 0.1), 
@@ -115,7 +168,8 @@ theme2 <-
 two_sp_pred <- 
   predicted %>%   
   filter( n_comp < 3, B1 < 40, B2 < 40, B3 < 40) %>% 
-  gather( model, y_hat, starts_with('m')) %>%
+  gather( model, y_hat, starts_with('m')) %>% 
+  filter( model != 'm1_pw') %>% 
   mutate( `Best Fit` = factor(model, labels = model_labs)) %>% 
   mutate( Species = factor(species, labels = species_labs2))
 
@@ -133,7 +187,7 @@ make_2comp_df <- function(x, i ) {
   cur_sp <- paste0('Y', i)
   intra_comp <- paste0('B', i)
   inter_comp <- paste0('B', c(1:3)[-i])
-
+  
   x %>% 
     filter( species == cur_sp, get(intra_comp) == 0  ) %>% 
     select(   - !!(intra_comp)) %>%  
@@ -144,7 +198,7 @@ make_2comp_df <- function(x, i ) {
                                 'Competitor 2'))) %>% 
     spread( comp_label, density ) %>% 
     filter( `Competitor 1` < 40) %>% 
-    filter( `Competitor 2` %in% c(0, 1, 9)) %>%
+    filter( `Competitor 2` %in% c(0, 1, 16)) %>%
     mutate( `Competitor 2` = factor(`Competitor 2`))    
 }
 
@@ -178,32 +232,56 @@ two_sp_plot <- function( d1, d2, label_df ){
     theme(plot.title = element_text(size = 20, hjust = 0.5)) + 
     geom_text(data = label_df, 
               aes( x = x_pos, y = y_pos, label = labels), size = 4, hjust = 1, show.legend = F)
-    
+  
 }
 
 legend_pos <- all_res %>% group_by( species ) %>% summarise( ymax = max(y), ymin = min(y))
 
 y_pos <- legend_pos$ymax - 0.05*(legend_pos$ymax - legend_pos$ymin)
-y_pos <- c(y_pos, legend_pos$ymax - 0.1*(legend_pos$ymax - legend_pos$ymin))
+y_pos <- c(y_pos, legend_pos$ymax - 0.15*(legend_pos$ymax - legend_pos$ymin))
 
 annotate_df <- data.frame( Species = species_labs2,
                            y_pos = y_pos, 
                            x_pos = c(40, 40, 40), 
-                           labels = c('C1 = Mid', 'C1 = Early', 'C1 = Early', 
-                                      'C2 = Late', 'C2 = Late', 'C2 = Mid'))
+                           labels = c('Comp.1 is Mid', 'Comp.1 is Early', 'Comp.1 is Early', 
+                                      'Comp.2 is Late', 'Comp.2 is Late', 'Comp.2 is Mid'))
 
+
+error2 <- error_df %>% 
+  mutate( Species = factor(Species, labels = species_labs2, ordered = F)) %>% 
+  mutate( RSS = round( error, 2)) %>% 
+  mutate( my_expression = paste0( 'RSS[', str_replace(Model, ' ', '~'), ']', '==', RSS )) 
+
+error2
+
+y_pos3 <- c(legend_pos$ymax - 0.25*(legend_pos$ymax - legend_pos$ymin))
+y_pos4 <- c(legend_pos$ymax - 0.35*(legend_pos$ymax - legend_pos$ymin))
+
+y_posRSS <- c(y_pos3, y_pos4, y_pos3)
+error2
+
+error2$x_pos <- 40 
+error2$y_pos <- y_posRSS
 
 Model1_fits <- two_sp_plot(all_res, 
                            all_preds %>% filter( model %in% c('m1', 'm1_HOI')), 
                            label_df = annotate_df)
 
+
 Model2_fits <- two_sp_plot(all_res, 
-                           all_preds %>% filter( model %in% c('m2', 'm2_HOI')), 
+                           all_preds %>% filter( model %in% c('m2', 'm1_HOI')), 
                            label_df = annotate_df)
 
-Model1_fits
+Model1_fits <- Model1_fits + 
+  geom_text( data = error2 %>% filter( Model != 'Model 2'), 
+             aes( x = x_pos, y = y_pos, 
+                  label = my_expression), hjust = 1, parse = T)
 
-Model2_fits
+Model2_fits <- Model2_fits + 
+  geom_text( data = error2 %>% filter( Model != 'Hassel'), 
+             aes( x = x_pos, y = y_pos, 
+                  label = my_expression), hjust = 1, parse = T)
+
 
 ggsave(Model1_fits, 
        filename = 'figures/figure_4_new.png', 
@@ -215,50 +293,5 @@ ggsave(Model2_fits,
        width = 7.5, 
        height = 4.5)
 
-# Plot model error  ---------------------------------------# 
 
-Models <- model_labs[c(1,2,4,5)]
-modlist <- list( fit1, fit1HOI, fit2, fit2HOI)
-out <- list()
-for( i in 1:length(Models)){ 
-  mo <- as.numeric( factor( Models))[i]
-  temp_error <- do.call( rbind, lapply( modlist[[mo]], function(x) sqrt(  x$m$deviance() )) ) 
-  out[[i]] <- data.frame( error = temp_error, Species = species_labs, Model = Models[i])
-}
-
-
-error_theme <- 
-  journal_theme + 
-  theme(plot.title = element_text(hjust = 0.5, size = 20), 
-        axis.text.x = element_text(size = 14), 
-        axis.title = element_text(size = 16))
-
-error_df <- 
-  do.call(rbind, out ) %>% 
-  separate( Model, c('Model', 'HOI'), sep = ' \\+ ', fill = 'right') %>% 
-  mutate( HOI = ifelse( is.na(HOI), 'No HOI', 'HOI')) %>% 
-  mutate( Model = factor( Model, levels = c('Hassel', 'Model 2'), ordered = T)) %>% 
-  mutate( Species = factor( Species, levels = species_labs, ordered = T)) %>% 
-  mutate( HOI = factor( HOI, levels = c('No HOI', 'HOI'), ordered = T)) 
-
-gg_error <- 
-  error_df %>% 
-  ggplot( aes( x = Model, y = error, fill = HOI) ) + 
-    geom_bar(stat = 'identity', position = 'dodge') + 
-    scale_fill_discrete() + 
-    facet_wrap(~Species) + 
-    ggtitle('Focal species') + 
-    error_theme + 
-    guides(fill = guide_legend(title = NULL) )  + 
-    theme(axis.title.x = element_blank(), 
-        plot.title = element_text(hjust = 0.5, size = 20))  + 
-    ylab( 'Residual Sum-of-Squares')
-
-gg_error
-
-ggsave( gg_error, 
-        filename = 'figures/figure_5_new.png', 
-        width = 7, 
-        height = 4)
-  
-save(error_df, file = 'output/model_errors.rda')
+# plot 1:1 
