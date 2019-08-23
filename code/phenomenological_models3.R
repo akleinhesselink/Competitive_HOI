@@ -22,6 +22,19 @@ model2 <- function(B1, B2, B3, parms ){
   })
 }
 
+model3 <- function(B1, B2, B3, parms ){ 
+  with(parms, { 
+    t1 <- (B1*alpha[1]) 
+    t2 <- (B2*alpha[2])
+    t3 <- (B3*alpha[3])
+    H1 <- (B1*B2*alpha[1]*alpha[2])
+    H2 <- (B1*B3*alpha[1]*alpha[3])
+    H3 <- (B2*B3*alpha[2]*alpha[3])
+    HOI <- H1+H2+H3
+    (1/lambda)*(1 + t1 + t2 + t3 + HOI)^tau
+  })
+}
+
 model1_HOI <- function(B1, B2, B3, parms){ 
   # Hassel model with interspecific HOI terms 
   with(parms, { 

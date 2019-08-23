@@ -1,5 +1,6 @@
 rm(list = ls())
 source('code/plotting_parameters.R')
+source('code/phenomenological_models3.R')
 load('output/model_fits3.rda')
 load('output/processed_results3.rda')
 
@@ -9,17 +10,18 @@ library(grid)
 
 theme1 <- 
   journal_theme + 
-  theme( strip.text = element_text(hjust = 0.1), 
+  theme( strip.text = element_text(hjust = 0.5), 
          legend.background = element_rect(fill = NA), 
          legend.key = element_rect(fill = NA), 
          legend.title.align = c(0.5), 
          legend.key.width = unit(2, 'line'),
          legend.text = element_text(size = 14),
-         plot.title = element_text(hjust = 0.5, size = 16))
+         plot.title = element_text(hjust = 0.5, size = 20), 
+         axis.text = element_text(size = 14), 
+         axis.title = element_text(size = 16))
 
 xbreaks <- c(0,10,20,30,40)
 
-species_labs2 <- paste0( LETTERS[1:3], ') ' , species_labs)
 model_labs <- c('Hassel', 'HOI', 'Model 2')  
   
 predicted <- 
@@ -45,7 +47,7 @@ pw_pred <-
   gather( model, y_hat, starts_with('m'))  %>% 
   filter( model == 'm1_pw' )  %>% 
   mutate( `Best Fit` = factor(model, labels = model_labs[1])) %>%  
-  mutate( Species = factor(species, labels = species_labs2)) %>% 
+  mutate( Species = factor(species, labels = species_labs)) %>% 
   mutate( Competitor = factor(comp, labels = species_labs))
 
 pw_results <-
@@ -55,7 +57,7 @@ pw_results <-
   gather( comp, density, B1:B3) %>%
   left_join( sim_results, by = 'id') %>% 
   filter( (density != 0)|( lambda_plot ) ) %>% 
-  mutate( Species = factor(species, labels = species_labs2)) %>% 
+  mutate( Species = factor(species, labels = species_labs)) %>% 
   mutate( Competitor = factor(comp, labels = species_labs)) %>% 
   select( id, comp, density, species, y, n_comp, Species, Competitor, lambda_plot) 
   
@@ -79,6 +81,7 @@ pp <-
                      name = 'Competitor\nSpecies') +  
   scale_linetype_discrete(name = 'Model Fit') + 
   scale_x_continuous(breaks = xbreaks) +
+  scale_y_continuous(limits = c(10, 160)) + 
   ylab( 'Per Capita Seed Production') + 
   xlab( 'Competitor Density') + 
   ggtitle('Focal Species') +
@@ -94,18 +97,26 @@ top_pw_preds$`Best Fit` <- factor( top_pw_preds$`Best Fit`, labels = model_labs[
 pp1 <- 
   pp + 
   geom_line(data = top_pw_preds %>% distinct(), 
-            aes( y = y_hat, linetype = `Best Fit`))  
+            aes( y = y_hat, linetype = `Best Fit`)) + 
+  geom_text( data = top_pw_preds %>% 
+                   distinct(Species) %>% 
+                   mutate( Competitor = 'Early',
+                           label = paste0(LETTERS[1:3], ')'), 
+                           x_pos = -Inf, y_pos = Inf), 
+                 aes( x = x_pos, 
+                      y = y_pos, 
+                      label = label), 
+                 show.legend = F, 
+                 hjust = -0.5, 
+                 vjust = 1.5, 
+                 color = 'black', 
+                 size = 5)
 
 
-fit1pw[[1]]
-fit1pw[[2]]
-fit1pw[[3]]
-
-pp1
 ggsave(pp1,
        filename = 'figures/figure_3_new.png',
-       width = 7,
-       height = 4)
+       width = 8,
+       height = 5)
 
 # Plot model error  ---------------------------------------# 
 model_labs
@@ -150,8 +161,8 @@ gg_error
 
 ggsave( gg_error, 
         filename = 'figures/figure_5_new.png', 
-        width = 7, 
-        height = 4)
+        width = 8, 
+        height = 5)
   
 save(error_df, file = 'output/model_errors.rda')
 
@@ -171,12 +182,12 @@ two_sp_pred <-
   gather( model, y_hat, starts_with('m')) %>% 
   filter( model != 'm1_pw') %>% 
   mutate( `Best Fit` = factor(model, labels = model_labs)) %>% 
-  mutate( Species = factor(species, labels = species_labs2))
+  mutate( Species = factor(species, labels = species_labs))
 
 two_sp_results <-
   sim_results %>% 
   filter( n_comp < 3, B1 < 40, B2 < 40, B3 < 40 ) %>% 
-  mutate( Species = factor(species, labels = species_labs2)) %>% 
+  mutate( Species = factor(species, labels = species_labs)) %>% 
   select( id, B1:B3, species, Species, y, n_comp, lambda_plot)
 
 ylab <- 'Per Capita Seed Production'
@@ -211,6 +222,8 @@ all_res <-
 
 
 two_sp_plot <- function( d1, d2, label_df ){ 
+  c1_label <- 'Density of Competitor 1'
+  c2_label <- 'Density of\nComp. 2'
   d1 %>% 
     ggplot(aes( x = `Competitor 1`, y = y)) + 
     geom_point(aes( color = `Competitor 2`, shape = `Competitor 2`), size= 3) + 
@@ -220,14 +233,14 @@ two_sp_plot <- function( d1, d2, label_df ){
     scale_shape_manual(values = c(1, 0, 2)) + 
     scale_x_continuous(breaks = xbreaks) + 
     ylab('Per Capita Seed Production') + 
-    xlab('Density of Competitor 1') + 
+    xlab(c1_label) + 
     ggtitle('Focal Species') + 
     guides( 
       color = guide_legend(order = 1, 
                            override.aes = list(linetype = 0), 
-                           title = 'Density of\nCompetitor 2'), 
-      shape = guide_legend(order = 1, title = 'Density of\nCompetitor 2'), 
-      linetype = guide_legend(title = 'Fit')) + 
+                           title = c2_label), 
+      shape = guide_legend(order = 1, title = c2_label), 
+      linetype = guide_legend(title = 'Best Fit')) + 
     theme2 + 
     theme(plot.title = element_text(size = 20, hjust = 0.5)) + 
     geom_text(data = label_df, 
@@ -238,24 +251,24 @@ two_sp_plot <- function( d1, d2, label_df ){
 legend_pos <- all_res %>% group_by( species ) %>% summarise( ymax = max(y), ymin = min(y))
 
 y_pos <- legend_pos$ymax - 0.05*(legend_pos$ymax - legend_pos$ymin)
-y_pos <- c(y_pos, legend_pos$ymax - 0.15*(legend_pos$ymax - legend_pos$ymin))
+y_pos <- c(y_pos, legend_pos$ymax - 0.12*(legend_pos$ymax - legend_pos$ymin))
 
-annotate_df <- data.frame( Species = species_labs2,
+annotate_df <- data.frame( Species = species_labs,
                            y_pos = y_pos, 
                            x_pos = c(40, 40, 40), 
-                           labels = c('Comp.1 is Mid', 'Comp.1 is Early', 'Comp.1 is Early', 
-                                      'Comp.2 is Late', 'Comp.2 is Late', 'Comp.2 is Mid'))
+                           labels = c('C1=Mid', 'C1=Early', 'C1=Early', 
+                                      'C2=Late', 'C2=Late', 'C2=Mid'))
 
 
 error2 <- error_df %>% 
-  mutate( Species = factor(Species, labels = species_labs2, ordered = F)) %>% 
+  mutate( Species = factor(Species, labels = species_labs, ordered = F)) %>% 
   mutate( RSS = round( error, 2)) %>% 
   mutate( my_expression = paste0( 'RSS[', str_replace(Model, ' ', '~'), ']', '==', RSS )) 
 
 error2
 
 y_pos3 <- c(legend_pos$ymax - 0.25*(legend_pos$ymax - legend_pos$ymin))
-y_pos4 <- c(legend_pos$ymax - 0.35*(legend_pos$ymax - legend_pos$ymin))
+y_pos4 <- c(legend_pos$ymax - 0.32*(legend_pos$ymax - legend_pos$ymin))
 
 y_posRSS <- c(y_pos3, y_pos4, y_pos3)
 error2
@@ -285,13 +298,87 @@ Model2_fits <- Model2_fits +
 
 ggsave(Model1_fits, 
        filename = 'figures/figure_4_new.png', 
-       width = 7.5, 
-       height = 4.5)
+       width = 8, 
+       height = 5)
 
 ggsave(Model2_fits, 
        filename = 'figures/figure_S2_new.png', 
-       width = 7.5, 
-       height = 4.5)
+       width = 8, 
+       height = 5)
 
 
 # plot 1:1 
+res <- 
+  sim_results %>% 
+  arrange(species)  %>% 
+  select( starts_with('B'), species, y )  %>% 
+  split( .$species )
+
+
+m1 <- mapply(x = fit1, y =res, function(x,y) 1/exp(predict(x, newdata = y)), SIMPLIFY = F) 
+m2 <- mapply(x = fit2, y = res, function(x,y) 1/exp(predict(x, newdata = y)), SIMPLIFY = F) 
+mHOI <- mapply(x = fit1HOI, y = res, function(x,y) 1/exp(predict(x, newdata = y)), SIMPLIFY = F) 
+
+res <- do.call(bind_rows, res )
+
+res$m1 <- unlist( m1 )
+res$m2 <- unlist( m2 )
+res$mHOI <- unlist( mHOI)
+
+res <- 
+  res %>% 
+  gather( model, y_hat, starts_with('m')) 
+
+res$Model <- factor(res$model, labels = model_labs[c(1,3,2)])
+res$Species <- factor( res$species, labels = species_labs)
+
+error_df2 <- 
+  res %>% 
+  mutate( dev = (res$y_hat - res$y)^2 ) %>% 
+  group_by( Species, Model ) %>% 
+  summarise( RMSE = sqrt( sum(dev)/n() ) )
+
+error_df2 <- 
+  error_df2 %>% 
+  left_join(
+    res %>% 
+    ungroup %>% 
+    mutate( ymx = max(y)) %>% 
+    distinct(Species, ymx) %>% 
+    mutate( pos1 = ymx - ymx*0.85, 
+            pos2 = ymx - ymx*0.0), 
+    by = 'Species') %>% 
+  mutate( RMSE = round( RMSE, 2)) %>% 
+  mutate( my_expression = paste0( 'italic(RMSE', '==', RMSE, ')' )) 
+
+
+one2one_plot <- 
+  res %>%  
+  ggplot( aes( x = y_hat, y = y, color = Species)) + 
+  geom_point() + 
+  geom_abline(aes( intercept = 0 , slope = 1)) + 
+  geom_text( data = error_df2, aes( x = pos2, y = pos1, label = my_expression), hjust = 1, parse = T, size = 4.5, color = 1) +
+  facet_grid( Model ~ Species) + 
+  xlab('Predicted') + 
+  ylab('Observed') + 
+  ggtitle('Focal Species') + 
+  scale_color_manual(values = my_colors[1:3], guide = F) + 
+  theme(plot.title = element_text( hjust = 0.5)) + 
+  error_theme
+
+one2one_plot <- 
+  one2one_plot +
+  geom_text( data = res %>% 
+  distinct(Model, Species ) %>% 
+  mutate( label = paste0( LETTERS[1:9], ')' ), 
+          x_pos = -Inf, 
+          y_pos = Inf ), 
+  aes( x = x_pos, y = y_pos, label = label), 
+  hjust = -0.5, 
+  vjust = 1.5 , 
+  show.legend = F, color = 1)
+
+one2one_plot %>% 
+  ggsave( filename = 'figures/figure_one_to_one.png', 
+          width = 8, 
+          height = 5)

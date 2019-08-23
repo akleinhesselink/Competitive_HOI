@@ -86,6 +86,7 @@ show_results <- function( out, labels, cols ){
 
 }
 
+
 show_results(basics, labels, cols)
 
 par(mfrow = c(1,1), mar = c(4,4,3,3))
@@ -95,3 +96,92 @@ text(d[1], m[1], labels[1], adj = c(-0.5, 0.5))
 text(d[2], m[2], labels[2], adj = c(-0.5, -1))
 text(d[3], m[3], labels[3], adj = c(0.5, -1))
 
+source('code/plotting_parameters.R')
+
+plotting_df <- 
+  basics[[4]] %>% 
+  data.frame() %>% 
+  gather( var, val, R:B3) %>% 
+  mutate( type = ifelse(var == 'R', 'Resource', 'Biomass')) %>% 
+  mutate( var_lab = factor(var, labels = c('Early', 'Mid', 'Late', 'Early')))
+  
+  
+axis_df <- 
+  plotting_df %>% 
+  group_by( type) %>% 
+  summarise( mx_y = max(val), mn_y = min(val)) %>%  
+  ungroup()  %>% 
+  mutate( y_pos = mn_y + (mx_y - mn_y)*0.5, 
+          x_pos = -Inf) %>%
+  mutate( labels = c('Biomass (g)', 'Resource (g/kg)'))
+
+letters_df <- 
+  plotting_df %>% 
+  distinct( type) %>%  
+  mutate( y_pos = Inf, 
+          x_pos = -Inf, 
+          label = paste0( LETTERS[1:2], ')' ))
+  
+mp <- 
+  plotting_df %>% 
+  ggplot(aes( x = time, y = val, color = var_lab )) + 
+  geom_line() + 
+  geom_text(data = letters_df, 
+            aes( x = x_pos, y = y_pos, label = label), 
+            color = 'black', 
+            show.legend = F, 
+            size = 5, 
+            vjust = -1, 
+            hjust = -1) + 
+  facet_wrap(~type, ncol = 1, scales = 'free_y') + 
+  scale_color_manual(values = my_colors[c(1:3, 1)], name = 'Species') + 
+  xlab( 'Time (days)') + 
+  scale_y_continuous(name = NULL) + 
+  coord_cartesian(clip = 'off') + 
+  journal_theme + 
+  theme(legend.position = c(0.8, 0.8), 
+        panel.spacing.y = unit(2, 'line'),
+        legend.background = element_rect(fill = 'white', color = 'black'),
+        legend.key.width = unit(2, 'line'), 
+        plot.margin = margin( 2, 1.5, 1, 3, unit = 'line') )
+
+mp 
+
+mp <- 
+  mp + 
+  theme(strip.text = element_blank()) + 
+  geom_text(data = axis_df, 
+             aes( x = x_pos, 
+                  y = y_pos, 
+                  label = labels), color = 1, 
+            angle = 90, 
+            vjust = -3.5, 
+            size = 5)
+
+mp 
+
+
+seed_label <- 
+  plotting_df %>% 
+  group_by( type, var_lab , var ) %>% 
+  summarise( max_b = max(val), 
+             pheno = time[ which.max(val) ]) %>%
+  mutate( seeds = (max_b*parms$conversion)/parms$seed_mass ) %>% 
+  filter( var != 'R') %>% 
+  mutate( seeds = paste0( var_lab, '[', 't+1', ']==', round(seeds)))
+
+
+seed_label$x_pos <- seed_label$pheno*c(0.6, 1, 1.15)
+seed_label$y_pos <- seed_label$max_b*c(1.1, 1.1, 0.9)
+
+# mp <- 
+#   mp + 
+#   geom_text(data = seed_label, 
+#             aes( x = x_pos, 
+#                  y = y_pos, 
+#                  color = var_lab, 
+#                  label = seeds ), 
+#             show.legend = F, parse= T)
+
+mp + 
+  ggsave( filename = 'figures/figure_2_new.png', width = 8, height = 6 )
