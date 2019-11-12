@@ -126,35 +126,4 @@ process_results2 <- function( x, parms, outfile = NULL){
     
     return(sim_results)  
   }
-  
-  
 }
-# sim_results %>%
-#   ungroup() %>%
-#   filter(species == 'Y1', n_comp < 2) %>%
-#   gather(comp, density, B1:B3 ) %>%
-#   filter( (density > 0) | ( n_comp == 0) ) %>%
-#   ggplot( aes( x = density, y = y, color = comp)) + geom_line()
-# 
-# sim_results %>%
-#   ungroup() %>%
-#   filter(species == 'Y2', n_comp < 2) %>%
-#   gather(comp, density, B1:B3 ) %>%
-#   filter( (density > 0) | ( n_comp == 0) ) %>%
-#   ggplot( aes( x = density, y = y, color = comp)) + geom_line()
-# 
-# sim_results %>%
-#   ungroup() %>%
-#   filter(species == 'Y3', n_comp < 2) %>%
-#   gather(comp, density, B1:B3 ) %>%
-#   filter( (density > 0) | ( n_comp == 0) ) %>%
-#   ggplot( aes( x = density, y = y, color = comp)) + geom_line()
-# 
-# sim_results %>%
-#   ungroup() %>%
-#   filter( species == 'Y3', n_comp < 3, B3 == 0 ) %>%
-#   select( - B3 , - starts_with('X')) %>%
-#   filter( B2 %in% c(0, 4, 16), B1 < 60 ) %>%
-#   ggplot( aes( y = y , x = B1, color = factor( B2 ))) + geom_point() + geom_line()
-
-

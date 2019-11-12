@@ -14,7 +14,6 @@ fit1pw <- fit2pw <- list()
 fit2HOI <- fit1HOI <- list() 
 fit3 <- fit2 <- fit1 <- list()
 
-i <- 1
 for( i in 1:3 ) { 
   # loop through focal species (i)
   
@@ -85,28 +84,6 @@ for( i in 1:3) {
     algorithm = 'port'
   )
 }
-
-fit3[[1]]
-fit1[[1]]
-fit3[[2]]
-fit1HOI[[2]]
-fit3[[3]]
-
-fit1pw[[1]]
-fit1pw[[2]]
-fit1pw[[3]]
-
-fit1[[1]]
-fit1[[2]]
-fit1[[3]]
-
-fit2[[1]]
-fit2[[2]]
-fit2[[3]]
-
-fit1HOI[[1]]
-fit1HOI[[2]]
-fit1HOI[[3]]
 
 predicted <- pgrid
 
