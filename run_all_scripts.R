@@ -22,9 +22,13 @@ if(!dir.exists(paths = 'output/')){
   dir.create('output/')
 }
 
+# Code takes several minutes to run 
+source('code/setup_parms.R')
 source('code/run_simulations.R')
-source('code/make_figure_two.R')
 source('code/fit_models.R')
-source('code/make_figure_six.R')
-source('code/vary_tradeoff.R')
+source('code/plot_fits.R')
+source('code/plot_parameters.R')
 
+# For Appendix 
+source('code/vary_tradeoff.R') # code takes several minutes to run
+source('code/plot_trade_off_results.R')
