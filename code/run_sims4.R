@@ -1,4 +1,11 @@
+###
+#
+# Does not filter out the three species cases.  Leads to potential three-way HOIs
+#
+##
+
 rm(list = ls())
+
 
 library(deSolve)
 library(tidyverse)
@@ -7,9 +14,21 @@ source('code/process_sim_data3.R')
 
 load( 'output/parms3.rda')
 
+max_d <- 1000
+min_d <- 0 
+
+dgrad <- sort( c(2,3, (seq( sqrt(min_d), sqrt(max_d), 1))^2 ))
+
+# single comeptitor experiments up to high density 
+single_competitor <- 
+  rbind( 
+    cbind( B1 = dgrad[-1], B2 = 0 , B3 = 0), 
+    cbind( B1 = 0 , B2 = dgrad[-1], B3 = 0 ), 
+    cbind( B1 = 0 , B2 = 0 , B3 = dgrad[-1]))
+
 max_d <- 36
 min_d <- 0 
-dgrad <- sort( c(2,3,(seq(sqrt(min_d), sqrt(max_d), 1))^2) )
+dgrad <- sort( c(2,3, ( seq(sqrt(min_d), sqrt(max_d), 1))^2) )
 
 B_init <- expand.grid( 
   B1 = dgrad, 
@@ -20,8 +39,10 @@ B_init <- B_init[-1,]
 
 B_init <- 
   B_init %>% 
-  filter( (B1 < 2) + (B2 < 2) + (B3 < 2) > 0 ) %>%  # filter out three species cases 
-  filter( B1 + B2 + B3 < 50) # filter out cases where total density is high  
+  #filter( (B1 < 2) + (B2 < 2) + (B3 < 2) > 0 ) %>%  # filter out three species cases 
+  filter( B1 + B2 + B3 < 100) # filter out cases where total density is high  
+
+B_init <- rbind( single_competitor, B_init) 
 
 state <- c( R = parms$R0, B1 = 0, B2 = 0, B3 = 0)
 
@@ -51,11 +72,11 @@ sim_results <-
   sim_results %>% 
   rename( "X1" = R, "X2" = B1.1, "X3" = B2.1, "X4" = B3.1)
 
-save(sim_results, file = 'output/sim_results3.rda')
+save(sim_results, file = 'output/sim_results4.rda')
 
-process_results(sim_results, 
+process_results2(sim_results, 
                 parms = parms, 
-                outfile = 'output/processed_results3.rda')
+                outfile = 'output/processed_results4.rda')
 
 
 

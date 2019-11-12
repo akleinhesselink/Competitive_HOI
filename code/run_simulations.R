@@ -58,6 +58,9 @@ for( i in 1:nrow(B_init)){
   
 }
 
+which.max(out[[1]]$B1)
+plot( out[[1]]) 
+
 sim_results <- do.call( rbind, lapply( out, function(x) apply( x, 2, max )))
 sim_results <- data.frame(B_init, sim_results )
 

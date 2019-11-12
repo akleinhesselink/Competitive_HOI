@@ -1,7 +1,7 @@
 # parameters for non-HOI models 
 inits <- list( lambda = 10, alpha = rep(0.1, 3), tau = rep(0.1, 3))
 lowers <- unlist(inits)[] 
-lowers[] <- c(1, rep(0.01, 3), rep(0.001, 3)) 
+lowers[] <- c(1, rep(0, 3), rep(0.001, 3)) 
 uppers <- lowers
 uppers <- c(200, rep(10, 3), rep(5, 3))
 
@@ -55,7 +55,40 @@ model4 <- function(B1, B2, B3, parms ){
   })
 }
 
+model5 <- function(B1, B2, B3, parms ){ 
+  
+  with(parms, { 
+    t1 <- (B1*alpha[1]) 
+    t2 <- (B2*alpha[2])
+    t3 <- (B3*alpha[3])
+    
+    lambda*(1 - t1 - t2 - t3)
+  })
+}
+
 # HOI models 
+model_HOI_type_00 <- function(B1, B2, B3, parms){ 
+  with(parms, { 
+    t1 <- (B1*alpha[1]) 
+    t2 <- (B2*alpha[2])
+    t3 <- (B3*alpha[3])
+    HOI <- beta[1]*(B1*B2) + beta[2]*(B1*B3) + beta[3]*(B2*B3)
+    (1/lambda)*(1 + t1 + t2 + t3 + HOI )^tau
+  })
+}
+
+
+model_HOI_type_0 <- function(B1, B2, B3, beta, fixed_parms ) { 
+  with(fixed_parms, {  
+    t1 <- (B1*alpha[1]) 
+    t2 <- (B2*alpha[2])
+    t3 <- (B3*alpha[3])
+    
+    HOI <- beta[1]*(B1*B2) + beta[2]*(B1*B3) + beta[3]*(B2*B3)
+    
+    (1/lambda)*(1 + t1 + t2 + t3 + HOI)^tau
+  })
+}
 
 model_HOI_type_1 <- function(B1, B2, B3, beta, eta, fixed_parms ){
   # formula is inverted 

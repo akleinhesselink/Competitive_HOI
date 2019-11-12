@@ -46,6 +46,18 @@ model1_HOI <- function(B1, B2, B3, parms){
   })
 }
 
+model1_HOI2 <- function(B1, B2, B3, parms){ 
+  # Hassel model with interspecific HOI terms
+  # AND includes three-way HOI!
+  with(parms, { 
+    t1 <- (B1*alpha[1]) 
+    t2 <- (B2*alpha[2])
+    t3 <- (B3*alpha[3])
+    HOI <- beta[1]*(B1*B2) + beta[2]*(B1*B3) + beta[3]*(B2*B3) + beta[4]*(B1*B2*B3)
+    (1/lambda)*(1 + t1 + t2 + t3 + HOI )^tau
+  })
+}
+
  
 model2_HOI <- function(B1, B2, B3, parms){ 
   # Model 2 with HOI terms 
@@ -78,7 +90,7 @@ inits <- list( lambda = 40, alpha = rep(0.2, 3), tau = 0.6)
 lowers <- unlist(inits)[] 
 lowers[] <- c(10, rep(0, 3), 0.0001) 
 uppers <- lowers
-uppers <- c(200, rep(10, 3), 5)
+uppers <- c(1000, rep(10, 3), 5)
 
 inits1 <- inits2 <- inits 
 lowers1 <- lowers2 <- lowers
@@ -88,3 +100,9 @@ initsHOI <- inits1
 initsHOI$beta <- rep(0, 3)
 lowersHOI <- c( lowers1, beta = rep(-0.01, 3))
 uppersHOI <- c( uppers, beta = rep(1, 3))
+
+# with 3-way HOI, four HOI terms 
+initsHOI2 <- inits1 
+initsHOI2$beta <- rep(0, 4)
+lowersHOI2  <- c(lowers1, beta= c(rep(-0.01, 3), -0.01))
+uppersHOI2  <- c(uppers, beta = c(rep(1, 3), 0.1))

@@ -3,25 +3,28 @@ rm(list = ls())
 library(deSolve)
 
 source('code/plotting_parameters.R')
-source('code/simulation_functions.R')
+source('code/simulation_functions3.R')
 
-load('output/parms.rda')
+load('output/parms3.rda')
 
-R0 <- parms$R0
-seeds_init <- c(1,1,1)
-
+seeds_init <- c(B1= 1,B2 = 1,B3 = 1)
 B0 <- seeds_init*parms$seed_mass
 
-state <- c( R0, 
-            B0)
+state <- c( R = parms$R0, B0)
+parms$n <- seeds_init
 
 out <- ode(state, 
            times = seq(1, parms$U, by = 0.01), 
            func = grow, 
            parms = parms, 
-           rootfun = root, event = list(func = event, root = T))
+           rootfun = root3, 
+           event = list(func = event, root = T))
+
+plot( out )
 
 out <- out[seq( 1, nrow(out), by = 50), ]
+
+
 
 ## Generate Figure 1 --------------------------------------- # 
 png('figures/figure_2.png', 

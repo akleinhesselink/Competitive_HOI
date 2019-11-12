@@ -2,16 +2,18 @@ rm(list = ls())
 
 library(tidyverse) 
 
-load( 'output/sim_results.rda')
-load( 'output/parms.rda')
+load( 'output/sim_results2.rda')
+load( 'output/parms2.rda')
 
 # convert biomass results into final seed production per plant 
+
 sim_results <- 
-  sim_results %>% 
+  sim_results2 %>% 
   mutate( Y1 = parms$conversion*X2/parms$seed_mass/B1, 
           Y2 = parms$conversion*X3/parms$seed_mass/B2, 
           Y3 = parms$conversion*X4/parms$seed_mass/B3) %>% 
   select( - X1)
+
 
 sim_results <- 
   sim_results %>% 
@@ -42,7 +44,6 @@ sim_results <-
 sim_results <- 
   sim_results %>% 
   filter( !is.na(y))
-
 
 cust_seq <- c(c(0:10)/10, seq(1, 9, by = 0.5))
 
@@ -83,4 +84,5 @@ sim_results %>%
 
 
 
-save(sim_results, pgrid, file = 'output/processed_results.rda' )
+save(sim_results, pgrid, file = 'output/processed_results2.rda' )
+
