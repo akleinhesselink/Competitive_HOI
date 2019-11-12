@@ -3,8 +3,8 @@
 # manuscript "Mechanisms underlying higher order interactions: from definitions 
 # to ecological processes".  Running this script may take over 15 minutes. 
 #
-# Before running this script set the working directory to the directory containing
-# the README (the directory this script is in). 
+# Either open the R project file in R studio or set the working directory to 
+# the directory containing the README (the directory this script is in). 
 # 
 
 rm(list = ls())

@@ -4,7 +4,7 @@ This directory contains all R scripts necessary to run the simulations and analy
 
 ### Reproducing analyses 
 
-The 'code' directory contains all the R scripts. To recreate the analyses in the manuscript open an R session and set the working directory to this folder  containing this README file.  Then run the "run_all_scripts.R" script. **Note: running all analyses may take 15 to 20 minutes to complete.**
+The 'code' directory contains all the R scripts. To recreate the analyses in the manuscript open an R session and set the working directory to this folder containing this README file (alternatively open the .Rproject file in Rstudio).  Then run the "run_all_scripts.R" script. **Note: running all analyses may take 15 to 20 minutes to complete.**
 
 ### File details 
 

@@ -121,7 +121,7 @@ for( k in 1:nsims){
       filter( n_comp < 3, species == !!paste0('Y', i))
     
     fitHOI[[i]] <- nls( 
-      log(1/y) ~ log(model1_HOI(B1, B2, B3, parms = list(lambda = lambda, alpha = alpha, beta = beta, tau = tau))), 
+      (1/y) ~ (model1_HOI(B1, B2, B3, parms = list(lambda = lambda, alpha = alpha, beta = beta, tau = tau))), 
       data = temp_data, 
       start = initsHOI, 
       lower = lowersHOI, 
