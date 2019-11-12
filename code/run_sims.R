@@ -2,10 +2,10 @@ rm(list = ls())
 
 library(deSolve)
 library(tidyverse)
-source('code/simulation_functions3.R')
-source('code/process_sim_data3.R')
+source('code/simulation_functions.R')
+source('code/process_sim_data.R')
 
-load( 'output/parms3.rda')
+load( 'output/parms.rda')
 
 max_d <- 36
 min_d <- 0 
@@ -51,11 +51,11 @@ sim_results <-
   sim_results %>% 
   rename( "X1" = R, "X2" = B1.1, "X3" = B2.1, "X4" = B3.1)
 
-save(sim_results, file = 'output/sim_results3.rda')
+save(sim_results, file = 'output/sim_results.rda')
 
 process_results(sim_results, 
                 parms = parms, 
-                outfile = 'output/processed_results3.rda')
+                outfile = 'output/processed_results.rda')
 
 
 

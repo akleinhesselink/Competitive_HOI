@@ -3,9 +3,9 @@ rm(list = ls())
 library(tidyverse) 
 
 source('code/plotting_parameters.R')
-source('code/simulation_functions3.R')
-source('code/phenomenological_models3.R')
-load( 'output/processed_results3.rda')
+source('code/simulation_functions.R')
+source('code/phenomenological_models.R')
+load( 'output/processed_results.rda')
 
 nls.control(maxiter = 1000, tol = 1e-8, minFactor = (1/10)*(1/1024),
             printEval = FALSE, warnOnly = FALSE)
@@ -109,6 +109,6 @@ save(
   fit1, 
   fit2, 
   fit1HOI,
-  file = 'output/model_fits3.rda'
+  file = 'output/model_fits.rda'
 )
 

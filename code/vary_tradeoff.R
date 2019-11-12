@@ -10,12 +10,12 @@ library(stringr)
 library(gridExtra)
 library(grid)
 
-source('code/simulation_functions3.R')
+source('code/simulation_functions.R')
 source('code/plotting_parameters.R')
-source('code/phenomenological_models3.R')
-source('code/process_sim_data3.R')
+source('code/phenomenological_models.R')
+source('code/process_sim_data.R')
 
-load('output/parms3.rda')
+load('output/parms.rda')
 
 nsims <- 5 
 nsps  <- 3
@@ -132,11 +132,6 @@ for( k in 1:nsims){
   
   fits[[k]] <- fitHOI
 }
-
-initsHOI
-
-fits[[1]]
-fits[[2]]
 
 res <- do.call( bind_rows, 
          lapply( fits, lapply, function(x) data.frame( t(coef(x)))) )

@@ -2,7 +2,7 @@ rm(list = ls())
 
 library(deSolve)
 library(tidyverse)
-source('code/simulation_functions3.R')
+source('code/simulation_functions.R')
 
 # parameterize model --------------------------------------------------------------------------------------------------- 
 U <- 200                    # Length of simulation in days 
@@ -32,7 +32,7 @@ parms <- list( Vmax = Vmax,
                seed_mass = seed_mass, 
                U = U)
 
-save(parms, file = 'output/parms3.rda')
+save(parms, file = 'output/parms.rda')
 
 # Run response surface experiments --------------------------- # 
 
@@ -184,4 +184,4 @@ seed_label$y_pos <- seed_label$max_b*c(1.1, 1.1, 0.9)
 #             show.legend = F, parse= T)
 
 mp + 
-  ggsave( filename = 'figures/figure_2_new.png', width = 8, height = 6 )
+  ggsave( filename = 'figures/example_dynamics_fig4.png', width = 8, height = 6 )

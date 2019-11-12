@@ -1,12 +1,13 @@
 rm(list = ls())
-source('code/plotting_parameters.R')
-source('code/phenomenological_models3.R')
-load('output/model_fits3.rda')
-load('output/processed_results3.rda')
 
 library(tidyverse)
 library(gridExtra)
 library(grid)
+
+source('code/plotting_parameters.R')
+source('code/phenomenological_models.R')
+load('output/model_fits.rda')
+load('output/processed_results.rda')
 
 theme1 <- 
   journal_theme + 
@@ -113,8 +114,9 @@ pp1 <-
                  size = 5)
 
 
+pp1
 ggsave(pp1,
-       filename = 'figures/figure_3_new.png',
+       filename = 'figures/example_fits_fig5.png',
        width = 8,
        height = 5)
 
@@ -160,7 +162,7 @@ gg_error <-
 gg_error
 
 ggsave( gg_error, 
-        filename = 'figures/figure_5_new.png', 
+        filename = 'figures/model_error_barplot.png', 
         width = 8, 
         height = 5)
   
@@ -297,12 +299,12 @@ Model2_fits <- Model2_fits +
 
 
 ggsave(Model1_fits, 
-       filename = 'figures/figure_4_new.png', 
+       filename = 'figures/model1_fits_supporting_info.png', 
        width = 8, 
        height = 5)
 
 ggsave(Model2_fits, 
-       filename = 'figures/figure_S2_new.png', 
+       filename = 'figures/model2_fits_supporting_info.png', 
        width = 8, 
        height = 5)
 
@@ -379,6 +381,6 @@ one2one_plot <-
   show.legend = F, color = 1)
 
 one2one_plot %>% 
-  ggsave( filename = 'figures/figure_one_to_one.png', 
+  ggsave( filename = 'figures/one_to_one_error_plot_fig6.png', 
           width = 8, 
           height = 5)

@@ -1,12 +1,13 @@
 rm(list = ls())
-source('code/plotting_parameters.R')
-source('code/phenomenological_models3.R')
-load('output/model_fits3.rda')
-load('output/processed_results3.rda')
 
 library(tidyverse)
 library(gridExtra)
 library(grid)
+
+source('code/plotting_parameters.R')
+source('code/phenomenological_models.R')
+load('output/model_fits.rda')
+load('output/processed_results.rda')
 
 theme1 <- 
   journal_theme + 
@@ -101,8 +102,6 @@ alpha_plot <-
   coord_cartesian(ylim = c(0, 1) , clip = 'off') 
 
 
-
-
 alpha_plot <- 
   alpha_plot + 
   geom_text( data = letter_df, 
@@ -112,10 +111,9 @@ alpha_plot <-
              vjust = 1.5 , 
              size = 5) 
 
-alpha_plot
 
 alpha_plot %>%   
-  ggsave(filename = 'figures/parameter_plot.png', 
+  ggsave(filename = 'figures/parameter_plot_fig7.png', 
          height = 5, 
          width = 8)
 
