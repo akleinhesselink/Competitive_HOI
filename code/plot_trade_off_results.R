@@ -40,7 +40,7 @@ gg_scenarios <-
       axis.title.x = element_text(margin = margin(1, 1, 1, 1, unit = 'line')))
 
 
-ggsave(gg_scenarios , filename = 'figures/scenario_illustration.png', height = 5, width = 8, units = 'in')
+ggsave(gg_scenarios , filename = 'figures/scenario_illustration_figA1.png', height = 5, width = 8, units = 'in')
 
 tradeoff_results %>%
   filter( par_type == 'beta') %>% 
@@ -90,5 +90,5 @@ gg_trd_off <-
 
 
 gg_trd_off %>% 
-  ggsave(filename = 'figures/trade_off_plot.png', width = 8, height = 4, units = 'in')
+  ggsave(filename = 'figures/trade_off_plot_figA2.png', width = 8, height = 4, units = 'in')
 

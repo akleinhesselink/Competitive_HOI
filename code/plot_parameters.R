@@ -113,7 +113,7 @@ alpha_plot <-
 
 
 alpha_plot %>%   
-  ggsave(filename = 'figures/parameter_plot_fig7.png', 
+  ggsave(filename = 'figures/parameter_plot_fig6.png', 
          height = 5, 
          width = 8)
 

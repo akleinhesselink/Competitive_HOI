@@ -158,9 +158,6 @@ mp <-
             vjust = -3.5, 
             size = 5)
 
-mp 
-
-
 seed_label <- 
   plotting_df %>% 
   group_by( type, var_lab , var ) %>% 
@@ -170,18 +167,8 @@ seed_label <-
   filter( var != 'R') %>% 
   mutate( seeds = paste0( var_lab, '[', 't+1', ']==', round(seeds)))
 
-
 seed_label$x_pos <- seed_label$pheno*c(0.6, 1, 1.15)
 seed_label$y_pos <- seed_label$max_b*c(1.1, 1.1, 0.9)
 
-# mp <- 
-#   mp + 
-#   geom_text(data = seed_label, 
-#             aes( x = x_pos, 
-#                  y = y_pos, 
-#                  color = var_lab, 
-#                  label = seeds ), 
-#             show.legend = F, parse= T)
-
 mp + 
-  ggsave( filename = 'figures/example_dynamics_fig4.png', width = 8, height = 6 )
+  ggsave( filename = 'figures/example_dynamics_fig3.png', width = 8, height = 6 )

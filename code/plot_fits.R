@@ -114,9 +114,8 @@ pp1 <-
                  size = 5)
 
 
-pp1
 ggsave(pp1,
-       filename = 'figures/example_fits_fig5.png',
+       filename = 'figures/example_fits_fig4.png',
        width = 8,
        height = 5)
 
@@ -144,7 +143,6 @@ error_df <-
   do.call(rbind, out ) %>%
   mutate( Species = factor( Species, levels = species_labs, ordered = T)) 
 
-error_df
 
 gg_error <- 
   error_df %>% 
@@ -267,13 +265,11 @@ error2 <- error_df %>%
   mutate( RSS = round( error, 2)) %>% 
   mutate( my_expression = paste0( 'RSS[', str_replace(Model, ' ', '~'), ']', '==', RSS )) 
 
-error2
 
 y_pos3 <- c(legend_pos$ymax - 0.25*(legend_pos$ymax - legend_pos$ymin))
 y_pos4 <- c(legend_pos$ymax - 0.32*(legend_pos$ymax - legend_pos$ymin))
 
 y_posRSS <- c(y_pos3, y_pos4, y_pos3)
-error2
 
 error2$x_pos <- 40 
 error2$y_pos <- y_posRSS
@@ -299,12 +295,12 @@ Model2_fits <- Model2_fits +
 
 
 ggsave(Model1_fits, 
-       filename = 'figures/model1_fits_supporting_info.png', 
+       filename = 'figures/model1_fits_supporting_info_figS2.png', 
        width = 8, 
        height = 5)
 
 ggsave(Model2_fits, 
-       filename = 'figures/model2_fits_supporting_info.png', 
+       filename = 'figures/model2_fits_not_included.png', 
        width = 8, 
        height = 5)
 
@@ -381,6 +377,6 @@ one2one_plot <-
   show.legend = F, color = 1)
 
 one2one_plot %>% 
-  ggsave( filename = 'figures/one_to_one_error_plot_fig6.png', 
+  ggsave( filename = 'figures/one_to_one_error_plot_fig5.png', 
           width = 8, 
           height = 5)

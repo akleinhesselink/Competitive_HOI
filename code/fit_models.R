@@ -75,6 +75,7 @@ for( i in 1:3) {
     upper = uppersHOI,
     algorithm = 'port'
   )
+  
   fit3[[i]] <- nls( 
     log(1/y) ~ log(model3(B1, B2, B3, parms = list(lambda = lambda, alpha = alpha, tau = tau))), 
     data = temp_data, 
@@ -94,12 +95,11 @@ predicted$m1_pw <- NA
 for( i in 1:3 ) { 
   focal <- paste0('Y', i)
   predicted$m1_pw[predicted$species == focal] <- 1/(exp( predict( fit1pw[[i]], newdata = predicted[predicted$species == focal, ]) ))
-  #predicted$m2_pw[predicted$species == focal] <- 1/(exp( predict( fit2pw[[i]], newdata = predicted[predicted$species == focal, ]) ))
   
   predicted$m1[predicted$species == focal] <- 1/(exp( predict( fit1[[i]], newdata = predicted[predicted$species == focal, ]) ))
   predicted$m2[predicted$species == focal] <- 1/(exp( predict( fit2[[i]], newdata = predicted[predicted$species == focal, ]) ))
   predicted$m1_HOI[predicted$species == focal] <- 1/(exp( predict( fit1HOI[[i]], newdata = predicted[predicted$species == focal, ]) ))
-  #predicted$m2_HOI[predicted$species == focal] <- 1/(exp( predict( fit2HOI[[i]], newdata = predicted[predicted$species == focal, ]) ))
+  
 }
 
 save( 
