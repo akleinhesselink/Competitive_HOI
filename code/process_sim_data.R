@@ -1,6 +1,8 @@
 
 process_results <- function( x, parms, outfile = NULL){ 
-
+  
+  set.seed(0)
+  
   # convert biomass results into final seed production per plant 
   sim_results <- 
     x %>% 

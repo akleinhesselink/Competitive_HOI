@@ -46,34 +46,6 @@ model1_HOI <- function(B1, B2, B3, parms){
   })
 }
 
-model1_HOI2 <- function(B1, B2, B3, parms){ 
-  # Hassel model with interspecific HOI terms
-  # AND includes three-way HOI!
-  with(parms, { 
-    t1 <- (B1*alpha[1]) 
-    t2 <- (B2*alpha[2])
-    t3 <- (B3*alpha[3])
-    HOI <- beta[1]*(B1*B2) + beta[2]*(B1*B3) + beta[3]*(B2*B3) + beta[4]*(B1*B2*B3)
-    (1/lambda)*(1 + t1 + t2 + t3 + HOI )^tau
-  })
-}
-
- 
-model2_HOI <- function(B1, B2, B3, parms){ 
-  # Model 2 with HOI terms 
-  with(parms, { 
-    t1 <- (B1*alpha[1]) 
-    t2 <- (B2*alpha[2])
-    t3 <- (B3*alpha[3])
-    HOI1 <- beta[1]*(B1*B2)
-    HOI2 <- beta[2]*(B1*B3)
-    HOI3 <- beta[3]*(B2*B3)
-    
-    (1/lambda)*((1 + t1)*(1 + t2)*(1 + t3)*(1 + HOI1)*(1 + HOI2)*(1 + HOI3))^tau
-  })
-}
-
-
 get_fixed_pars <- function(myfit ){ 
   
   x <- coef(myfit)
@@ -101,8 +73,3 @@ initsHOI$beta <- rep(0, 3)
 lowersHOI <- c( lowers1, beta = rep(-0.01, 3))
 uppersHOI <- c( uppers, beta = rep(1, 3))
 
-# with 3-way HOI, four HOI terms 
-initsHOI2 <- inits1 
-initsHOI2$beta <- rep(0, 4)
-lowersHOI2  <- c(lowers1, beta= c(rep(-0.01, 3), -0.01))
-uppersHOI2  <- c(uppers, beta = c(rep(1, 3), 0.1))
