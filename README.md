@@ -4,7 +4,7 @@ This directory contains all R scripts necessary to run the simulations and analy
 
 ### Reproducing analyses 
 
-The 'code' directory contains all the R scripts. To recreate the analyses in the manuscript open an R session and set the working directory to this folder containing this README file (alternatively open the .Rproject file in Rstudio).  Then run the "run_all_scripts.R" script. **Note: running all analyses may take 15 to 20 minutes to complete.**
+The 'code' directory contains all the R scripts. To recreate the analyses in the manuscript open an R session and set the working directory to this folder containing this README file (alternatively open the .Rproject file in Rstudio).  Then run the "run_all_scripts.R" script. **Note: running all analyses may take ~5 minutes to complete.**
 
 ### File details 
 
@@ -14,7 +14,7 @@ The 'code' directory contains all the R scripts. To recreate the analyses in the
 
 2. code/set_up_parms.R 
 
-  Defines the simulation parameters used by the mechanistic growth model (Table S1). Generates figure 4. 
+  Defines the simulation parameters used by the mechanistic growth model (Table S1). Generates figure 3. 
 
 3. code/run_simulations.R
 
@@ -26,11 +26,11 @@ The 'code' directory contains all the R scripts. To recreate the analyses in the
 
 5. code/plot_fits.R
   
-  Generate figure 5, and 6 in the main text and figure S2 in the supporting information. 
+  Generate figure 4, and 5 in the main text and figure S2 in the supporting information. 
   
 6. code/plot_parameters.R
 
-  Generate figure 7 in the main text. 
+  Generate figure 6 in the main text. 
 
 7. code/vary_tradeoff.R 
 
