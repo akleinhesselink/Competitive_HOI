@@ -1,11 +1,11 @@
-## Computer Code for "Detecting and interpreting higher order interactions in 
-ecological communities".
+## Computer Code for "Detecting and interpreting higher order interactions in ecological communities".
 
 This directory contains all R scripts necessary to run the simulations and analyses and generate the figures presented in the manuscript. 
 
 ### Reproducing analyses 
 
-The 'code' directory contains all the R scripts. To recreate the analyses in the manuscript open an R session and set the working directory to this folder containing this README file (alternatively open the .Rproject file in Rstudio).  Then run the "run_all_scripts.R" script. **Note: running all analyses may take ~5 minutes to complete.**
+The 'code' directory contains all the R scripts. To recreate the analyses in the manuscript open an R session and set the working directory to this folder containing this README file (alternatively open the .Rproject file in Rstudio).  Then run the "run_all_scripts.R" script. **Note: running all analyses may take ~5 minutes to complete.**  This R projects uses *renv* to track R packages required to run the analyses. If there are 
+issues with package versions please see the documentation for renv here: https://rstudio.github.io/renv/articles/collaborating.html
 
 ### File details 
 
