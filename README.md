@@ -4,8 +4,7 @@ This directory contains all R scripts necessary to run the simulations and analy
 
 ### Reproducing analyses 
 
-The 'code' directory contains all the R scripts. To recreate the analyses in the manuscript open an R session and set the working directory to this folder containing this README file (alternatively open the .Rproject file in Rstudio).  Then run the "run_all_scripts.R" script. **Note: running all analyses may take ~5 minutes to complete.**  This R projects uses *renv* to track R packages required to run the analyses. If there are 
-issues with package versions please see the documentation for renv here: https://rstudio.github.io/renv/articles/collaborating.html
+The 'code' directory contains all the R scripts. To recreate the analyses in the manuscript open an R session and set the working directory to this folder containing this README file (alternatively open the .Rproject file in Rstudio).  Then run the "run_all_scripts.R" script. **Note: running all analyses may take ~5 minutes to complete.**  This R projects uses *renv* to track R packages required to run the analyses, please see this for more information: https://rstudio.github.io/renv/articles/collaborating.html
 
 ### File details 
 
@@ -76,12 +75,14 @@ nickname       Action of the Toes
 
 ### Required R packages 
 
+Run renv::restore() to install required packages to a local library. 
+
 1. renv_0.14.0
 2. tidyverse_1.3.1
-2. gridExtra_2.3   
-3. deSolve_1.28  
-4. stringr_1.4.0
-5. grid_4.0.4
+3. gridExtra_2.3   
+4. deSolve_1.28  
+5. stringr_1.4.0
+6. grid_4.0.4
 
 ### Authors 
 
