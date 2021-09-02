@@ -85,8 +85,8 @@ alpha_plot <-
   geom_bar(stat = 'identity') + 
   annotate(geom = 'segment', x = 1:3, y = -Inf, xend = 1:3, yend = -0.08 , size = 0.5) + 
   facet_grid(  type ~ Species  ) + 
-  scale_fill_manual(name = 'Focal Species', values = my_colors[1:3], guide = F) + 
-  scale_color_manual(values = my_colors[1:3], guide = F) +
+  scale_fill_manual(name = 'Focal Species', values = my_colors[1:3], guide = "none") + 
+  scale_color_manual(values = my_colors[1:3], guide = "none") +
   ylab( 'Estimate') + 
   xlab( 'Parameter') + 
   ggtitle('Focal Species') +

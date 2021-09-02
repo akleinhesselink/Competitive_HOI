@@ -202,7 +202,7 @@ make_2comp_df <- function(x, i ) {
   x %>% 
     filter( species == cur_sp, get(intra_comp) == 0  ) %>% 
     select(   - !!(intra_comp)) %>%  
-    gather( comp_label, density, inter_comp)  %>% 
+    gather( comp_label, density, all_of(inter_comp))  %>% 
     mutate( comp_label = 
               factor(comp_label, 
                      labels = c('Competitor 1', 
@@ -360,7 +360,7 @@ one2one_plot <-
   xlab('Predicted') + 
   ylab('Observed') + 
   ggtitle('Focal Species') + 
-  scale_color_manual(values = my_colors[1:3], guide = F) + 
+  scale_color_manual(values = my_colors[1:3], guide = 'none') + 
   theme(plot.title = element_text( hjust = 0.5)) + 
   error_theme
 

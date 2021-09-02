@@ -170,5 +170,4 @@ seed_label <-
 seed_label$x_pos <- seed_label$pheno*c(0.6, 1, 1.15)
 seed_label$y_pos <- seed_label$max_b*c(1.1, 1.1, 0.9)
 
-mp + 
-  ggsave( filename = 'figures/example_dynamics_fig3.png', width = 8, height = 6 )
+mp %>% ggsave( filename = 'figures/example_dynamics_fig3.png', width = 8, height = 6 )

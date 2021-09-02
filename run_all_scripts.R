@@ -1,7 +1,7 @@
 #
 # Running this script will run all analyses and generate all figures in the 
-# manuscript "Mechanisms underlying higher order interactions: from definitions 
-# to ecological processes".  Running this script may take over 15 minutes. 
+# manuscript "Detecting and interpreting higher order interactions in 
+# ecological communities".  Running this script may take over 15 minutes. 
 #
 # Either open the R project file in R studio or set the working directory to 
 # the directory containing the README (the directory this script is in). 

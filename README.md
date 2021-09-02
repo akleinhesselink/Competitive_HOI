@@ -1,4 +1,5 @@
-## Computer Code for "Mechanisms underlying higher order interactions: from definitions to ecological processes"
+## Computer Code for "Detecting and interpreting higher order interactions in 
+ecological communities".
 
 This directory contains all R scripts necessary to run the simulations and analyses and generate the figures presented in the manuscript. 
 
@@ -75,10 +76,12 @@ nickname       Action of the Toes
 
 ### Required R packages 
 
-1. tidyverse_1.2.1
+1. renv_0.14.0
+2. tidyverse_1.3.1
 2. gridExtra_2.3   
-3. deSolve_1.24   
-4. stringr_1.4.0  
+3. deSolve_1.28  
+4. stringr_1.4.0
+5. grid_4.0.4
 
 ### Authors 
 
