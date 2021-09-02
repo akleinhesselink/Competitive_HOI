@@ -37,6 +37,7 @@ cffs_df <- data.frame( rowids, data.frame( do.call( rbind, lapply(cffs, function
 
 cffs_df <- 
   cffs_df %>% 
+  mutate( Species = factor( Species, levels = c('Early', 'Mid', 'Late'), ordered = T)) %>%
   gather( parameter, value, lambda:tau) %>% 
   bind_rows(
     data.frame( Model = 'HOI', 

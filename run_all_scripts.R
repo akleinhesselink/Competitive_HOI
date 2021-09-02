@@ -6,6 +6,9 @@
 # Either open the R project file in R studio or set the working directory to 
 # the directory containing the README (the directory this script is in). 
 # 
+# Use 'renv::restore()' to install the required package versions if needed. 
+
+renv::restore() # install required packages 
 
 rm(list = ls())
 

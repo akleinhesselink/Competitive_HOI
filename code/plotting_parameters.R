@@ -21,3 +21,4 @@ my_colors <- c(1,2,4,5)
 my_lntps <- c(1,3,2)
 
 species_labs <- c('Early', 'Mid', 'Late')
+species_labs <- factor(species_labs, levels = c('Early', 'Mid', 'Late'), ordered = T)
