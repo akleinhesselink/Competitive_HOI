@@ -23,7 +23,7 @@ theme1 <-
 
 xbreaks <- c(0,10,20,30,40)
 
-model_labs <- c('Hassel', 'HOI', 'Model 2')  
+model_labs <- c('Hassell', 'HOI', 'Multiplicative')  
   
 predicted <- 
   predicted %>% 
@@ -284,12 +284,12 @@ Model2_fits <- two_sp_plot(all_res,
                            label_df = annotate_df)
 
 Model1_fits <- Model1_fits + 
-  geom_text( data = error2 %>% filter( Model != 'Model 2'), 
+  geom_text( data = error2 %>% filter( Model != 'Multiplicative'), 
              aes( x = x_pos, y = y_pos, 
                   label = my_expression), hjust = 1, parse = T)
 
 Model2_fits <- Model2_fits + 
-  geom_text( data = error2 %>% filter( Model != 'Hassel'), 
+  geom_text( data = error2 %>% filter( Model != 'Hassell'), 
              aes( x = x_pos, y = y_pos, 
                   label = my_expression), hjust = 1, parse = T)
 
@@ -350,15 +350,16 @@ error_df2 <-
   mutate( my_expression = paste0( 'italic(RMSE', '==', RMSE, ')' )) 
 
 
+
 one2one_plot <- 
   res %>%  
-  ggplot( aes( x = y_hat, y = y, color = Species)) + 
+  ggplot( aes( x = y, y = y_hat, color = Species)) + 
   geom_point() + 
   geom_abline(aes( intercept = 0 , slope = 1)) + 
   geom_text( data = error_df2, aes( x = pos2, y = pos1, label = my_expression), hjust = 1, parse = T, size = 4.5, color = 1) +
   facet_grid( Model ~ Species) + 
-  xlab('Predicted') + 
-  ylab('Observed') + 
+  xlab('Simulated Data') + 
+  ylab('Predicted') + 
   ggtitle('Focal Species') + 
   scale_color_manual(values = my_colors[1:3], guide = 'none') + 
   theme(plot.title = element_text( hjust = 0.5)) + 

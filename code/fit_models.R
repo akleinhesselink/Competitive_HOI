@@ -12,7 +12,8 @@ nls.control(maxiter = 1000, tol = 1e-8, minFactor = (1/10)*(1/1024),
 
 fit1pw <- fit2pw <- list()
 fit2HOI <- fit1HOI <- list() 
-fit3 <- fit2 <- fit1 <- list()
+# fit3 <- 
+fit2 <- fit1 <- list()
 
 for( i in 1:3 ) { 
   # loop through focal species (i)
@@ -76,14 +77,14 @@ for( i in 1:3) {
     algorithm = 'port'
   )
   
-  fit3[[i]] <- nls( 
-    log(1/y) ~ log(model3(B1, B2, B3, parms = list(lambda = lambda, alpha = alpha, tau = tau))), 
-    data = temp_data, 
-    start = inits2, 
-    lower = lowers2, 
-    upper = uppers2, 
-    algorithm = 'port'
-  )
+  # fit3[[i]] <- nls( 
+  #   log(1/y) ~ log(model3(B1, B2, B3, parms = list(lambda = lambda, alpha = alpha, tau = tau))), 
+  #   data = temp_data, 
+  #   start = inits2, 
+  #   lower = lowers2, 
+  #   upper = uppers2, 
+  #   algorithm = 'port'
+  # )
 }
 
 predicted <- pgrid

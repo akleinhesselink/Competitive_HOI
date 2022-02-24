@@ -25,8 +25,7 @@ theme1 <-
          strip.text.y = element_blank(), 
          panel.spacing.y = unit(2, 'lines')) 
 
-model_labs <- c('Hassel', 'Model 2', 'HOI')  
-
+model_labs <- c('Hassell', 'Multiplicative', 'HOI')  
 
 cffs <- lapply( c(fit1, fit2, fit1HOI), coef )
 
