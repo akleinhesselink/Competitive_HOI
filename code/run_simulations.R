@@ -1,7 +1,10 @@
 rm(list = ls())
 
 library(deSolve)
-library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(stringr)
+
 source('code/simulation_functions.R')
 source('code/process_sim_data.R')
 

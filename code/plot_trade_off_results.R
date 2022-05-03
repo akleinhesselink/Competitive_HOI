@@ -1,4 +1,8 @@
 rm(list = ls())
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+
 source('code/plotting_parameters.R')
 
 load('output/trade_off_results.rda')
@@ -89,6 +93,6 @@ gg_trd_off <-
         axis.title.x = element_text(margin = margin(1, 1, 1, 1, unit = 'line')))
 
 
-gg_trd_off %>% 
-  ggsave(filename = 'figures/trade_off_results_figA2.png', width = 8, height = 4, units = 'in')
+
+ggsave(gg_trd_off, filename = 'figures/trade_off_results_figA2.png', width = 8, height = 4, units = 'in')
 

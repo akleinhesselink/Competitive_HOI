@@ -1,6 +1,9 @@
 rm(list = ls())
 
-library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(stringr)
+library(ggplot2)
 library(gridExtra)
 library(grid)
 
@@ -377,7 +380,8 @@ one2one_plot <-
   vjust = 1.5 , 
   show.legend = F, color = 1)
 
-one2one_plot %>% 
-  ggsave( filename = 'figures/one_to_one_error_plot_fig5.png', 
+ 
+ggsave( one2one_plot, 
+        filename = 'figures/one_to_one_error_plot_fig5.png', 
           width = 8, 
           height = 5)

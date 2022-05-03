@@ -5,7 +5,10 @@
 rm(list = ls())
 
 library(deSolve)
-library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(stringr)
+library(ggplot2)
 library(stringr)
 library(gridExtra)
 library(grid)

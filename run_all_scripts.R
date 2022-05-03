@@ -12,7 +12,9 @@ renv::restore() # install required packages
 
 rm(list = ls())
 
-library( tidyverse ) 
+library( tidyr )
+library( dplyr )
+library( ggplot2 )
 library( stringr )
 library( deSolve )
 library( gridExtra )

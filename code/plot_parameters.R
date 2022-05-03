@@ -1,6 +1,9 @@
 rm(list = ls())
 
-library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(stringr)
+library(ggplot2)
 library(gridExtra)
 library(grid)
 
@@ -112,8 +115,9 @@ alpha_plot <-
              size = 5) 
 
 
-alpha_plot %>%   
-  ggsave(filename = 'figures/parameter_plot_fig6.png', 
+
+ggsave(alpha_plot, 
+         filename = 'figures/parameter_plot_fig6.png', 
          height = 5, 
          width = 8)
 
