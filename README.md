@@ -1,6 +1,6 @@
-## Computer Code for "Detecting and interpreting higher order interactions in ecological communities".
+## Computer Code for "Detecting and interpreting higher order interactions in ecological communities". Ecology Letters. doi:10.1111/ele.14022. 
 
-This directory contains all R scripts necessary to run the simulations and analyses and generate the figures presented in the manuscript. 
+This directory contains R scripts necessary to run the competition simulation, fit phenomenological models and generate figures. 
 
 ### Reproducing analyses 
 
@@ -58,36 +58,37 @@ The 'code' directory contains all the R scripts. To recreate the analyses in the
   
 ### Built With 
 
-platform       x86_64-apple-darwin15.6.0   
-arch           x86_64                      
-os             darwin15.6.0                
-system         x86_64, darwin15.6.0        
+platform       aarch64-apple-darwin20      
+arch           aarch64                     
+os             darwin20                    
+system         aarch64, darwin20           
 status                                     
-major          3                           
-minor          6.1                         
-year           2019                        
-month          07                          
-day            05                          
-svn rev        76782                       
+major          4                           
+minor          2.0                         
+year           2022                        
+month          04                          
+day            22                          
+svn rev        82229                       
 language       R                           
-version.string R version 3.6.1 (2019-07-05)
-nickname       Action of the Toes   
+version.string R version 4.2.0 (2022-04-22)
+nickname       Vigorous Calisthenics 
 
 ### Required R packages 
 
 Run renv::restore() to install required packages to a local library. 
 
 1. renv_0.14.0
-2. tidyverse_1.3.1
+2. tidyr_1.2.0
+3. dplyr_1.0.9
+4. ggplot2_3.3.6
 3. gridExtra_2.3   
-4. deSolve_1.28  
+4. deSolve_1.32  
 5. stringr_1.4.0
-6. grid_4.0.4
+6. grid_4.2.0
 
 ### Authors 
 
-Obscured for peer review 
-
+Andrew R. Kleinhesselink 
 
 
 
